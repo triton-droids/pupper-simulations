@@ -1,0 +1,16 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mujocoinclude>
+  <asset>
+    <mesh name="base_frame.001" content_type="model/obj" file="base_frame.001.obj" />
+    <mesh name="battery.001" content_type="model/obj" file="battery.001.obj" />
+    <mesh name="cover.001" content_type="model/obj" file="cover.001.obj" />
+    <mesh name="left_knee.002" content_type="model/obj" file="left_knee.002.obj" />
+    <mesh name="shoulder.004" content_type="model/obj" file="shoulder.004.obj" />
+    <mesh name="left_knee.003" content_type="model/obj" file="left_knee.003.obj" />
+    <mesh name="shoulder.007" content_type="model/obj" file="shoulder.007.obj" />
+    <mesh name="right_knee.002" content_type="model/obj" file="right_knee.002.obj" />
+    <mesh name="shoulder.005" content_type="model/obj" file="shoulder.005.obj" />
+    <mesh name="right_knee.003" content_type="model/obj" file="right_knee.003.obj" />
+    <mesh name="shoulder.006" content_type="model/obj" file="shoulder.006.obj" />
+  </asset>
+</mujocoinclude>
