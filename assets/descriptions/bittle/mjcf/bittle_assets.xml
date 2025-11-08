@@ -29,12 +29,14 @@
     <mesh name="j__1" content_type="model/stl" file="j__1.stl" scale="0.001 0.001 0.001" />
     <mesh name="k_1" content_type="model/stl" file="k_1.stl" scale="0.001 0.001 0.001" />
     <mesh name="l_1" content_type="model/stl" file="l_1.stl" scale="0.001 0.001 0.001" />
+    <mesh name="shank_rf_1" content_type="model/stl" file="shank_rf_1.stl" scale="0.001 0.001 0.001" />
     <mesh name="shank_rf_1_convex" content_type="model/stl" file="shank_rf_1_convex.stl" scale="0.001 0.001 0.001" />
     <mesh name="servos_rf_1" content_type="model/stl" file="servos_rf_1.stl" scale="0.001 0.001 0.001" />
     <mesh name="tho_rr_1" content_type="model/stl" file="tho_rr_1.stl" scale="0.001 0.001 0.001" />
     <mesh name="tube_rr_1" content_type="model/stl" file="tube_rr_1.stl" scale="0.001 0.001 0.001" />
     <mesh name="th_rr_1" content_type="model/stl" file="th_rr_1.stl" scale="0.001 0.001 0.001" />
     <mesh name="c_thorr_1" content_type="model/stl" file="c_thorr_1.stl" scale="0.001 0.001 0.001" />
+    <mesh name="shank_rr_1" content_type="model/stl" file="shank_rr_1.stl" scale="0.001 0.001 0.001" />
     <mesh name="shank_rr_1_convex" content_type="model/stl" file="shank_rr_1_convex.stl" scale="0.001 0.001 0.001" />
     <mesh name="c_thrr_1" content_type="model/stl" file="c_thrr_1.stl" scale="0.001 0.001 0.001" />
     <mesh name="servos_rr_1" content_type="model/stl" file="servos_rr_1.stl" scale="0.001 0.001 0.001" />
@@ -42,6 +44,7 @@
     <mesh name="tube_lf_1" content_type="model/stl" file="tube_lf_1.stl" scale="0.001 0.001 0.001" />
     <mesh name="th_lf_1" content_type="model/stl" file="th_lf_1.stl" scale="0.001 0.001 0.001" />
     <mesh name="c_tholf_1" content_type="model/stl" file="c_tholf_1.stl" scale="0.001 0.001 0.001" />
+    <mesh name="shank_lf_1" content_type="model/stl" file="shank_lf_1.stl" scale="0.001 0.001 0.001" />
     <mesh name="shank_lf_1_convex" content_type="model/stl" file="shank_lf_1_convex.stl" scale="0.001 0.001 0.001" />
     <mesh name="c_thlf_1" content_type="model/stl" file="c_thlf_1.stl" scale="0.001 0.001 0.001" />
     <mesh name="servos_lf_1" content_type="model/stl" file="servos_lf_1.stl" scale="0.001 0.001 0.001" />
@@ -49,6 +52,7 @@
     <mesh name="tube_lr_1" content_type="model/stl" file="tube_lr_1.stl" scale="0.001 0.001 0.001" />
     <mesh name="th_lr__1" content_type="model/stl" file="th_lr__1.stl" scale="0.001 0.001 0.001" />
     <mesh name="c_tholr__1" content_type="model/stl" file="c_tholr__1.stl" scale="0.001 0.001 0.001" />
+    <mesh name="shank_lr_1" content_type="model/stl" file="shank_lr_1.stl" scale="0.001 0.001 0.001" />
     <mesh name="shank_lr_1_convex" content_type="model/stl" file="shank_lr_1_convex.stl" scale="0.001 0.001 0.001" />
     <mesh name="c_thlr_1" content_type="model/stl" file="c_thlr_1.stl" scale="0.001 0.001 0.001" />
     <mesh name="servos_lr_1" content_type="model/stl" file="servos_lr_1.stl" scale="0.001 0.001 0.001" />

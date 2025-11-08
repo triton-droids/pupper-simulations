@@ -1,8 +1,9 @@
 <?xml version="1.0" ?>
 <robot name="bittle">
   <mujoco>
-    <compiler meshdir="../meshes/stl/" balanceinertia="true" discardvisual="true" inertiafromgeom="true"></compiler>
+    <compiler meshdir="../meshes/stl/" balanceinertia="true" discardvisual="false" inertiafromgeom="true"></compiler>
   </mujoco>
+  
   <material name="silver">
     <color rgba="0.700 0.700 0.700 1.000"/>
   </material>
@@ -1372,6 +1373,7 @@
     <inertial>
       <origin rpy="0 0 0" xyz="0.00026038442460935094 9.992572222918689e-05 0.00026359871408457997"/>
       <mass value="6.566767036300841e-07"/>
+      <!-- <inertia ixx="1e-12" ixy="0" ixz="0" iyy="1e-12" iyz="0" izz="1e-12"/> -->
       <inertia ixx="0.0" ixy="0.0" ixz="-0.0" iyy="0.0" iyz="0.0" izz="0.0"/>
     </inertial>
     <visual>
