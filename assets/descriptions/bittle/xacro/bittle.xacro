@@ -1,9 +1,9 @@
 <?xml version="1.0" ?>
 <robot name="bittle" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
-<xacro:include filename="$(find bittle_description)/urdf/materials.xacro" />
-<xacro:include filename="$(find bittle_description)/urdf/bittle.trans" />
-<xacro:include filename="$(find bittle_description)/urdf/bittle.gazebo" />
+<xacro:include filename="materials.xacro" />
+<xacro:include filename="bittle.trans" />
+<xacro:include filename="bittle.gazebo" />
 <link name="base_link">
   <inertial>
     <origin xyz="0.002168345924058267 4.1430032450566535e-08 0.02555254458454454" rpy="0 0 0"/>

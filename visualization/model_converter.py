@@ -1,14 +1,27 @@
 import mujoco
 import xml.etree.ElementTree as ET
+from xacrodoc import XacroDoc
+
 
 from init import logger
 import os
+from xacrodoc import XacroDoc
+import constants
+
+
+'''
+Converts XACRO to MJCF
+'''
+def XACRO_to_MJCF(XACRO_PATH:str, MJCF_PATH:str, MESHDIR:str) -> None:
+    doc = XacroDoc.from_file(XACRO_PATH)
+    doc.to_mjcf_file(MJCF_PATH, strippath="true", meshdir=MESHDIR)
+
 
 '''
 Converts URDF model to MJCF, which is Mujoco compatible
 (Model is converted as a standalone file, not an asset file)
 '''
-def convert_to_MJCF(URDF_PATH, MJCF_PATH, ASSET_PATH, BODY_PATH):
+def convert_to_MJCF(URDF_PATH:str, MJCF_PATH:str, ASSET_PATH:str, BODY_PATH:str) -> None:
     if not os.path.exists(MJCF_PATH):
         logger.info(f"MJCF file not found at {MJCF_PATH}, converting from URDF at {URDF_PATH}")
 
@@ -27,7 +40,7 @@ def convert_to_MJCF(URDF_PATH, MJCF_PATH, ASSET_PATH, BODY_PATH):
 Extracts the worldbody and asset sections from a standalone MJCF file
 and creates separate asset-only files (without <mujoco> wrapper)
 '''
-def extractMJCFAssets(MJCF_PATH, ASSET_PATH, BODY_PATH):
+def extractMJCFAssets(MJCF_PATH:str, ASSET_PATH:str, BODY_PATH:str) -> None:
     # Parse the MJCF XML
     tree = ET.parse(MJCF_PATH)
     root = tree.getroot()
@@ -64,3 +77,7 @@ def extractMJCFAssets(MJCF_PATH, ASSET_PATH, BODY_PATH):
         body_tree = ET.ElementTree(include_wrapper)
         body_tree.write(BODY_PATH, encoding='utf-8', xml_declaration=True)
         logger.info(f"Extracted body to {BODY_PATH}")
+
+
+
+

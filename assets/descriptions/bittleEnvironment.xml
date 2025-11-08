@@ -1,5 +1,5 @@
 <mujoco model="bittle scene">
-   <compiler angle="radian" meshdir="bittle/meshes/obj/" autolimits="true"/>
+   <compiler angle="radian" meshdir="bittle/meshes/stl/" autolimits="true"/>
 
    <option iterations="3" ls_iterations="5" solver="Newton" tolerance="1e-8" timestep="0.001">
      <flag eulerdamp="disable"/>

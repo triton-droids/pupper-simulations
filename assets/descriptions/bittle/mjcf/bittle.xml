@@ -1,0 +1,210 @@
+<mujoco model="bittle">
+  <compiler angle="radian" meshdir="../meshes/stl/"/>
+
+  <asset>
+    <mesh name="base_link" content_type="model/stl" file="base_link.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="front__1" content_type="model/stl" file="front__1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="rear__1" content_type="model/stl" file="rear__1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="servo_rfs_1" content_type="model/stl" file="servo_rfs_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="servo_rrs__1" content_type="model/stl" file="servo_rrs__1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="c_neck__1" content_type="model/stl" file="c_neck__1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="head__1" content_type="model/stl" file="head__1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="jaw_1" content_type="model/stl" file="jaw_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="tho_rf__1" content_type="model/stl" file="tho_rf__1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="servo_neck__1" content_type="model/stl" file="servo_neck__1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="tube__1" content_type="model/stl" file="tube__1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="th_rf_1" content_type="model/stl" file="th_rf_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="c_thorf_1" content_type="model/stl" file="c_thorf_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="servo_lfs_1" content_type="model/stl" file="servo_lfs_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="servo_lrs__1" content_type="model/stl" file="servo_lrs__1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="a_1" content_type="model/stl" file="a_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="b__1" content_type="model/stl" file="b__1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="c_1" content_type="model/stl" file="c_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="d_1" content_type="model/stl" file="d_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="e_1" content_type="model/stl" file="e_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="f_1" content_type="model/stl" file="f_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="c_thrf__1" content_type="model/stl" file="c_thrf__1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="g_1" content_type="model/stl" file="g_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="h__1" content_type="model/stl" file="h__1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="i_1" content_type="model/stl" file="i_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="j__1" content_type="model/stl" file="j__1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="k_1" content_type="model/stl" file="k_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="l_1" content_type="model/stl" file="l_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="shank_rf_1" content_type="model/stl" file="shank_rf_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="servos_rf_1" content_type="model/stl" file="servos_rf_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="tho_rr_1" content_type="model/stl" file="tho_rr_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="tube_rr_1" content_type="model/stl" file="tube_rr_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="th_rr_1" content_type="model/stl" file="th_rr_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="c_thorr_1" content_type="model/stl" file="c_thorr_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="shank_rr_1" content_type="model/stl" file="shank_rr_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="c_thrr_1" content_type="model/stl" file="c_thrr_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="servos_rr_1" content_type="model/stl" file="servos_rr_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="tho_lf_1" content_type="model/stl" file="tho_lf_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="tube_lf_1" content_type="model/stl" file="tube_lf_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="th_lf_1" content_type="model/stl" file="th_lf_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="c_tholf_1" content_type="model/stl" file="c_tholf_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="shank_lf_1" content_type="model/stl" file="shank_lf_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="c_thlf_1" content_type="model/stl" file="c_thlf_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="servos_lf_1" content_type="model/stl" file="servos_lf_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="tho_lr_1" content_type="model/stl" file="tho_lr_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="tube_lr_1" content_type="model/stl" file="tube_lr_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="th_lr__1" content_type="model/stl" file="th_lr__1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="c_tholr__1" content_type="model/stl" file="c_tholr__1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="shank_lr_1" content_type="model/stl" file="shank_lr_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="c_thlr_1" content_type="model/stl" file="c_thlr_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="servos_lr_1" content_type="model/stl" file="servos_lr_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="logo_5_1" content_type="model/stl" file="logo_5_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="logo_1_1" content_type="model/stl" file="logo_1_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="logo_2_1" content_type="model/stl" file="logo_2_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="logo_3_1" content_type="model/stl" file="logo_3_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="logo_4_1" content_type="model/stl" file="logo_4_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="cover_1" content_type="model/stl" file="cover_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="battery_1" content_type="model/stl" file="battery_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="screw_16_1" content_type="model/stl" file="screw_16_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="screw_7_1" content_type="model/stl" file="screw_7_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="screw_1_1" content_type="model/stl" file="screw_1_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="screw_15_1" content_type="model/stl" file="screw_15_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="screw_5_1" content_type="model/stl" file="screw_5_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="screw_10_1" content_type="model/stl" file="screw_10_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="screw_13_1" content_type="model/stl" file="screw_13_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="screw_14_1" content_type="model/stl" file="screw_14_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="screw_9_1" content_type="model/stl" file="screw_9_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="screw_19_1" content_type="model/stl" file="screw_19_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="screw_11_1" content_type="model/stl" file="screw_11_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="screw_2_1" content_type="model/stl" file="screw_2_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="screw_20_1" content_type="model/stl" file="screw_20_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="screw_3_1" content_type="model/stl" file="screw_3_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="screw_12_1" content_type="model/stl" file="screw_12_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="screwm_1_1" content_type="model/stl" file="screwm_1_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="screwm_2_1" content_type="model/stl" file="screwm_2_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="screwm_3_1" content_type="model/stl" file="screwm_3_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="screwm_4_1" content_type="model/stl" file="screwm_4_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="screwm_5_1" content_type="model/stl" file="screwm_5_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="screwm_6_1" content_type="model/stl" file="screwm_6_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="screwm_8_1" content_type="model/stl" file="screwm_8_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="screwm_7_1" content_type="model/stl" file="screwm_7_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="screw_18_1" content_type="model/stl" file="screw_18_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="screw_4_1" content_type="model/stl" file="screw_4_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="screw_17_1" content_type="model/stl" file="screw_17_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="screw_21_1" content_type="model/stl" file="screw_21_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="screw_6_1" content_type="model/stl" file="screw_6_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="screw_8_1" content_type="model/stl" file="screw_8_1.stl" scale="0.001 0.001 0.001"/>
+  </asset>
+
+  <worldbody>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="base_link"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="front__1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="rear__1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="servo_rfs_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_16_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_7_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="servo_rrs__1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_1_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_15_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="c_neck__1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_17_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_21_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_6_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="servo_lfs_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_5_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_10_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="servo_lrs__1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_13_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_14_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="a_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="b__1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="c_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="d_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="e_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="f_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="g_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="h__1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="i_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="j__1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="k_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="l_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="cover_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="logo_5_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="logo_1_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="logo_2_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="logo_3_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="logo_4_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="battery_1"/>
+    <body name="c_thrf__1" pos="0.0525 -0.0485 0.022">
+      <joint name="shrfs_joint" pos="0 0 0" axis="0 1 0"/>
+      <geom pos="-0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="c_thrf__1"/>
+      <geom pos="-0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="th_rf_1"/>
+      <geom pos="-0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="tho_rf__1"/>
+      <geom pos="-0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="c_thorf_1"/>
+      <geom pos="-0.0525 0.0485 -0.022" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screwm_3_1"/>
+      <geom pos="-0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="tube__1"/>
+      <geom pos="-0.0525 0.0485 -0.022" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screwm_4_1"/>
+      <body name="servos_rf_1" pos="-0.044433 0.00142 -0.011906">
+        <joint name="shrft_joint" pos="0 0 0" axis="0 1 0"/>
+        <geom pos="-0.008067 0.04708 -0.010094" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="servos_rf_1"/>
+        <geom pos="-0.008067 0.04708 -0.010094" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="shank_rf_1"/>
+        <geom pos="-0.008067 0.04708 -0.010094" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_9_1"/>
+        <geom pos="-0.008067 0.04708 -0.010094" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_8_1"/>
+      </body>
+    </body>
+    <body name="c_thrr_1" pos="-0.0525 -0.0485 0.022">
+      <joint name="shrrs_joint" pos="0 0 0" axis="0 -1 0"/>
+      <geom pos="0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="c_thrr_1"/>
+      <geom pos="0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="th_rr_1"/>
+      <geom pos="0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="tho_rr_1"/>
+      <geom pos="0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="c_thorr_1"/>
+      <geom pos="0.0525 0.0485 -0.022" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screwm_1_1"/>
+      <geom pos="0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="tube_rr_1"/>
+      <geom pos="0.0525 0.0485 -0.022" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screwm_2_1"/>
+      <body name="servos_rr_1" pos="-0.044433 0.00142 -0.011906">
+        <joint name="shrrt_joint" pos="0 0 0" axis="0 1 0"/>
+        <geom pos="0.096933 0.04708 -0.010094" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="servos_rr_1"/>
+        <geom pos="0.096933 0.04708 -0.010094" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="shank_rr_1"/>
+        <geom pos="0.096933 0.04708 -0.010094" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_19_1"/>
+        <geom pos="0.096933 0.04708 -0.010094" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_11_1"/>
+      </body>
+    </body>
+    <body name="servo_neck__1" pos="0.047554 0 0.035941">
+      <joint name="neck_joint" pos="0 0 0" axis="-0.5 0 -0.866025"/>
+      <geom pos="-0.047554 0 -0.035941" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="servo_neck__1"/>
+      <geom pos="-0.047554 0 -0.035941" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="jaw_1"/>
+      <geom pos="-0.047554 0 -0.035941" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="head__1"/>
+      <geom pos="-0.047554 0 -0.035941" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_18_1"/>
+      <geom pos="-0.047554 0 -0.035941" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_4_1"/>
+    </body>
+    <body name="c_thlf_1" pos="0.0525 0.0485 0.022">
+      <joint name="shlfs_joint" pos="0 0 0" axis="0 1 0"/>
+      <geom pos="-0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="c_thlf_1"/>
+      <geom pos="-0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="th_lf_1"/>
+      <geom pos="-0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="tho_lf_1"/>
+      <geom pos="-0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="c_tholf_1"/>
+      <geom pos="-0.0525 -0.0485 -0.022" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screwm_6_1"/>
+      <geom pos="-0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="tube_lf_1"/>
+      <geom pos="-0.0525 -0.0485 -0.022" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screwm_5_1"/>
+      <body name="servos_lf_1" pos="-0.044433 -0.00142 -0.011906">
+        <joint name="shlft_joint" pos="0 0 0" axis="0 1 0"/>
+        <geom pos="-0.008067 -0.04708 -0.010094" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="servos_lf_1"/>
+        <geom pos="-0.008067 -0.04708 -0.010094" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="shank_lf_1"/>
+        <geom pos="-0.008067 -0.04708 -0.010094" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_2_1"/>
+        <geom pos="-0.008067 -0.04708 -0.010094" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_20_1"/>
+      </body>
+    </body>
+    <body name="c_thlr_1" pos="-0.0525 0.0485 0.022">
+      <joint name="shlrs_joint" pos="0 0 0" axis="0 -1 0"/>
+      <geom pos="0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="c_thlr_1"/>
+      <geom pos="0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="th_lr__1"/>
+      <geom pos="0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="tho_lr_1"/>
+      <geom pos="0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="c_tholr__1"/>
+      <geom pos="0.0525 -0.0485 -0.022" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screwm_8_1"/>
+      <geom pos="0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="tube_lr_1"/>
+      <geom pos="0.0525 -0.0485 -0.022" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screwm_7_1"/>
+      <body name="servos_lr_1" pos="-0.044433 -0.001418 -0.011906">
+        <joint name="shlrt_joint" pos="0 0 0" axis="0 1 0"/>
+        <geom pos="0.096933 -0.047082 -0.010094" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="servos_lr_1"/>
+        <geom pos="0.096933 -0.047082 -0.010094" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="shank_lr_1"/>
+        <geom pos="0.096933 -0.047082 -0.010094" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_3_1"/>
+        <geom pos="0.096933 -0.047082 -0.010094" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_12_1"/>
+      </body>
+    </body>
+  </worldbody>
+</mujoco>

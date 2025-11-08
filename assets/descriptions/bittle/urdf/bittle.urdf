@@ -1,7 +1,7 @@
 <?xml version="1.0" ?>
 <robot name="bittle">
   <mujoco>
-    <compiler meshdir="meshes" balanceinertia="true" discardvisual="false" inertiafromgeom="true"></compiler>
+    <compiler meshdir="../meshes/stl/" balanceinertia="true" discardvisual="true" inertiafromgeom="true"></compiler>
   </mujoco>
   <material name="silver">
     <color rgba="0.700 0.700 0.700 1.000"/>
@@ -977,14 +977,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/base_link.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="base_link.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/base_link.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="base_link.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -997,14 +997,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.061733 0.028 -0.025792"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/front__1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="front__1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.061733 0.028 -0.025792"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/front__1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="front__1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1017,14 +1017,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.061733 -0.028 -0.025792"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/rear__1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="rear__1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.061733 -0.028 -0.025792"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/rear__1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="rear__1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1037,14 +1037,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.059645 0.036 -0.017875"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/servo_rfs_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="servo_rfs_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.059645 0.036 -0.017875"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/servo_rfs_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="servo_rfs_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1057,14 +1057,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.059645 0.036 -0.017875"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/servo_rrs__1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="servo_rrs__1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.059645 0.036 -0.017875"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/servo_rrs__1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="servo_rrs__1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1077,14 +1077,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.044904 -0.0 -0.031351"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/c_neck__1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="c_neck__1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.044904 -0.0 -0.031351"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/c_neck__1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="c_neck__1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1097,14 +1097,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.055711 0.017155 -0.060327"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/head__1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="head__1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.055711 0.017155 -0.060327"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/head__1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="head__1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1117,14 +1117,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.06445 0.012925 -0.034027"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/jaw_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="jaw_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.06445 0.012925 -0.034027"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/jaw_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="jaw_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1137,14 +1137,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.038977 0.050355 -0.018377"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/tho_rf__1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="tho_rf__1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.038977 0.050355 -0.018377"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/tho_rf__1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="tho_rf__1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1157,14 +1157,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.047554 -0.0 -0.035941"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/servo_neck__1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="servo_neck__1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.047554 -0.0 -0.035941"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/servo_neck__1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="servo_neck__1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1177,14 +1177,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.02915 0.052607 -0.02028"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/tube__1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="tube__1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.02915 0.052607 -0.02028"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/tube__1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="tube__1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1197,14 +1197,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.0525 0.0508 -0.022"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/th_rf_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="th_rf_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.0525 0.0508 -0.022"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/th_rf_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="th_rf_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1217,14 +1217,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.008067 0.054937 -0.010094"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/c_thorf_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="c_thorf_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.008067 0.054937 -0.010094"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/c_thorf_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="c_thorf_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1237,14 +1237,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.059645 -0.036 -0.017875"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/servo_lfs_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="servo_lfs_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.059645 -0.036 -0.017875"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/servo_lfs_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="servo_lfs_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1257,14 +1257,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.059645 -0.036 -0.017875"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/servo_lrs__1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="servo_lrs__1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.059645 -0.036 -0.017875"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/servo_lrs__1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="servo_lrs__1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1277,14 +1277,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.006412 0.032855 -0.027034"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/a_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="a_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.006412 0.032855 -0.027034"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/a_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="a_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1297,14 +1297,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.002835 0.03277 -0.025616"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/b__1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="b__1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.002835 0.03277 -0.025616"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/b__1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="b__1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1317,14 +1317,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.000594 0.032751 -0.026875"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/c_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="c_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.000594 0.032751 -0.026875"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/c_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="c_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1337,14 +1337,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.002348 0.032764 -0.025618"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/d_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="d_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.002348 0.032764 -0.025618"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/d_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="d_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1357,14 +1357,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.005742 0.032834 -0.026061"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/e_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="e_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.005742 0.032834 -0.026061"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/e_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="e_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1377,14 +1377,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.00585 0.032837 -0.026934"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/f_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="f_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.00585 0.032837 -0.026934"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/f_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="f_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1397,14 +1397,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.0525 0.0485 -0.022"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/c_thrf__1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="c_thrf__1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.0525 0.0485 -0.022"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/c_thrf__1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="c_thrf__1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1417,14 +1417,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.006412 -0.032855 -0.027034"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/g_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="g_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.006412 -0.032855 -0.027034"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/g_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="g_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1437,14 +1437,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.002835 -0.03277 -0.025616"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/h__1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="h__1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.002835 -0.03277 -0.025616"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/h__1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="h__1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1457,14 +1457,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.000594 -0.032751 -0.026875"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/i_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="i_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.000594 -0.032751 -0.026875"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/i_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="i_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1477,14 +1477,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.002348 -0.032764 -0.025618"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/j__1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="j__1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.002348 -0.032764 -0.025618"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/j__1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="j__1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1497,14 +1497,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.005742 -0.032834 -0.026061"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/k_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="k_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.005742 -0.032834 -0.026061"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/k_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="k_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1517,14 +1517,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.005742 -0.032834 -0.0272"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/l_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="l_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.005742 -0.032834 -0.0272"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/l_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="l_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1537,14 +1537,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.000151 0.03958 -0.010813"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/shank_rf_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="shank_rf_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.000151 0.03958 -0.010813"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/shank_rf_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="shank_rf_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1557,14 +1557,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.008067 0.04708 -0.010094"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/servos_rf_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="servos_rf_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.008067 0.04708 -0.010094"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/servos_rf_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="servos_rf_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1577,14 +1577,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.066023 0.050355 -0.018377"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/tho_rr_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="tho_rr_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.066023 0.050355 -0.018377"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/tho_rr_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="tho_rr_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1597,14 +1597,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.07585 0.052607 -0.02028"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/tube_rr_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="tube_rr_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.07585 0.052607 -0.02028"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/tube_rr_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="tube_rr_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1617,14 +1617,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.0525 0.0508 -0.022"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/th_rr_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="th_rr_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.0525 0.0508 -0.022"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/th_rr_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="th_rr_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1637,14 +1637,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.096933 0.054937 -0.010094"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/c_thorr_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="c_thorr_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.096933 0.054937 -0.010094"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/c_thorr_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="c_thorr_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1657,14 +1657,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.105151 0.03958 -0.010813"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/shank_rr_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="shank_rr_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.105151 0.03958 -0.010813"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/shank_rr_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="shank_rr_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1677,14 +1677,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.0525 0.0485 -0.022"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/c_thrr_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="c_thrr_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.0525 0.0485 -0.022"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/c_thrr_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="c_thrr_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1697,14 +1697,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.096933 0.04708 -0.010094"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/servos_rr_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="servos_rr_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.096933 0.04708 -0.010094"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/servos_rr_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="servos_rr_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1717,14 +1717,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.038977 -0.050355 -0.018377"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/tho_lf_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="tho_lf_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.038977 -0.050355 -0.018377"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/tho_lf_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="tho_lf_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1737,14 +1737,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.02915 -0.052607 -0.02028"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/tube_lf_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="tube_lf_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.02915 -0.052607 -0.02028"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/tube_lf_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="tube_lf_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1757,14 +1757,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.0525 -0.0508 -0.022"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/th_lf_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="th_lf_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.0525 -0.0508 -0.022"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/th_lf_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="th_lf_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1777,14 +1777,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.008067 -0.054937 -0.010094"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/c_tholf_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="c_tholf_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.008067 -0.054937 -0.010094"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/c_tholf_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="c_tholf_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1797,14 +1797,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.000151 -0.039582 -0.010813"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/shank_lf_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="shank_lf_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.000151 -0.039582 -0.010813"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/shank_lf_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="shank_lf_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1817,14 +1817,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.0525 -0.0485 -0.022"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/c_thlf_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="c_thlf_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.0525 -0.0485 -0.022"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/c_thlf_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="c_thlf_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1837,14 +1837,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.008067 -0.04708 -0.010094"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/servos_lf_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="servos_lf_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.008067 -0.04708 -0.010094"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/servos_lf_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="servos_lf_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1857,14 +1857,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.066023 -0.050357 -0.018377"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/tho_lr_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="tho_lr_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.066023 -0.050357 -0.018377"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/tho_lr_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="tho_lr_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1877,14 +1877,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.07585 -0.052609 -0.02028"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/tube_lr_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="tube_lr_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.07585 -0.052609 -0.02028"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/tube_lr_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="tube_lr_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1897,14 +1897,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.0525 -0.050802 -0.022"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/th_lr__1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="th_lr__1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.0525 -0.050802 -0.022"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/th_lr__1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="th_lr__1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1917,14 +1917,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.096933 -0.054939 -0.010094"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/c_tholr__1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="c_tholr__1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.096933 -0.054939 -0.010094"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/c_tholr__1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="c_tholr__1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1937,14 +1937,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.105151 -0.039582 -0.010813"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/shank_lr_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="shank_lr_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.105151 -0.039582 -0.010813"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/shank_lr_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="shank_lr_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1957,14 +1957,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.0525 -0.0485 -0.022"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/c_thlr_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="c_thlr_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.0525 -0.0485 -0.022"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/c_thlr_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="c_thlr_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1977,14 +1977,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.096933 -0.047082 -0.010094"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/servos_lr_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="servos_lr_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.096933 -0.047082 -0.010094"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/servos_lr_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="servos_lr_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1997,14 +1997,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.000391 0.009195 -0.047292"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/logo_5_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="logo_5_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.000391 0.009195 -0.047292"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/logo_5_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="logo_5_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -2017,14 +2017,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.001444 0.003404 -0.047292"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/logo_1_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="logo_1_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.001444 0.003404 -0.047292"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/logo_1_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="logo_1_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -2037,14 +2037,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.001444 0.001575 -0.047292"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/logo_2_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="logo_2_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.001444 0.001575 -0.047292"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/logo_2_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="logo_2_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -2057,14 +2057,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.001453 -0.00513 -0.047292"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/logo_3_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="logo_3_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.001453 -0.00513 -0.047292"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/logo_3_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="logo_3_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -2077,14 +2077,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.005058 0.009195 -0.047292"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/logo_4_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="logo_4_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.005058 0.009195 -0.047292"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/logo_4_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="logo_4_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -2097,14 +2097,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.0 0.031 -0.030939"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/cover_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="cover_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.0 0.031 -0.030939"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/cover_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="cover_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -2117,14 +2117,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.01725 -0.0 -0.023892"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/battery_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="battery_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.01725 -0.0 -0.023892"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/battery_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="battery_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -2137,14 +2137,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.059645 0.0375 -0.017875"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_16_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_16_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.059645 0.0375 -0.017875"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_16_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_16_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -2157,14 +2157,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.034963 0.0375 -0.032125"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_7_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_7_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.034963 0.0375 -0.032125"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_7_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_7_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -2177,14 +2177,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.034963 0.0375 -0.032125"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_1_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_1_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.034963 0.0375 -0.032125"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_1_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_1_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -2197,14 +2197,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.059645 0.0375 -0.017875"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_15_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_15_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.059645 0.0375 -0.017875"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_15_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_15_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -2217,14 +2217,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.059645 -0.0375 -0.017875"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_5_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_5_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.059645 -0.0375 -0.017875"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_5_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_5_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -2237,14 +2237,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.034963 -0.0375 -0.032125"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_10_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_10_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.034963 -0.0375 -0.032125"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_10_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_10_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -2257,14 +2257,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.034963 -0.0375 -0.032125"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_13_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_13_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.034963 -0.0375 -0.032125"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_13_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_13_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -2277,14 +2277,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.059645 -0.0375 -0.017875"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_14_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_14_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.059645 -0.0375 -0.017875"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_14_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_14_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -2297,14 +2297,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.000151 0.03958 -0.010813"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_9_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_9_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.000151 0.03958 -0.010813"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_9_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_9_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -2317,14 +2317,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.07676 0.03958 -0.008329"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_19_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_19_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.07676 0.03958 -0.008329"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_19_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_19_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -2337,14 +2337,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.105151 0.03958 -0.010813"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_11_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_11_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.105151 0.03958 -0.010813"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_11_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_11_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -2357,14 +2357,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.000151 -0.03958 -0.010813"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_2_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_2_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.000151 -0.03958 -0.010813"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_2_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_2_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -2377,14 +2377,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.02824 -0.03958 -0.008329"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_20_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_20_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.02824 -0.03958 -0.008329"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_20_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_20_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -2397,14 +2397,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.105151 -0.03958 -0.010813"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_3_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_3_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.105151 -0.03958 -0.010813"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_3_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_3_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -2417,14 +2417,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.07676 -0.03958 -0.008329"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_12_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_12_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.07676 -0.03958 -0.008329"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_12_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_12_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -2437,14 +2437,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.096933 0.05158 -0.010094"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screwm_1_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screwm_1_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.096933 0.05158 -0.010094"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screwm_1_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screwm_1_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -2457,14 +2457,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.0525 0.0495 -0.022"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screwm_2_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screwm_2_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.0525 0.0495 -0.022"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screwm_2_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screwm_2_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -2477,14 +2477,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.008067 0.05158 -0.010094"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screwm_3_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screwm_3_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.008067 0.05158 -0.010094"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screwm_3_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screwm_3_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -2497,14 +2497,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.0525 0.0495 -0.022"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screwm_4_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screwm_4_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.0525 0.0495 -0.022"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screwm_4_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screwm_4_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -2517,14 +2517,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.0525 -0.0495 -0.022"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screwm_5_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screwm_5_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.0525 -0.0495 -0.022"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screwm_5_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screwm_5_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -2537,14 +2537,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.008067 -0.05158 -0.010094"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screwm_6_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screwm_6_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.008067 -0.05158 -0.010094"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screwm_6_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screwm_6_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -2557,14 +2557,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.096933 -0.05158 -0.010094"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screwm_8_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screwm_8_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.096933 -0.05158 -0.010094"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screwm_8_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screwm_8_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -2577,14 +2577,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.0525 -0.0495 -0.022"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screwm_7_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screwm_7_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.0525 -0.0495 -0.022"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screwm_7_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screwm_7_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -2597,14 +2597,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.06445 0.012925 -0.034027"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_18_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_18_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.06445 0.012925 -0.034027"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_18_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_18_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -2617,14 +2617,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.046179 -0.005264 -0.046261"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_4_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_4_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.046179 -0.005264 -0.046261"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_4_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_4_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -2637,14 +2637,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.045904 0.00675 -0.033083"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_17_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_17_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.045904 0.00675 -0.033083"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_17_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_17_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -2657,14 +2657,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.045904 -0.00675 -0.033083"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_21_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_21_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.045904 -0.00675 -0.033083"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_21_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_21_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -2677,14 +2677,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.045304 -0.0 -0.032044"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_6_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_6_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.045304 -0.0 -0.032044"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_6_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_6_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -2697,14 +2697,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.02824 0.03958 -0.008329"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_8_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_8_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.02824 0.03958 -0.008329"/>
       <geometry>
-        <mesh filename="/Users/darin/Desktop/_/club_stuff/tritondroids/ros_opencat/petoi_ROS_model_docs/bittle_ros/bittle_description/meshes/screw_8_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="screw_8_1.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>

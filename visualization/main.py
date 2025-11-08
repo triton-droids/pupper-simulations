@@ -20,8 +20,13 @@ if __name__ == "__main__":
 
     logger.info("Loading Mujoco model")
 
-    # Load environment model into memory
-    model = mujoco.MjModel.from_xml_path(constants.BITTLE_ENVIRONMENT_PATH)
+    if constants.LOAD_ENV:
+        # Load environment model into memory
+        model = mujoco.MjModel.from_xml_path(constants.BITTLE_ENVIRONMENT_PATH)
+    else:
+        #Load the bittle model into memory
+        model = mujoco.MjModel.from_xml_path(constants.BITTLE_MJCF_PATH)
+
     data = mujoco.MjData(model)
     
     # Initialize with default XML values
