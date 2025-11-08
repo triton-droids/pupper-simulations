@@ -1544,7 +1544,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0.000151 0.03958 -0.010813"/>
       <geometry>
-        <mesh filename="shank_rf_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="shank_rf_1_convex.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1664,7 +1664,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0.105151 0.03958 -0.010813"/>
       <geometry>
-        <mesh filename="shank_rr_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="shank_rr_1_convex.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1804,7 +1804,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0.000151 -0.039582 -0.010813"/>
       <geometry>
-        <mesh filename="shank_lf_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="shank_lf_1_convex.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
@@ -1944,7 +1944,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0.105151 -0.039582 -0.010813"/>
       <geometry>
-        <mesh filename="shank_lr_1.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="shank_lr_1_convex.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
   </link>
