@@ -1,6 +1,5 @@
 numpy==1.26.4
 mujoco==3.3.4
-gymnasium[mujoco]==0.29.1
 xacrodoc==1.3.0
 
 #Training
