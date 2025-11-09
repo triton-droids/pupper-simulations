@@ -25,7 +25,8 @@ if __name__ == "__main__":
         model = mujoco.MjModel.from_xml_path(constants.BITTLE_ENVIRONMENT_PATH)
     else:
         #Load the bittle model into memory
-        model = mujoco.MjModel.from_xml_path(constants.BITTLE_MJCF_PATH)
+        #model = mujoco.MjModel.from_xml_path(constants.BITTLE_MJCF_PATH)
+        model = mujoco.MjModel.from_xml_path(constants.BITTLE_ADAPTED_SCENE_PATH)
 
     data = mujoco.MjData(model)
     

@@ -1,6 +1,8 @@
 <mujoco model="bittle">
   <compiler angle="radian" meshdir="../meshes/stl/"/>
+  
 
+  <!-- [ADDED] PID tuning -->
   <default>
     <joint damping="0.5" frictionloss="0.1"/>
   </default>
@@ -303,6 +305,7 @@
     </body>
   </worldbody>
 
+  <!-- [ADDED] Actuators with PID joint tuning-->
   <actuator>
     <position name = "shrfs_joint" joint="shrfs_joint" ctrlrange="0 6.28" kv="0.75" kp="15.0"/>
     <position name = "shrft_joint" joint="shrft_joint" ctrlrange="0 6.28" kv="0.5" kp= "5.0"/>
