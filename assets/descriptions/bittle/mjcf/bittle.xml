@@ -1,6 +1,10 @@
 <mujoco model="bittle">
   <compiler angle="radian" meshdir="../meshes/stl/"/>
 
+  <default>
+    <joint damping="0.5" frictionloss="0.1"/>
+  </default>
+
   <asset>
     <mesh name="base_link" content_type="model/stl" file="base_link.stl" scale="0.001 0.001 0.001"/>
     <mesh name="front__1" content_type="model/stl" file="front__1.stl" scale="0.001 0.001 0.001"/>
@@ -300,14 +304,14 @@
   </worldbody>
 
   <actuator>
-    <position joint="shrfs_joint" ctrlrange="-3.1416 3.1416" kp="5.0"/>
-    <position joint="shrft_joint" ctrlrange="-3.1416 3.1416" kp="5.0"/>
-    <position joint="shrrs_joint" ctrlrange="-3.1416 3.1416" kp="5.0"/>
-    <position joint="shrrt_joint" ctrlrange="-3.1416 3.1416" kp="5.0"/>
-    <position joint="neck_joint" ctrlrange="-3.1416 3.1416" kp="5.0"/>
-    <position joint="shlfs_joint" ctrlrange="0 6.28" kp="15.0" kv= "0.8"/>
-    <position joint="shlft_joint" ctrlrange="-3.1416 3.1416" kp="5.0"/>
-    <position joint="shlrs_joint" ctrlrange="-3.1416 3.1416" kp="5.0"/>
-    <position joint="shlrt_joint" ctrlrange="-3.1416 3.1416" kp="5.0"/>
+    <position name = "shrfs_joint" joint="shrfs_joint" ctrlrange="0 6.28" kv="0.75" kp="15.0"/>
+    <position name = "shrft_joint" joint="shrft_joint" ctrlrange="0 6.28" kv="0.5" kp= "5.0"/>
+    <position name = "shrrs_joint" joint="shrrs_joint" ctrlrange="0 6.28" kv="0.75" kp="15.0"/>
+    <position name = "shrrt_joint" joint="shrrt_joint" ctrlrange="0 6.28" kv="0.5" kp="5.0"/>
+    <position name = "neck_joint" joint="neck_joint" ctrlrange="0 6.28" kv="0.75" kp="15.0"/>
+    <position name = "shlfs_joint" joint="shlfs_joint" ctrlrange="0 6.28" kv="0.75" kp="15.0"/>
+    <position name = "shlft_joint" joint="shlft_joint" ctrlrange="0 6.28" kv="0.5" kp="5.0"/>
+    <position name = "shlrs_joint" joint="shlrs_joint" ctrlrange="0 6.28" kv="0.75" kp="15.0"/>
+    <position name = "shlrt_joint" joint="shlrt_joint" ctrlrange="0 6.28" kv="0.5"kp="5.0"/>
   </actuator>
 </mujoco>
