@@ -111,8 +111,12 @@ class BarkourEnv(PipelineEnv):
     self._kick_vel = kick_vel
     self._init_q = jp.array(sys.mj_model.keyframe('home').qpos)
     self._default_pose = sys.mj_model.keyframe('home').qpos[7:]
-    self.lowers = jp.array([-0.7, -1.0, 0.05] * 4)
-    self.uppers = jp.array([0.52, 2.1, 2.1] * 4)
+    
+    # Bittle has 8 actuated joints (2 per leg): shoulder and thigh
+    # Joint ranges from XML: shoulder [-0.7, 0.7], thigh [-1.5, 1.5]
+    self.lowers = jp.array([-0.7, -1.5] * 4)  # 8 joints total
+    self.uppers = jp.array([0.7, 1.5] * 4)    # 8 joints total
+    
     feet_site = [
         'foot_front_left',
         'foot_hind_left',
@@ -137,13 +141,14 @@ class BarkourEnv(PipelineEnv):
     ]
     assert not any(id_ == -1 for id_ in lower_leg_body_id), 'Body not found.'
     self._lower_leg_body_id = np.array(lower_leg_body_id)
-    self._foot_radius = 0.0175
+    self._foot_radius = 0.015  # Adjusted for Bittle's smaller size
     self._nv = sys.nv
 
   def sample_command(self, rng: jax.Array) -> jax.Array:
-    lin_vel_x = [-0.6, 1.5]  # min max [m/s]
-    lin_vel_y = [-0.8, 0.8]  # min max [m/s]
-    ang_vel_yaw = [-0.7, 0.7]  # min max [rad/s]
+    # Reduced velocity ranges for smaller Bittle robot
+    lin_vel_x = [-0.4, 1.0]  # min max [m/s]
+    lin_vel_y = [-0.5, 0.5]  # min max [m/s]
+    ang_vel_yaw = [-0.5, 0.5]  # min max [rad/s]
 
     _, key1, key2, key3 = jax.random.split(rng, 4)
     lin_vel_x = jax.random.uniform(
@@ -165,8 +170,8 @@ class BarkourEnv(PipelineEnv):
 
     state_info = {
         'rng': rng,
-        'last_act': jp.zeros(12),
-        'last_vel': jp.zeros(12),
+        'last_act': jp.zeros(8),  # Changed from 12 to 8 for Bittle
+        'last_vel': jp.zeros(8),  # Changed from 12 to 8 for Bittle
         'command': self.sample_command(key),
         'last_contact': jp.zeros(4, dtype=bool),
         'feet_air_time': jp.zeros(4),
@@ -221,7 +226,7 @@ class BarkourEnv(PipelineEnv):
     done = jp.dot(math.rotate(up, x.rot[self._torso_idx - 1]), up) < 0
     done |= jp.any(joint_angles < self.lowers)
     done |= jp.any(joint_angles > self.uppers)
-    done |= pipeline_state.x.pos[self._torso_idx - 1, 2] < 0.18
+    done |= pipeline_state.x.pos[self._torso_idx - 1, 2] < 0.10  # Lower height threshold for Bittle
 
     # reward
     rewards = {
@@ -296,8 +301,8 @@ class BarkourEnv(PipelineEnv):
         jp.array([local_rpyrate[2]]) * 0.25,                 # yaw rate
         math.rotate(jp.array([0, 0, -1]), inv_torso_rot),    # projected gravity
         state_info['command'] * jp.array([2.0, 2.0, 0.25]),  # command
-        pipeline_state.q[7:] - self._default_pose,           # motor angles
-        state_info['last_act'],                              # last action
+        pipeline_state.q[7:] - self._default_pose,           # motor angles (8 joints)
+        state_info['last_act'],                              # last action (8 joints)
     ])
 
     # clip, noise
@@ -397,4 +402,3 @@ class BarkourEnv(PipelineEnv):
   ) -> Sequence[np.ndarray]:
     camera = camera or 'track'
     return super().render(trajectory, camera=camera, width=width, height=height)
-
