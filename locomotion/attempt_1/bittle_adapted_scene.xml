@@ -25,8 +25,18 @@
   
   <!-- Home keyframe with standing pose -->
   <keyframe>
-    <key name="home" 
-         qpos="0 0.5 0 0.5 0 0 0.5 0 0.5"
-         ctrl="0 0.5 0 0.5 0 0 0.5 0 0.5"/>
+    <key name="home"
+      qpos="0 0 0.15
+            1 0 0 0
+            0.0 0.8
+            0.0 0.8
+            0.0 0.8
+            0.0 0.8
+            0.0"
+      ctrl="0.0 0.8
+            0.0 0.8
+            0.0 0.8
+            0.0 0.8
+            0.0"/>
   </keyframe>
 </mujoco>

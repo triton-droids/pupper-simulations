@@ -1,4 +1,5 @@
 <mujoco model="bittle">
+
   <compiler angle="radian" meshdir="../meshes/stl/"/>
   
 

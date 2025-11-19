@@ -1,43 +1,10 @@
-<mujoco model="bittle_adapted">
-  <compiler angle="radian" meshdir="../assets/descriptions/bittle/meshes/stl/" autolimits="true"/>
+<mujoco model="bittle">
+  <compiler angle="radian" meshdir="../assets/descriptions/bittle/meshes/stl/"/>
   
-  <option iterations="1" ls_iterations="5">
-    <flag eulerdamp="disable"/>
-  </option>
 
-  <!-- Default classes for organized parameters -->
+  <!-- [ADDED] PID tuning -->
   <default>
-    <default class="bittle">
-      <geom contype="0" conaffinity="0" type="mesh"/>
-      
-      <!-- Collision geometry defaults -->
-      <default class="bittle/collision">
-        <geom group="3" contype="1" conaffinity="1"/>
-        <default class="bittle/collision/foot">
-          <geom type="sphere" size="0.015" rgba="1 0 0 1" 
-                solimp="0.015 1 0.031" friction="0.8 0.02 0.01"/>
-        </default>
-      </default>
-      
-      <!-- Joint defaults -->
-      <joint damping="0.15" armature="0.008"/>
-      
-      <!-- Actuator defaults -->
-      <general forcerange="-5 5" biastype="affine" 
-               gainprm="15.0 0 0" biasprm="0 -15.0 -0.5"/>
-      
-      <!-- Shoulder joints (abduction-like) -->
-      <default class="bittle/shoulder">
-        <joint range="-0.7 0.7"/>
-        <general ctrlrange="-0.6 0.6"/>
-      </default>
-      
-      <!-- Thigh joints (hip-like) -->
-      <default class="bittle/thigh">
-        <joint range="-1.5 1.5"/>
-        <general ctrlrange="-1.4 1.4"/>
-      </default>
-    </default>
+    <joint damping="0.5" frictionloss="0.1"/>
   </default>
 
   <asset>
@@ -135,317 +102,219 @@
   </asset>
 
   <worldbody>
-    <!-- Main torso body with freejoint -->
-    <body name="torso" childclass="bittle">
-      <freejoint name="torso"/>
-      
-      <!-- IMU and tracking sites -->
-      <site name="imu_frame" pos="0 0 0.01"/>
-      <site name="base_frame"/>
-      
-      <!-- Visual geometry for torso -->
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="base_link"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="base_link"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="front__1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="front__1"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="rear__1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="rear__1"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="servo_rfs_1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="servo_rfs_1"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_16_1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_16_1"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_7_1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_7_1"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="servo_rrs__1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="servo_rrs__1"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_1_1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_1_1"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_15_1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_15_1"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="c_neck__1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="c_neck__1"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_17_1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_17_1"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_21_1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_21_1"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_6_1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_6_1"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="servo_lfs_1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="servo_lfs_1"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_5_1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_5_1"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_10_1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_10_1"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="servo_lrs__1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="servo_lrs__1"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_13_1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_13_1"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_14_1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_14_1"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="a_1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="a_1"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="b__1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="b__1"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="c_1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="c_1"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="d_1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="d_1"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="e_1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="e_1"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="f_1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="f_1"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="g_1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="g_1"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="h__1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="h__1"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="i_1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="i_1"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="j__1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="j__1"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="k_1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="k_1"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="l_1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="l_1"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="cover_1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="cover_1"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="logo_5_1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="logo_5_1"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="logo_1_1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="logo_1_1"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="logo_2_1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="logo_2_1"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="logo_3_1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="logo_3_1"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="logo_4_1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="logo_4_1"/>
-      <geom type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="battery_1"/>
-      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="battery_1"/>
-
-      <!-- Collision geometry for torso -->
-      <geom type="box" size="0.06 0.04 0.015" pos="0 0 0.01" class="bittle/collision"/>
-
-      <!-- Head/Neck (optional, can be removed if not needed) -->
-      <body name="servo_neck__1" pos="0.047554 0 0.035941">
-        <joint name="neck_joint" pos="0 0 0" axis="-0.5 0 -0.866025" range="-0.5 0.5"/>
-        <geom pos="-0.047554 0 -0.035941" quat="1 0 0 0" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="servo_neck__1"/>
-        <geom pos="-0.047554 0 -0.035941" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="servo_neck__1"/>
-        <geom pos="-0.047554 0 -0.035941" quat="1 0 0 0" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="jaw_1"/>
-        <geom pos="-0.047554 0 -0.035941" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="jaw_1"/>
-        <geom pos="-0.047554 0 -0.035941" quat="1 0 0 0" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="head__1"/>
-        <geom pos="-0.047554 0 -0.035941" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="head__1"/>
-        <geom pos="-0.047554 0 -0.035941" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_18_1"/>
-        <geom pos="-0.047554 0 -0.035941" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_18_1"/>
-        <geom pos="-0.047554 0 -0.035941" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_4_1"/>
-        <geom pos="-0.047554 0 -0.035941" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_4_1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="base_link"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="base_link"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="front__1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="front__1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="rear__1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="rear__1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="servo_rfs_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="servo_rfs_1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_16_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_16_1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_7_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_7_1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="servo_rrs__1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="servo_rrs__1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_1_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_1_1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_15_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_15_1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="c_neck__1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="c_neck__1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_17_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_17_1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_21_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_21_1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_6_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_6_1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="servo_lfs_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="servo_lfs_1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_5_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_5_1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_10_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_10_1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="servo_lrs__1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="servo_lrs__1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_13_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_13_1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_14_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_14_1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="a_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="a_1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="b__1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="b__1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="c_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="c_1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="d_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="d_1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="e_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="e_1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="f_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="f_1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="g_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="g_1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="h__1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="h__1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="i_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="i_1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="j__1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="j__1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="k_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="k_1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="l_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="l_1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="cover_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="cover_1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="logo_5_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="logo_5_1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="logo_1_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="logo_1_1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="logo_2_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="logo_2_1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="logo_3_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="logo_3_1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="logo_4_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="logo_4_1"/>
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="battery_1"/>
+    <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="battery_1"/>
+    <body name="c_thrf__1" pos="0.0525 -0.0485 0.022">
+      <joint name="shrfs_joint" pos="0 0 0" axis="0 1 0"/>
+      <geom pos="-0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="c_thrf__1"/>
+      <geom pos="-0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="c_thrf__1"/>
+      <geom pos="-0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="th_rf_1"/>
+      <geom pos="-0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="th_rf_1"/>
+      <geom pos="-0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="tho_rf__1"/>
+      <geom pos="-0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="tho_rf__1"/>
+      <geom pos="-0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="c_thorf_1"/>
+      <geom pos="-0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="c_thorf_1"/>
+      <geom pos="-0.0525 0.0485 -0.022" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screwm_3_1"/>
+      <geom pos="-0.0525 0.0485 -0.022" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screwm_3_1"/>
+      <geom pos="-0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="tube__1"/>
+      <geom pos="-0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="tube__1"/>
+      <geom pos="-0.0525 0.0485 -0.022" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screwm_4_1"/>
+      <geom pos="-0.0525 0.0485 -0.022" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screwm_4_1"/>
+      <body name="servos_rf_1" pos="-0.044433 0.00142 -0.011906">
+        <joint name="shrft_joint" pos="0 0 0" axis="0 1 0"/>
+        <geom pos="-0.008067 0.04708 -0.010094" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="servos_rf_1"/>
+        <geom pos="-0.008067 0.04708 -0.010094" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="servos_rf_1"/>
+        <geom pos="-0.008067 0.04708 -0.010094" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="shank_rf_1"/>
+        <geom pos="-0.008067 0.04708 -0.010094" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="shank_rf_1_convex"/>
+        <geom pos="-0.008067 0.04708 -0.010094" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_9_1"/>
+        <geom pos="-0.008067 0.04708 -0.010094" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_9_1"/>
+        <geom pos="-0.008067 0.04708 -0.010094" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_8_1"/>
+        <geom pos="-0.008067 0.04708 -0.010094" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_8_1"/>
       </body>
-
-      <!-- RIGHT FRONT LEG -->
-      <body name="leg_front_right" pos="0.0525 -0.0485 0.022">
-        <joint name="shoulder_front_right" pos="0 0 0" axis="0 1 0" class="bittle/shoulder"/>
-        <geom pos="-0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="c_thrf__1"/>
-        <geom pos="-0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="c_thrf__1"/>
-        <geom pos="-0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="th_rf_1"/>
-        <geom pos="-0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="th_rf_1"/>
-        <geom pos="-0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="tho_rf__1"/>
-        <geom pos="-0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="tho_rf__1"/>
-        <geom pos="-0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="c_thorf_1"/>
-        <geom pos="-0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="c_thorf_1"/>
-        <geom pos="-0.0525 0.0485 -0.022" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screwm_3_1"/>
-        <geom pos="-0.0525 0.0485 -0.022" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screwm_3_1"/>
-        <geom pos="-0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="tube__1"/>
-        <geom pos="-0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="tube__1"/>
-        <geom pos="-0.0525 0.0485 -0.022" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screwm_4_1"/>
-        <geom pos="-0.0525 0.0485 -0.022" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screwm_4_1"/>
-        
-        <!-- Upper leg collision -->
-        <geom type="capsule" fromto="0 0 0 -0.04 0 -0.01" size="0.012" class="bittle/collision"/>
-        
-        <body name="lower_leg_front_right" pos="-0.044433 0.00142 -0.011906">
-          <joint name="thigh_front_right" pos="0 0 0" axis="0 1 0" class="bittle/thigh"/>
-          <geom pos="-0.008067 0.04708 -0.010094" quat="1 0 0 0" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="servos_rf_1"/>
-          <geom pos="-0.008067 0.04708 -0.010094" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="servos_rf_1"/>
-          <geom pos="-0.008067 0.04708 -0.010094" quat="1 0 0 0" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="shank_rf_1"/>
-          <geom pos="-0.008067 0.04708 -0.010094" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="shank_rf_1_convex"/>
-          <geom pos="-0.008067 0.04708 -0.010094" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_9_1"/>
-          <geom pos="-0.008067 0.04708 -0.010094" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_9_1"/>
-          <geom pos="-0.008067 0.04708 -0.010094" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_8_1"/>
-          <geom pos="-0.008067 0.04708 -0.010094" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_8_1"/>
-          
-          <!-- Lower leg collision -->
-          <geom type="capsule" fromto="0 0 0 0 0 -0.08" size="0.008" class="bittle/collision"/>
-          
-          <!-- Foot collision sphere -->
-          <geom name="foot_front_right" pos="0 0 -0.08" class="bittle/collision/foot"/>
-          <site name="foot_front_right" pos="0 0 -0.08"/>
-        </body>
+    </body>
+    <body name="c_thrr_1" pos="-0.0525 -0.0485 0.022">
+      <joint name="shrrs_joint" pos="0 0 0" axis="0 -1 0"/>
+      <geom pos="0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="c_thrr_1"/>
+      <geom pos="0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="c_thrr_1"/>
+      <geom pos="0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="th_rr_1"/>
+      <geom pos="0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="th_rr_1"/>
+      <geom pos="0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="tho_rr_1"/>
+      <geom pos="0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="tho_rr_1"/>
+      <geom pos="0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="c_thorr_1"/>
+      <geom pos="0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="c_thorr_1"/>
+      <geom pos="0.0525 0.0485 -0.022" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screwm_1_1"/>
+      <geom pos="0.0525 0.0485 -0.022" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screwm_1_1"/>
+      <geom pos="0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="tube_rr_1"/>
+      <geom pos="0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="tube_rr_1"/>
+      <geom pos="0.0525 0.0485 -0.022" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screwm_2_1"/>
+      <geom pos="0.0525 0.0485 -0.022" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screwm_2_1"/>
+      <body name="servos_rr_1" pos="-0.044433 0.00142 -0.011906">
+        <joint name="shrrt_joint" pos="0 0 0" axis="0 1 0"/>
+        <geom pos="0.096933 0.04708 -0.010094" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="servos_rr_1"/>
+        <geom pos="0.096933 0.04708 -0.010094" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="servos_rr_1"/>
+        <geom pos="0.096933 0.04708 -0.010094" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="shank_rr_1"/>
+        <geom pos="0.096933 0.04708 -0.010094" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="shank_rr_1_convex"/>
+        <geom pos="0.096933 0.04708 -0.010094" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_19_1"/>
+        <geom pos="0.096933 0.04708 -0.010094" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_19_1"/>
+        <geom pos="0.096933 0.04708 -0.010094" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_11_1"/>
+        <geom pos="0.096933 0.04708 -0.010094" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_11_1"/>
       </body>
-
-      <!-- RIGHT REAR LEG -->
-      <body name="leg_hind_right" pos="-0.0525 -0.0485 0.022">
-        <joint name="shoulder_hind_right" pos="0 0 0" axis="0 -1 0" class="bittle/shoulder"/>
-        <geom pos="0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="c_thrr_1"/>
-        <geom pos="0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="c_thrr_1"/>
-        <geom pos="0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="th_rr_1"/>
-        <geom pos="0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="th_rr_1"/>
-        <geom pos="0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="tho_rr_1"/>
-        <geom pos="0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="tho_rr_1"/>
-        <geom pos="0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="c_thorr_1"/>
-        <geom pos="0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="c_thorr_1"/>
-        <geom pos="0.0525 0.0485 -0.022" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screwm_1_1"/>
-        <geom pos="0.0525 0.0485 -0.022" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screwm_1_1"/>
-        <geom pos="0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="tube_rr_1"/>
-        <geom pos="0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="tube_rr_1"/>
-        <geom pos="0.0525 0.0485 -0.022" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screwm_2_1"/>
-        <geom pos="0.0525 0.0485 -0.022" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screwm_2_1"/>
-        
-        <geom type="capsule" fromto="0 0 0 -0.04 0 -0.01" size="0.012" class="bittle/collision"/>
-        
-        <body name="lower_leg_hind_right" pos="-0.044433 0.00142 -0.011906">
-          <joint name="thigh_hind_right" pos="0 0 0" axis="0 1 0" class="bittle/thigh"/>
-          <geom pos="0.096933 0.04708 -0.010094" quat="1 0 0 0" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="servos_rr_1"/>
-          <geom pos="0.096933 0.04708 -0.010094" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="servos_rr_1"/>
-          <geom pos="0.096933 0.04708 -0.010094" quat="1 0 0 0" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="shank_rr_1"/>
-          <geom pos="0.096933 0.04708 -0.010094" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="shank_rr_1_convex"/>
-          <geom pos="0.096933 0.04708 -0.010094" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_19_1"/>
-          <geom pos="0.096933 0.04708 -0.010094" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_19_1"/>
-          <geom pos="0.096933 0.04708 -0.010094" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_11_1"/>
-          <geom pos="0.096933 0.04708 -0.010094" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_11_1"/>
-          
-          <geom type="capsule" fromto="0 0 0 0 0 -0.08" size="0.008" class="bittle/collision"/>
-          <geom name="foot_hind_right" pos="0 0 -0.08" class="bittle/collision/foot"/>
-          <site name="foot_hind_right" pos="0 0 -0.08"/>
-        </body>
+    </body>
+    <body name="servo_neck__1" pos="0.047554 0 0.035941">
+      <joint name="neck_joint" pos="0 0 0" axis="-0.5 0 -0.866025"/>
+      <geom pos="-0.047554 0 -0.035941" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="servo_neck__1"/>
+      <geom pos="-0.047554 0 -0.035941" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="servo_neck__1"/>
+      <geom pos="-0.047554 0 -0.035941" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="jaw_1"/>
+      <geom pos="-0.047554 0 -0.035941" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="jaw_1"/>
+      <geom pos="-0.047554 0 -0.035941" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="head__1"/>
+      <geom pos="-0.047554 0 -0.035941" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="head__1"/>
+      <geom pos="-0.047554 0 -0.035941" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_18_1"/>
+      <geom pos="-0.047554 0 -0.035941" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_18_1"/>
+      <geom pos="-0.047554 0 -0.035941" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_4_1"/>
+      <geom pos="-0.047554 0 -0.035941" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_4_1"/>
+    </body>
+    <body name="c_thlf_1" pos="0.0525 0.0485 0.022">
+      <joint name="shlfs_joint" pos="0 0 0" axis="0 1 0"/>
+      <geom pos="-0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="c_thlf_1"/>
+      <geom pos="-0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="c_thlf_1"/>
+      <geom pos="-0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="th_lf_1"/>
+      <geom pos="-0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="th_lf_1"/>
+      <geom pos="-0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="tho_lf_1"/>
+      <geom pos="-0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="tho_lf_1"/>
+      <geom pos="-0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="c_tholf_1"/>
+      <geom pos="-0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="c_tholf_1"/>
+      <geom pos="-0.0525 -0.0485 -0.022" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screwm_6_1"/>
+      <geom pos="-0.0525 -0.0485 -0.022" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screwm_6_1"/>
+      <geom pos="-0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="tube_lf_1"/>
+      <geom pos="-0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="tube_lf_1"/>
+      <geom pos="-0.0525 -0.0485 -0.022" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screwm_5_1"/>
+      <geom pos="-0.0525 -0.0485 -0.022" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screwm_5_1"/>
+      <body name="servos_lf_1" pos="-0.044433 -0.00142 -0.011906">
+        <joint name="shlft_joint" pos="0 0 0" axis="0 1 0"/>
+        <geom pos="-0.008067 -0.04708 -0.010094" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="servos_lf_1"/>
+        <geom pos="-0.008067 -0.04708 -0.010094" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="servos_lf_1"/>
+        <geom pos="-0.008067 -0.04708 -0.010094" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="shank_lf_1"/>
+        <geom pos="-0.008067 -0.04708 -0.010094" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="shank_lf_1_convex"/>
+        <geom pos="-0.008067 -0.04708 -0.010094" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_2_1"/>
+        <geom pos="-0.008067 -0.04708 -0.010094" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_2_1"/>
+        <geom pos="-0.008067 -0.04708 -0.010094" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_20_1"/>
+        <geom pos="-0.008067 -0.04708 -0.010094" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_20_1"/>
       </body>
-
-      <!-- LEFT FRONT LEG -->
-      <body name="leg_front_left" pos="0.0525 0.0485 0.022">
-        <joint name="shoulder_front_left" pos="0 0 0" axis="0 1 0" class="bittle/shoulder"/>
-        <geom pos="-0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="c_thlf_1"/>
-        <geom pos="-0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="c_thlf_1"/>
-        <geom pos="-0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="th_lf_1"/>
-        <geom pos="-0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="th_lf_1"/>
-        <geom pos="-0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="tho_lf_1"/>
-        <geom pos="-0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="tho_lf_1"/>
-        <geom pos="-0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="c_tholf_1"/>
-        <geom pos="-0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="c_tholf_1"/>
-        <geom pos="-0.0525 -0.0485 -0.022" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screwm_6_1"/>
-        <geom pos="-0.0525 -0.0485 -0.022" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screwm_6_1"/>
-        <geom pos="-0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="tube_lf_1"/>
-        <geom pos="-0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="tube_lf_1"/>
-        <geom pos="-0.0525 -0.0485 -0.022" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screwm_5_1"/>
-        <geom pos="-0.0525 -0.0485 -0.022" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screwm_5_1"/>
-        
-        <geom type="capsule" fromto="0 0 0 -0.04 0 -0.01" size="0.012" class="bittle/collision"/>
-        
-        <body name="lower_leg_front_left" pos="-0.044433 -0.00142 -0.011906">
-          <joint name="thigh_front_left" pos="0 0 0" axis="0 1 0" class="bittle/thigh"/>
-          <geom pos="-0.008067 -0.04708 -0.010094" quat="1 0 0 0" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="servos_lf_1"/>
-          <geom pos="-0.008067 -0.04708 -0.010094" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="servos_lf_1"/>
-          <geom pos="-0.008067 -0.04708 -0.010094" quat="1 0 0 0" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="shank_lf_1"/>
-          <geom pos="-0.008067 -0.04708 -0.010094" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="shank_lf_1_convex"/>
-          <geom pos="-0.008067 -0.04708 -0.010094" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_2_1"/>
-          <geom pos="-0.008067 -0.04708 -0.010094" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_2_1"/>
-          <geom pos="-0.008067 -0.04708 -0.010094" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_20_1"/>
-          <geom pos="-0.008067 -0.04708 -0.010094" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_20_1"/>
-          
-          <geom type="capsule" fromto="0 0 0 0 0 -0.08" size="0.008" class="bittle/collision"/>
-          <geom name="foot_front_left" pos="0 0 -0.08" class="bittle/collision/foot"/>
-          <site name="foot_front_left" pos="0 0 -0.08"/>
-        </body>
-      </body>
-
-      <!-- LEFT REAR LEG -->
-      <body name="leg_hind_left" pos="-0.0525 0.0485 0.022">
-        <joint name="shoulder_hind_left" pos="0 0 0" axis="0 -1 0" class="bittle/shoulder"/>
-        <geom pos="0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="c_thlr_1"/>
-        <geom pos="0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="c_thlr_1"/>
-        <geom pos="0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="th_lr__1"/>
-        <geom pos="0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="th_lr__1"/>
-        <geom pos="0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="tho_lr_1"/>
-        <geom pos="0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="tho_lr_1"/>
-        <geom pos="0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="c_tholr__1"/>
-        <geom pos="0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="c_tholr__1"/>
-        <geom pos="0.0525 -0.0485 -0.022" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screwm_8_1"/>
-        <geom pos="0.0525 -0.0485 -0.022" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screwm_8_1"/>
-        <geom pos="0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="tube_lr_1"/>
-        <geom pos="0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="tube_lr_1"/>
-        <geom pos="0.0525 -0.0485 -0.022" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screwm_7_1"/>
-        <geom pos="0.0525 -0.0485 -0.022" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screwm_7_1"/>
-        
-        <geom type="capsule" fromto="0 0 0 -0.04 0 -0.01" size="0.012" class="bittle/collision"/>
-        
-        <body name="lower_leg_hind_left" pos="-0.044433 -0.001418 -0.011906">
-          <joint name="thigh_hind_left" pos="0 0 0" axis="0 1 0" class="bittle/thigh"/>
-          <geom pos="0.096933 -0.047082 -0.010094" quat="1 0 0 0" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="servos_lr_1"/>
-          <geom pos="0.096933 -0.047082 -0.010094" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="servos_lr_1"/>
-          <geom pos="0.096933 -0.047082 -0.010094" quat="1 0 0 0" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="shank_lr_1"/>
-          <geom pos="0.096933 -0.047082 -0.010094" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="shank_lr_1_convex"/>
-          <geom pos="0.096933 -0.047082 -0.010094" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_3_1"/>
-          <geom pos="0.096933 -0.047082 -0.010094" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_3_1"/>
-          <geom pos="0.096933 -0.047082 -0.010094" type="mesh" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_12_1"/>
-          <geom pos="0.096933 -0.047082 -0.010094" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_12_1"/>
-          
-          <geom type="capsule" fromto="0 0 0 0 0 -0.08" size="0.008" class="bittle/collision"/>
-          <geom name="foot_hind_left" pos="0 0 -0.08" class="bittle/collision/foot"/>
-          <site name="foot_hind_left" pos="0 0 -0.08"/>
-        </body>
+    </body>
+    <body name="c_thlr_1" pos="-0.0525 0.0485 0.022">
+      <joint name="shlrs_joint" pos="0 0 0" axis="0 -1 0"/>
+      <geom pos="0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="c_thlr_1"/>
+      <geom pos="0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="c_thlr_1"/>
+      <geom pos="0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="th_lr__1"/>
+      <geom pos="0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="th_lr__1"/>
+      <geom pos="0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="tho_lr_1"/>
+      <geom pos="0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="tho_lr_1"/>
+      <geom pos="0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="c_tholr__1"/>
+      <geom pos="0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="c_tholr__1"/>
+      <geom pos="0.0525 -0.0485 -0.022" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screwm_8_1"/>
+      <geom pos="0.0525 -0.0485 -0.022" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screwm_8_1"/>
+      <geom pos="0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="tube_lr_1"/>
+      <geom pos="0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="tube_lr_1"/>
+      <geom pos="0.0525 -0.0485 -0.022" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screwm_7_1"/>
+      <geom pos="0.0525 -0.0485 -0.022" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screwm_7_1"/>
+      <body name="servos_lr_1" pos="-0.044433 -0.001418 -0.011906">
+        <joint name="shlrt_joint" pos="0 0 0" axis="0 1 0"/>
+        <geom pos="0.096933 -0.047082 -0.010094" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="servos_lr_1"/>
+        <geom pos="0.096933 -0.047082 -0.010094" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="servos_lr_1"/>
+        <geom pos="0.096933 -0.047082 -0.010094" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="shank_lr_1"/>
+        <geom pos="0.096933 -0.047082 -0.010094" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="shank_lr_1_convex"/>
+        <geom pos="0.096933 -0.047082 -0.010094" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_3_1"/>
+        <geom pos="0.096933 -0.047082 -0.010094" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_3_1"/>
+        <geom pos="0.096933 -0.047082 -0.010094" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_12_1"/>
+        <geom pos="0.096933 -0.047082 -0.010094" type="mesh" rgba="0.7 0.7 0.7 1" mesh="screw_12_1"/>
       </body>
     </body>
   </worldbody>
 
-  <!-- Actuators using general type with force-based control -->
+  <!-- [ADDED] Actuators with PID joint tuning-->
   <actuator>
-    <!-- Right Front Leg -->
-    <general name="shoulder_front_right" joint="shoulder_front_right" class="bittle/shoulder"/>
-    <general name="thigh_front_right" joint="thigh_front_right" class="bittle/thigh"/>
-    
-    <!-- Right Rear Leg -->
-    <general name="shoulder_hind_right" joint="shoulder_hind_right" class="bittle/shoulder"/>
-    <general name="thigh_hind_right" joint="thigh_hind_right" class="bittle/thigh"/>
-    
-    <!-- Left Front Leg -->
-    <general name="shoulder_front_left" joint="shoulder_front_left" class="bittle/shoulder"/>
-    <general name="thigh_front_left" joint="thigh_front_left" class="bittle/thigh"/>
-    
-    <!-- Left Rear Leg -->
-    <general name="shoulder_hind_left" joint="shoulder_hind_left" class="bittle/shoulder"/>
-    <general name="thigh_hind_left" joint="thigh_hind_left" class="bittle/thigh"/>
-    
-    <!-- Neck (optional) -->
-    <general name="neck_joint" joint="neck_joint" forcerange="-2 2" 
-             gainprm="10.0 0 0" biasprm="0 -10.0 -0.5" ctrlrange="-0.4 0.4"/>
+    <position name = "shrfs_joint" joint="shrfs_joint" ctrlrange="0 6.28" kv="0.75" kp="15.0"/>
+    <position name = "shrft_joint" joint="shrft_joint" ctrlrange="0 6.28" kv="0.5" kp= "5.0"/>
+    <position name = "shrrs_joint" joint="shrrs_joint" ctrlrange="0 6.28" kv="0.75" kp="15.0"/>
+    <position name = "shrrt_joint" joint="shrrt_joint" ctrlrange="0 6.28" kv="0.5" kp="5.0"/>
+    <position name = "neck_joint" joint="neck_joint" ctrlrange="0 6.28" kv="0.75" kp="15.0"/>
+    <position name = "shlfs_joint" joint="shlfs_joint" ctrlrange="0 6.28" kv="0.75" kp="15.0"/>
+    <position name = "shlft_joint" joint="shlft_joint" ctrlrange="0 6.28" kv="0.5" kp="5.0"/>
+    <position name = "shlrs_joint" joint="shlrs_joint" ctrlrange="0 6.28" kv="0.75" kp="15.0"/>
+    <position name = "shlrt_joint" joint="shlrt_joint" ctrlrange="0 6.28" kv="0.5"kp="5.0"/>
   </actuator>
-
-  <!-- Sensors (similar to Barkour) -->
-  <sensor>
-    <!-- Joint positions -->
-    <jointpos joint="shoulder_front_right" name="shoulder_front_right_pos"/>
-    <jointpos joint="thigh_front_right" name="thigh_front_right_pos"/>
-    <jointpos joint="shoulder_hind_right" name="shoulder_hind_right_pos"/>
-    <jointpos joint="thigh_hind_right" name="thigh_hind_right_pos"/>
-    <jointpos joint="shoulder_front_left" name="shoulder_front_left_pos"/>
-    <jointpos joint="thigh_front_left" name="thigh_front_left_pos"/>
-    <jointpos joint="shoulder_hind_left" name="shoulder_hind_left_pos"/>
-    <jointpos joint="thigh_hind_left" name="thigh_hind_left_pos"/>
-    
-    <!-- Joint velocities -->
-    <jointvel joint="shoulder_front_right" name="shoulder_front_right_vel"/>
-    <jointvel joint="thigh_front_right" name="thigh_front_right_vel"/>
-    <jointvel joint="shoulder_hind_right" name="shoulder_hind_right_vel"/>
-    <jointvel joint="thigh_hind_right" name="thigh_hind_right_vel"/>
-    <jointvel joint="shoulder_front_left" name="shoulder_front_left_vel"/>
-    <jointvel joint="thigh_front_left" name="thigh_front_left_vel"/>
-    <jointvel joint="shoulder_hind_left" name="shoulder_hind_left_vel"/>
-    <jointvel joint="thigh_hind_left" name="thigh_hind_left_vel"/>
-    
-    <!-- IMU sensors -->
-    <gyro site="imu_frame" name="gyro"/>
-    <velocimeter site="imu_frame" name="local_linvel"/>
-    <accelerometer site="imu_frame" name="accelerometer"/>
-    <framepos objtype="site" objname="imu_frame" name="global_position"/>
-    <framezaxis objtype="site" objname="imu_frame" name="upvector"/>
-    <framelinvel objtype="site" objname="imu_frame" name="global_linvel"/>
-    <frameangvel objtype="site" objname="imu_frame" name="global_angvel"/>
-    <framequat objtype="site" objname="imu_frame" name="orientation"/>
-  </sensor>
 </mujoco>
