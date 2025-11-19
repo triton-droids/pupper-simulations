@@ -4,5 +4,5 @@ xacrodoc==1.3.0
 
 #Training
 ml_collections==1.1.0
-jax==0.8.0
+jax[cuda12]==0.8.0
 brax==0.13.0
