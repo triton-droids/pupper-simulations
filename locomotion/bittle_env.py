@@ -276,6 +276,8 @@ class BittleEnv(PipelineEnv):
     rewards = {k: v * self.reward_config.rewards.scales[k] for k, v in rewards.items()}
     reward = jp.clip(sum(rewards.values()) * self.dt, 0.0, 10000.0)
 
+    print(f"Step: {step}, Reward: {reward}, Done: {done}")
+
     state.info['last_act'] = action
     state.info['last_vel'] = joint_vel
     state.info['feet_air_time'] *= ~contact_filt
