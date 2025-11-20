@@ -3,10 +3,9 @@ Adapted from Mujoco's Quadruped Barkour Environment
 Bittle quadruped environment adapted to work with Bittle's actual structure.
 
 This environment modifies the BarkourEnv logic to work with:
-- Fixed base (no free joint) - Bittle is tethered/supported during training
-- 2 DOF per leg (8 leg actuators) + 1 neck actuator
+- Free-floating base (freejoint with 7 DOFs: 3 pos + 4 quat)
+- 9 actuated joints (8 leg joints + 1 neck joint)
 - Simplified contact detection based on body positions instead of sites
-- No additional bodies or joints added
 """
 
 from typing import Any, List, Sequence
@@ -33,24 +32,24 @@ def get_config():
         dict(
             scales=config_dict.ConfigDict(
                 dict(
-                    # Tracking rewards (reduced importance since base is fixed)
-                    tracking_lin_vel=1.0,
-                    tracking_ang_vel=0.5,
-                    # Base state regularizations (less relevant for fixed base)
-                    lin_vel_z=-1.0,
+                    # Tracking rewards
+                    tracking_lin_vel=1.5,
+                    tracking_ang_vel=0.8,
+                    # Base state regularizations
+                    lin_vel_z=-2.0,
                     ang_vel_xy=-0.05,
-                    orientation=-3.0,
+                    orientation=-5.0,
                     # Joint regularizations
                     torques=-0.0002,
                     action_rate=-0.01,
                     # Behavior regularizations
                     stand_still=-0.5,
                     termination=-1.0,
-                    # Feet rewards (simplified)
-                    feet_air_time=0.05,
-                    foot_slip=-0.02,
+                    # Feet rewards
+                    feet_air_time=0.1,
+                    foot_slip=-0.04,
                     # Energy efficiency
-                    energy=-0.001,
+                    energy=-0.002,
                 )
             ),
             tracking_sigma=0.25,
@@ -75,7 +74,7 @@ class BittleEnv(PipelineEnv):
       xml_path: str,
       obs_noise: float = 0.05,
       action_scale: float = 0.3,
-      kick_vel: float = 0.0,  # Disabled for fixed base
+      kick_vel: float = 0.05,
       **kwargs,
   ):
     sys = mjcf.load(xml_path)
@@ -84,7 +83,7 @@ class BittleEnv(PipelineEnv):
 
     # Adjust gains for Bittle's servos
     sys = sys.replace(
-        dof_damping=sys.dof_damping.at[:].set(0.5),  # Apply to all joints
+        dof_damping=sys.dof_damping.at[7:].set(0.5),  # Apply damping to actuated joints only
         actuator_gainprm=sys.actuator_gainprm.at[:, 0].set(15.0),
         actuator_biasprm=sys.actuator_biasprm.at[:, 1].set(-15.0),
     )
@@ -97,48 +96,49 @@ class BittleEnv(PipelineEnv):
       if k.endswith('_scale'):
         self.reward_config.rewards.scales[k[:-6]] = v
 
-    # Bittle doesn't have a free-floating base, so we use worldbody (index 0)
-    # The base is fixed to the ground in your original XML
-    self._base_body_id = 0  # Worldbody is the base
+    # Find the base body (the one with freejoint)
+    self._base_body_id = mujoco.mj_name2id(sys.mj_model, mujoco.mjtObj.mjOBJ_BODY.value, 'base')
     
     self._action_scale = action_scale
     self._obs_noise = obs_noise
     self._kick_vel = kick_vel
     
-    # Since there's no keyframe, create a default pose from current state
-    # This is the standing position defined in your XML structure
-    self._init_q = jp.array(sys.init_q) if hasattr(sys, 'init_q') else jp.zeros(sys.nq)
-    
-    # Default pose for joints - adjust these based on your Bittle's neutral standing position
-    # You have 9 actuators: 8 leg joints + 1 neck joint
-    # These should be the angles when Bittle is standing naturally
-    self._default_pose = jp.array([
-        0.0, 0.5,    # Right front: shoulder=0, knee=0.5 rad (~30 degrees)
-        0.0, 0.5,    # Right rear
-        0.0,         # Neck (straight)
-        0.0, 0.5,    # Left front
-        0.0, 0.5,    # Left rear
-    ])
+    self._nv = sys.nv
+    self._nu = sys.nu
     
     print(f"Bittle has {sys.nu} actuators")
     print(f"Bittle has {sys.nq} position DOFs")
     print(f"Bittle has {sys.nv} velocity DOFs")
     
-    # Adjust default pose to match actual number of actuators
-    if sys.nu != len(self._default_pose):
-      print(f"Warning: Expected 9 actuators, found {sys.nu}. Adjusting default pose.")
-      if sys.nu < len(self._default_pose):
-        self._default_pose = self._default_pose[:sys.nu]
-      else:
-        extra = sys.nu - len(self._default_pose)
-        self._default_pose = jp.concatenate([self._default_pose, jp.zeros(extra)])
-
-    # Joint limits based on your XML ctrlrange (0 to 6.28)
-    # Convert to more reasonable limits around neutral pose
+    # With freejoint: q has 7 (freejoint: 3 pos + 4 quat) + 9 (joints) = 16 DOFs
+    # With freejoint: qd has 6 (freejoint: 3 lin_vel + 3 ang_vel) + 9 (joint vels) = 15 DOFs
+    # Actuators control only the 9 joints
+    
+    # The actuated joint positions start after the freejoint (which takes 7 in q)
+    self._q_joint_start = 7  # Skip freejoint quaternion (7 DOFs in q)
+    self._qd_joint_start = 6  # Skip freejoint velocities (6 DOFs in qd)
+    
+    print(f"Joint positions in q: indices [{self._q_joint_start}:{self._q_joint_start + sys.nu}]")
+    print(f"Joint velocities in qd: indices [{self._qd_joint_start}:{self._qd_joint_start + sys.nu}]")
+    
+    # Default pose for the 9 actuated joints
+    # Order: shrfs, shrft, shrrs, shrrt, neck, shlfs, shlft, shlrs, shlrt
+    self._default_pose = jp.array([
+        0.0, 0.5,    # Right front: shoulder=0, knee=0.5 rad
+        0.0, 0.5,    # Right rear: shoulder=0, knee=0.5 rad
+        0.0,         # Neck (straight)
+        0.0, 0.5,    # Left front: shoulder=0, knee=0.5 rad
+        0.0, 0.5,    # Left rear: shoulder=0, knee=0.5 rad
+    ])
+    
+    # Verify we have the right number
+    assert len(self._default_pose) == sys.nu, f"Default pose length {len(self._default_pose)} != nu {sys.nu}"
+    
+    # Joint limits
     self.lowers = jp.array([-1.5] * sys.nu)
     self.uppers = jp.array([1.5] * sys.nu)
     
-    # Find the lower leg bodies (shanks) - these will be used for foot position estimation
+    # Find the lower leg bodies (shanks) for foot contact detection
     lower_leg_names = [
         'servos_rf_1',  # Right front lower leg
         'servos_rr_1',  # Right rear lower leg
@@ -157,23 +157,14 @@ class BittleEnv(PipelineEnv):
     
     self._lower_leg_body_id = np.array(self._lower_leg_body_id) if self._lower_leg_body_id else np.array([])
     
-    # Estimate foot radius based on shank geometry (rough approximation)
-    self._foot_radius = 0.005  # 5mm - very small for Bittle
-    
-    self._nv = sys.nv
-    self._nu = sys.nu
+    # Foot radius for contact detection
+    self._foot_radius = 0.015  # 15mm for Bittle
 
   def sample_command(self, rng: jax.Array) -> jax.Array:
-    """Sample a velocity command.
-    
-    Note: With a fixed base, these are more like "desired joint behavior" 
-    rather than actual base velocities. The robot will try to produce motions
-    that would result in these velocities if it could move.
-    """
-    # Very conservative ranges for tethered training
-    lin_vel_x = [-0.2, 0.5]   # Forward/backward motion intent
-    lin_vel_y = [-0.2, 0.2]   # Left/right motion intent
-    ang_vel_yaw = [-0.3, 0.3] # Turning motion intent
+    """Sample a velocity command."""
+    lin_vel_x = [-0.3, 0.6]   # m/s
+    lin_vel_y = [-0.3, 0.3]   # m/s
+    ang_vel_yaw = [-0.5, 0.5] # rad/s
 
     _, key1, key2, key3 = jax.random.split(rng, 4)
     lin_vel_x = jax.random.uniform(key1, (1,), minval=lin_vel_x[0], maxval=lin_vel_x[1])
@@ -186,8 +177,13 @@ class BittleEnv(PipelineEnv):
     rng, key = jax.random.split(rng)
     
     # Initialize with default pose
-    qpos = self._init_q
-    qvel = jp.zeros(self._nv)
+    # qpos: [x, y, z, qw, qx, qy, qz, joint1, joint2, ..., joint9]
+    qpos = jp.zeros(self.sys.nq)
+    qpos = qpos.at[0:3].set(jp.array([0.0, 0.0, 0.15]))  # Initial position: 15cm above ground
+    qpos = qpos.at[3:7].set(jp.array([1.0, 0.0, 0.0, 0.0]))  # Identity quaternion (w, x, y, z)
+    qpos = qpos.at[self._q_joint_start:].set(self._default_pose)  # Joint angles
+    
+    qvel = jp.zeros(self.sys.nv)
     
     pipeline_state = self.pipeline_init(qpos, qvel)
 
@@ -202,8 +198,8 @@ class BittleEnv(PipelineEnv):
         'step': 0,
     }
 
-    # Observation size: 1 (yaw rate) + 3 (gravity) + 3 (command) + nu (joints) + nu (last_action)
-    obs_size = 1 + 3 + 3 + self._nu + self._nu
+    # Observation: 1 (yaw rate) + 3 (gravity) + 3 (command) + 9 (joint pos) + 9 (joint vel) + 9 (last action)
+    obs_size = 1 + 3 + 3 + self._nu + self._nu + self._nu
     obs_history = jp.zeros(15 * obs_size)
     obs = self._get_obs(pipeline_state, state_info, obs_history)
     reward, done = jp.zeros(2)
@@ -214,30 +210,38 @@ class BittleEnv(PipelineEnv):
     return state
 
   def step(self, state: State, action: jax.Array) -> State:
-    rng, cmd_rng = jax.random.split(state.info['rng'], 2)
+    rng, cmd_rng, kick_rng = jax.random.split(state.info['rng'], 3)
 
-    # No kick for fixed-base robot
+    # Random kick
+    kick_vel = jp.where(
+        jax.random.uniform(kick_rng) < 0.001,  # 0.1% chance per step
+        jax.random.uniform(kick_rng, (3,), minval=-self._kick_vel, maxval=self._kick_vel),
+        jp.zeros(3)
+    )
     
     # Physics step
     motor_targets = self._default_pose + action * self._action_scale
     motor_targets = jp.clip(motor_targets, self.lowers, self.uppers)
     pipeline_state = self.pipeline_step(state.pipeline_state, motor_targets)
+    
+    # Apply kick to base
+    pipeline_state = pipeline_state.replace(
+        qd=pipeline_state.qd.at[:3].set(pipeline_state.qd[:3] + kick_vel)
+    )
+    
     x, xd = pipeline_state.x, pipeline_state.xd
 
-    obs = self._get_obs(pipeline_state, state.info, state.obs)
-    joint_angles = pipeline_state.q
-    joint_vel = pipeline_state.qd
+    # Extract joint states
+    joint_angles = pipeline_state.q[self._q_joint_start:]
+    joint_vel = pipeline_state.qd[self._qd_joint_start:]
 
-    # Foot contact estimation based on lower leg body positions
+    # Foot contact estimation
     if len(self._lower_leg_body_id) > 0:
-      # Get positions of lower leg bodies
       lower_leg_pos = pipeline_state.xpos[self._lower_leg_body_id]
       # Estimate foot positions (lower legs point downward, feet are ~6cm below)
-      foot_z = lower_leg_pos[:, 2] - 0.06  # 6cm below shank body
-      # Check if feet are near ground
-      contact = foot_z < 0.01  # Within 1cm of ground
+      foot_z = lower_leg_pos[:, 2] - 0.06
+      contact = foot_z < self._foot_radius
     else:
-      # Fallback: assume always in contact
       contact = jp.ones(4, dtype=bool)
     
     contact_filt = contact | state.info['last_contact']
@@ -245,15 +249,14 @@ class BittleEnv(PipelineEnv):
     state.info['feet_air_time'] += self.dt
 
     # Termination conditions
-    # For fixed-base robot: terminate if joints go out of bounds or excessive forces
-    done = jp.any(joint_angles < self.lowers)
+    # Terminate if robot falls over or joints exceed limits
+    up_vec = math.rotate(jp.array([0, 0, 1]), x.rot[self._base_body_id])
+    done = up_vec[2] < 0.5  # Body tilted more than 60 degrees
+    done |= pipeline_state.x.pos[self._base_body_id, 2] < 0.05  # Base too low (5cm)
+    done |= jp.any(joint_angles < self.lowers)
     done |= jp.any(joint_angles > self.uppers)
-    
-    # Also terminate if actuator forces are excessive (robot is struggling/stuck)
-    max_torque = jp.max(jp.abs(pipeline_state.qfrc_actuator))
-    done |= max_torque > 10.0  # Adjust threshold as needed
 
-    # Rewards - adapted for fixed-base
+    # Rewards
     rewards = {
         'tracking_lin_vel': self._reward_tracking_lin_vel(state.info['command'], x, xd),
         'tracking_ang_vel': self._reward_tracking_ang_vel(state.info['command'], x, xd),
@@ -273,17 +276,8 @@ class BittleEnv(PipelineEnv):
     rewards = {k: v * self.reward_config.rewards.scales[k] for k, v in rewards.items()}
     reward = jp.clip(sum(rewards.values()) * self.dt, 0.0, 10000.0)
 
-    # Print reward every 1000 iterations
-    '''
-    jax.lax.cond(
-        state.info['step'] % 1000 == 0,
-        lambda: jax.debug.print("Step {step}: Reward = {reward}", 
-                                step=state.info['step'], reward=reward),
-        lambda: None
-    )
-    '''
     if state.info['step'] % 1000 == 0:
-        print(f"Step {state.info['step']}: Reward = {reward}")
+        print(f"Step {state.info['step']}: Reward={reward}, Done={done}")
 
     state.info['last_act'] = action
     state.info['last_vel'] = joint_vel
@@ -303,11 +297,12 @@ class BittleEnv(PipelineEnv):
         done | (state.info['step'] > 500), 0, state.info['step']
     )
 
-    # Metrics - for fixed base, track joint space motion instead
-    state.metrics['total_dist'] = jp.sum(jp.abs(joint_vel)) * self.dt  # Proxy for motion
+    # Metrics
+    state.metrics['total_dist'] = jp.linalg.norm(xd.vel[self._base_body_id, :2]) * self.dt
     state.metrics.update(state.info['rewards'])
 
     done = jp.float32(done)
+    obs = self._get_obs(pipeline_state, state.info, state.obs)
     state = state.replace(pipeline_state=pipeline_state, obs=obs, reward=reward, done=done)
     return state
 
@@ -317,20 +312,21 @@ class BittleEnv(PipelineEnv):
       state_info: dict[str, Any],
       obs_history: jax.Array,
   ) -> jax.Array:
-    """Get observation from current state.
-    
-    For fixed-base robot, we focus on joint states and IMU-like measurements.
-    """
-    # Since base is fixed, use worldbody (index 0) for orientation reference
+    """Get observation from current state."""
     inv_base_rot = math.quat_inv(pipeline_state.x.rot[self._base_body_id])
     local_rpyrate = math.rotate(pipeline_state.xd.ang[self._base_body_id], inv_base_rot)
 
+    # Extract only the actuated joint positions and velocities
+    joint_angles = pipeline_state.q[self._q_joint_start:]
+    joint_vels = pipeline_state.qd[self._qd_joint_start:]
+
     obs = jp.concatenate([
         jp.array([local_rpyrate[2]]) * 0.25,                    # yaw rate
-        math.rotate(jp.array([0, 0, -1]), inv_base_rot),        # projected gravity
-        state_info['command'] * jp.array([2.0, 2.0, 0.25]),     # command
-        pipeline_state.q - self._default_pose,                  # joint angles relative to default
-        state_info['last_act'],                                 # last action
+        math.rotate(jp.array([0, 0, -1]), inv_base_rot),        # projected gravity (3)
+        state_info['command'] * jp.array([2.0, 2.0, 0.25]),     # command (3)
+        joint_angles - self._default_pose,                      # joint angles relative to default (9)
+        joint_vels * 0.05,                                      # joint velocities (9)
+        state_info['last_act'],                                 # last action (9)
     ])
 
     # Add noise
@@ -369,11 +365,7 @@ class BittleEnv(PipelineEnv):
   def _reward_tracking_lin_vel(
       self, commands: jax.Array, x: Transform, xd: Motion
   ) -> jax.Array:
-    """Reward for matching linear velocity command.
-    
-    For fixed-base, this encourages leg motions that would produce the commanded velocity.
-    """
-    # Use the velocity of the base (even though it's fixed, the "attempted" motion matters)
+    """Reward for matching linear velocity command."""
     local_vel = math.rotate(xd.vel[self._base_body_id], math.quat_inv(x.rot[self._base_body_id]))
     lin_vel_error = jp.sum(jp.square(commands[:2] - local_vel[:2]))
     return jp.exp(-lin_vel_error / self.reward_config.rewards.tracking_sigma)
@@ -390,7 +382,7 @@ class BittleEnv(PipelineEnv):
       self, air_time: jax.Array, first_contact: jax.Array, commands: jax.Array
   ) -> jax.Array:
     """Reward appropriate swing durations."""
-    rew_air_time = jp.sum((air_time - 0.05) * first_contact)  # Lower threshold for Bittle
+    rew_air_time = jp.sum((air_time - 0.05) * first_contact)
     rew_air_time *= math.normalize(commands[:2])[1] > 0.05
     return rew_air_time
 
@@ -409,12 +401,10 @@ class BittleEnv(PipelineEnv):
     if len(self._lower_leg_body_id) == 0:
       return 0.0
     
-    # Get velocities of lower leg bodies (proxy for foot velocity)
     lower_leg_vel = pipeline_state.xd.vel[self._lower_leg_body_id]
     vel_xy = lower_leg_vel[:, :2]
     vel_xy_norm_sq = jp.sum(jp.square(vel_xy), axis=-1)
     
-    # Penalize horizontal velocity while in contact
     return jp.sum(vel_xy_norm_sq * contact_filt)
 
   def _reward_termination(self, done: jax.Array, step: jax.Array) -> jax.Array:
