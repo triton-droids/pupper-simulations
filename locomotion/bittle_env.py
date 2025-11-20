@@ -276,9 +276,6 @@ class BittleEnv(PipelineEnv):
     rewards = {k: v * self.reward_config.rewards.scales[k] for k, v in rewards.items()}
     reward = jp.clip(sum(rewards.values()) * self.dt, 0.0, 10000.0)
 
-    if state.info['step'] % 1000 == 0:
-        print(f"Step {state.info['step']}: Reward={reward}, Done={done}")
-
     state.info['last_act'] = action
     state.info['last_vel'] = joint_vel
     state.info['feet_air_time'] *= ~contact_filt
@@ -413,7 +410,10 @@ class BittleEnv(PipelineEnv):
 
   def _reward_energy(self, qvel: jax.Array, qfrc_actuator: jax.Array) -> jax.Array:
     """Penalize energy consumption."""
-    return jp.sum(jp.abs(qvel) * jp.abs(qfrc_actuator))
+    # qfrc_actuator has 15 elements (6 for freejoint + 9 for actuated joints)
+    # Extract only the forces for the 9 actuated joints
+    actuator_forces = qfrc_actuator[self._qd_joint_start:]
+    return jp.sum(jp.abs(qvel) * jp.abs(actuator_forces))
 
   def render(
       self, trajectory: List[base.State], camera: str | None = None,
