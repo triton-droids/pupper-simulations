@@ -411,8 +411,11 @@ class BittleEnv(PipelineEnv):
 
   def _reward_energy(self, qvel: jax.Array, qfrc_actuator: jax.Array) -> jax.Array:
     """Penalize energy consumption."""
-    # Both qvel (joint velocities) and qfrc_actuator are 9 elements
-    return jp.sum(jp.abs(qvel) * jp.abs(qfrc_actuator))
+    # qvel is 9 elements (joint velocities)
+    # qfrc_actuator is 15 elements (6 for freejoint + 9 for actuated joints)
+    # Extract only the actuated joint forces (skip the first 6 freejoint forces)
+    actuator_forces = qfrc_actuator[self._qd_joint_start:]
+    return jp.sum(jp.abs(qvel) * jp.abs(actuator_forces))
 
   def render(
       self, trajectory: List[base.State], camera: str | None = None,
