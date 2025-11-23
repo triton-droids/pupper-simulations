@@ -1,11 +1,6 @@
 """
-Adapted from Mujoco's Quadruped Barkour Environment
-Bittle quadruped environment adapted to work with Bittle's actual structure.
-
-This environment modifies the BarkourEnv logic to work with:
-- Free-floating base (freejoint with 7 DOFs: 3 pos + 4 quat)
-- 9 actuated joints (8 leg joints + 1 neck joint)
-- Simplified contact detection based on body positions instead of sites
+Improved Bittle Quadruped Environment
+Fixed version with proper reward calculation and termination conditions.
 """
 
 from typing import Any, List, Sequence
@@ -110,10 +105,6 @@ class BittleEnv(PipelineEnv):
     print(f"Bittle has {sys.nq} position DOFs")
     print(f"Bittle has {sys.nv} velocity DOFs")
     
-    # With freejoint: q has 7 (freejoint: 3 pos + 4 quat) + 9 (joints) = 16 DOFs
-    # With freejoint: qd has 6 (freejoint: 3 lin_vel + 3 ang_vel) + 9 (joint vels) = 15 DOFs
-    # Actuators control only the 9 joints
-    
     # The actuated joint positions start after the freejoint (which takes 7 in q)
     self._q_joint_start = 7  # Skip freejoint quaternion (7 DOFs in q)
     self._qd_joint_start = 6  # Skip freejoint velocities (6 DOFs in qd)
@@ -121,17 +112,22 @@ class BittleEnv(PipelineEnv):
     print(f"Joint positions in q: indices [{self._q_joint_start}:{self._q_joint_start + sys.nu}]")
     print(f"Joint velocities in qd: indices [{self._qd_joint_start}:{self._qd_joint_start + sys.nu}]")
     
-    # Default pose for the 9 actuated joints
-    # Order: shrfs, shrft, shrrs, shrrt, neck, shlfs, shlft, shlrs, shlrt
+    # Default pose for the 9 actuated joints (from home keyframe)
+    # Order matches the joint order in the MJCF model
+    # Keyframe qpos: 0 0 0.05 1 0 0 0 -0.31416 1.19381 0.188496 1.13098 -0.723 -0.47124 1.28806 0.345576 1.28806
+    # After freejoint (7 DOFs): -0.31416 1.19381 0.188496 1.13098 -0.723 -0.47124 1.28806 0.345576 1.28806
     self._default_pose = jp.array([
-        0.0, 0.5,    # Right front: shoulder=0, knee=0.5 rad
-        0.0, 0.5,    # Right rear: shoulder=0, knee=0.5 rad
-        0.0,         # Neck (straight)
-        0.0, 0.5,    # Left front: shoulder=0, knee=0.5 rad
-        0.0, 0.5,    # Left rear: shoulder=0, knee=0.5 rad
+        -0.31416,   # shrfs (right front shoulder)
+        1.19381,    # shrft (right front thigh/knee)
+        0.188496,   # shrrs (right rear shoulder)
+        1.13098,    # shrrt (right rear thigh/knee)
+        -0.723,     # neck
+        -0.47124,   # shlfs (left front shoulder)
+        1.28806,    # shlft (left front thigh/knee)
+        0.345576,   # shlrs (left rear shoulder)
+        1.28806,    # shlrt (left rear thigh/knee)
     ])
     
-    # Verify we have the right number
     assert len(self._default_pose) == sys.nu, f"Default pose length {len(self._default_pose)} != nu {sys.nu}"
     
     # Joint limits
@@ -176,12 +172,12 @@ class BittleEnv(PipelineEnv):
   def reset(self, rng: jax.Array) -> State:
     rng, key = jax.random.split(rng)
     
-    # Initialize with default pose
-    # qpos: [x, y, z, qw, qx, qy, qz, joint1, joint2, ..., joint9]
+    # Initialize with default pose from home keyframe
+    # Keyframe: 0 0 0.05 1 0 0 0 -0.31416 1.19381 0.188496 1.13098 -0.723 -0.47124 1.28806 0.345576 1.28806
     qpos = jp.zeros(self.sys.nq)
-    qpos = qpos.at[0:3].set(jp.array([0.0, 0.0, 0.15]))  # Initial position: 15cm above ground
+    qpos = qpos.at[0:3].set(jp.array([0.0, 0.0, 0.05]))  # Initial position: 5cm above ground (from keyframe)
     qpos = qpos.at[3:7].set(jp.array([1.0, 0.0, 0.0, 0.0]))  # Identity quaternion (w, x, y, z)
-    qpos = qpos.at[self._q_joint_start:].set(self._default_pose)  # Joint angles
+    qpos = qpos.at[self._q_joint_start:].set(self._default_pose)  # Joint angles from keyframe
     
     qvel = jp.zeros(self.sys.nv)
     
@@ -198,7 +194,6 @@ class BittleEnv(PipelineEnv):
         'step': 0,
     }
 
-    # Observation: 1 (yaw rate) + 3 (gravity) + 3 (command) + 9 (joint pos) + 9 (joint vel) + 9 (last action)
     obs_size = 1 + 3 + 3 + self._nu + self._nu + self._nu
     obs_history = jp.zeros(15 * obs_size)
     obs = self._get_obs(pipeline_state, state_info, obs_history)
@@ -238,7 +233,6 @@ class BittleEnv(PipelineEnv):
     # Foot contact estimation
     if len(self._lower_leg_body_id) > 0:
       lower_leg_pos = pipeline_state.xpos[self._lower_leg_body_id]
-      # Estimate foot positions (lower legs point downward, feet are ~6cm below)
       foot_z = lower_leg_pos[:, 2] - 0.06
       contact = foot_z < self._foot_radius
     else:
@@ -249,12 +243,12 @@ class BittleEnv(PipelineEnv):
     state.info['feet_air_time'] += self.dt
 
     # Termination conditions
-    # Terminate if robot falls over or joints exceed limits
+    # Robot starts at 5cm height, so we need appropriate thresholds
     up_vec = math.rotate(jp.array([0, 0, 1]), x.rot[self._base_body_id])
-    done = up_vec[2] < 0.5  # Body tilted more than 60 degrees
-    done |= pipeline_state.x.pos[self._base_body_id, 2] < 0.05  # Base too low (5cm)
-    done |= jp.any(joint_angles < self.lowers)
-    done |= jp.any(joint_angles > self.uppers)
+    done = up_vec[2] < 0.3  # Allow tilt up to ~70 degrees from vertical
+    done |= pipeline_state.x.pos[self._base_body_id, 2] < 0.02  # Terminate if base drops below 2cm
+    done |= jp.any(joint_angles < self.lowers - 0.1)  # Add some tolerance to joint limits
+    done |= jp.any(joint_angles > self.uppers + 0.1)
 
     # Rewards
     rewards = {
@@ -273,16 +267,15 @@ class BittleEnv(PipelineEnv):
         'termination': self._reward_termination(done, state.info['step']),
         'energy': self._reward_energy(joint_vel, pipeline_state.qfrc_actuator),
     }
+    
+    # Scale rewards
     rewards = {k: v * self.reward_config.rewards.scales[k] for k, v in rewards.items()}
-    reward = jp.clip(sum(rewards.values()) * self.dt, 0.0, 10000.0)
-
-     # Only print every 100 steps to avoid spam
-    jax.lax.cond(
-        state.info['step'] % 100 == 0,
-        lambda: jax.debug.print("Step {s}, Reward {r:.3f}, Done {d}", 
-                               s=state.info['step'], r=reward, d=done),
-        lambda: None
-    )
+    
+    # Sum and clip reward - ALLOW NEGATIVE
+    reward = jp.clip(sum(rewards.values()) * self.dt, -10.0, 10.0)
+    
+    # Replace NaN with 0 to prevent training crashes
+    reward = jp.nan_to_num(reward, nan=0.0, posinf=0.0, neginf=0.0)
 
     state.info['last_act'] = action
     state.info['last_vel'] = joint_vel
@@ -418,10 +411,8 @@ class BittleEnv(PipelineEnv):
 
   def _reward_energy(self, qvel: jax.Array, qfrc_actuator: jax.Array) -> jax.Array:
     """Penalize energy consumption."""
-    # qfrc_actuator has 15 elements (6 for freejoint + 9 for actuated joints)
-    # Extract only the forces for the 9 actuated joints
-    actuator_forces = qfrc_actuator[self._qd_joint_start:]
-    return jp.sum(jp.abs(qvel) * jp.abs(actuator_forces))
+    # Both qvel (joint velocities) and qfrc_actuator are 9 elements
+    return jp.sum(jp.abs(qvel) * jp.abs(qfrc_actuator))
 
   def render(
       self, trajectory: List[base.State], camera: str | None = None,
