@@ -63,8 +63,8 @@ def get_config():
 def print_environments_at_milestone(step, reward, done, milestone=100):
     """Print info for all environments at the milestone step"""
     mask = step % milestone == 0
-    if jnp.any(mask):
-        env_indices = jnp.where(mask, size=mask.shape[0], fill_value=-1)[0]
+    if jp.any(mask):
+        env_indices = jp.where(mask, size=mask.shape[0], fill_value=-1)[0]
         # Print each environment that hit the milestone
         for i in range(mask.shape[0]):
             if mask[i]:
