@@ -5,7 +5,7 @@
 
   <!-- [ADDED] PID tuning -->
   <default>
-    <joint damping="0.5" frictionloss="0.1"/>
+    <joint damping="2.0" frictionloss="0.5"/>
   </default>
 
   <asset>
@@ -308,14 +308,14 @@
 
   <!-- [ADDED] Actuators with PID joint tuning-->
   <actuator>
-    <position name = "shrfs_joint" joint="shrfs_joint" ctrlrange="0 6.28" kv="0.75" kp="15.0"/>
-    <position name = "shrft_joint" joint="shrft_joint" ctrlrange="0 6.28" kv="0.5" kp= "5.0"/>
-    <position name = "shrrs_joint" joint="shrrs_joint" ctrlrange="0 6.28" kv="0.75" kp="15.0"/>
-    <position name = "shrrt_joint" joint="shrrt_joint" ctrlrange="0 6.28" kv="0.5" kp="5.0"/>
-    <position name = "neck_joint" joint="neck_joint" ctrlrange="0 6.28" kv="0.75" kp="15.0"/>
-    <position name = "shlfs_joint" joint="shlfs_joint" ctrlrange="0 6.28" kv="0.75" kp="15.0"/>
-    <position name = "shlft_joint" joint="shlft_joint" ctrlrange="0 6.28" kv="0.5" kp="5.0"/>
-    <position name = "shlrs_joint" joint="shlrs_joint" ctrlrange="0 6.28" kv="0.75" kp="15.0"/>
-    <position name = "shlrt_joint" joint="shlrt_joint" ctrlrange="0 6.28" kv="0.5" kp="5.0"/>
+    <velocity name="shrfs_joint" joint="shrfs_joint" ctrlrange="-5 5" kv="5"/>
+    <velocity name="shrft_joint" joint="shrft_joint" ctrlrange="-5 5" kv="0.5"/>
+    <velocity name="shrrs_joint" joint="shrrs_joint" ctrlrange="-5 5" kv="0.5"/>
+    <velocity name="shrrt_joint" joint="shrrt_joint" ctrlrange="-5 5" kv="0.5"/>
+    <velocity name="neck_joint" joint="neck_joint" ctrlrange="-5 5" kv="0.5"/>
+    <velocity name="shlfs_joint" joint="shlfs_joint" ctrlrange="-5 5" kv="0.5"/>
+    <velocity name="shlft_joint" joint="shlft_joint" ctrlrange="-5 5" kv="0.5"/>
+    <velocity name="shlrs_joint" joint="shlrs_joint" ctrlrange="-5 5" kv="0.5"/>
+    <velocity name="shlrt_joint" joint="shlrt_joint" ctrlrange="-5 5" kv="0.5"/>
   </actuator>
 </mujoco>
