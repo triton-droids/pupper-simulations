@@ -62,18 +62,23 @@ def get_config():
 
 def print_milestone_info(step, reward, done, milestone=100):
     mask = step % milestone == 0
+    num_envs = mask.shape[0]
     
-    jax.lax.cond(
-        jp.any(mask),
-        lambda: jax.debug.print(
-            "Milestone {m} reached:\nEnvs: {envs}\nRewards: {rewards}\nDones: {dones}",
-            m=milestone,
-            envs=jp.where(mask)[0],
-            rewards=jp.where(mask, reward, 0.0),  # Show only milestone rewards
-            dones=jp.where(mask, done, False)
-        ),
-        lambda: None
-    )
+    def print_all():
+        def print_if_milestone(i):
+            jax.lax.cond(
+                mask[i],
+                lambda: jax.debug.print(
+                    "Env {env}: Step {s}, Reward {r:.3f}, Done {d}",
+                    env=i, s=step[i], r=reward[i], d=done[i]
+                ),
+                lambda: None
+            )
+        
+        # Print each environment that hit milestone
+        jax.lax.fori_loop(0, num_envs, lambda i, _: (print_if_milestone(i), None)[1], None)
+    
+    jax.lax.cond(jnp.any(mask), print_all, lambda: None)
 
 class BittleEnv(PipelineEnv):
   """Environment for Bittle quadruped using its actual structure."""
