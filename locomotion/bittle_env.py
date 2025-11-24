@@ -295,7 +295,7 @@ class BittleEnv(PipelineEnv):
     # Replace NaN with 0 to prevent training crashes
     reward = jp.nan_to_num(reward, nan=0.0, posinf=0.0, neginf=0.0)
 
-    print_milestone_info(state.info['step'], reward, done, milestone=100)
+    #print_milestone_info(state.info['step'], reward, done, milestone=100)
 
     state.info['last_act'] = action
     state.info['last_vel'] = joint_vel

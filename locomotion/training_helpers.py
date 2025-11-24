@@ -13,6 +13,7 @@ max_y, min_y = 40, 0
 Callback function to plot training progress.
 '''
 def progress(num_steps, metrics):
+  print("Evaluating progress now")
   times.append(datetime.now())
   x_data.append(num_steps)
   y_data.append(metrics['eval/episode_reward'])
