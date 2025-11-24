@@ -290,7 +290,7 @@ class BittleEnv(PipelineEnv):
     reward = jp.nan_to_num(reward, nan=0.0, posinf=0.0, neginf=0.0)
 
     jax.lax.cond(
-        jnp.any(state.info['step'] % 100 == 0),
+        jp.any(state.info['step'] % 100 == 0),
         lambda: print_environments_at_milestone(
             state.info['step'], reward, done, milestone=100
         ),
