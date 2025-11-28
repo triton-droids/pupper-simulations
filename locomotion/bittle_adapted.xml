@@ -4,7 +4,7 @@
 
   <!-- [ADDED] PID tuning -->
   <default>
-    <joint damping="2.0" frictionloss="0.5"/>
+    <joint damping="2.0" frictionloss="0.1"/>
   </default>
 
   <asset>
@@ -181,7 +181,7 @@
       <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="battery_1"/>
       <geom type="mesh" contype="0" conaffinity="0" rgba="0.7 0.7 0.7 1" mesh="battery_1"/>
       <body name="c_thrf__1" pos="0.0525 -0.0485 0.022">
-        <joint name="shrfs_joint" pos="0 0 0" axis="0 1 0"/>
+        <joint name="shrfs_joint" range="-3.14 3.14" pos="0 0 0" axis="0 1 0"/>
         <geom pos="-0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="c_thrf__1"/>
         <geom pos="-0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" rgba="0.7 0.7 0.7 1" mesh="c_thrf__1"/>
         <geom pos="-0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="th_rf_1"/>
@@ -197,7 +197,7 @@
         <geom pos="-0.0525 0.0485 -0.022" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screwm_4_1"/>
         <geom pos="-0.0525 0.0485 -0.022" type="mesh" contype="0" conaffinity="0" rgba="0.7 0.7 0.7 1" mesh="screwm_4_1"/>
         <body name="servos_rf_1" pos="-0.044433 0.00142 -0.011906">
-          <joint name="shrft_joint" pos="0 0 0" axis="0 1 0"/>
+          <joint name="shrft_joint" range="-3.14 3.14" pos="0 0 0" axis="0 1 0"/>
           <geom pos="-0.008067 0.04708 -0.010094" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="servos_rf_1"/>
           <geom pos="-0.008067 0.04708 -0.010094" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" rgba="0.7 0.7 0.7 1" mesh="servos_rf_1"/>
           <geom pos="-0.008067 0.04708 -0.010094" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="shank_rf_1"/>
@@ -210,7 +210,7 @@
         </body>
       </body>
       <body name="c_thrr_1" pos="-0.0525 -0.0485 0.022">
-        <joint name="shrrs_joint" pos="0 0 0" axis="0 -1 0"/>
+        <joint name="shrrs_joint" range="-3.14 3.14" pos="0 0 0" axis="0 -1 0"/>
         <geom pos="0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="c_thrr_1"/>
         <geom pos="0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" rgba="0.7 0.7 0.7 1" mesh="c_thrr_1"/>
         <geom pos="0.0525 0.0485 -0.022" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="th_rr_1"/>
@@ -226,7 +226,7 @@
         <geom pos="0.0525 0.0485 -0.022" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screwm_2_1"/>
         <geom pos="0.0525 0.0485 -0.022" type="mesh" contype="0" conaffinity="0" rgba="0.7 0.7 0.7 1" mesh="screwm_2_1"/>
         <body name="servos_rr_1" pos="-0.044433 0.00142 -0.011906">
-          <joint name="shrrt_joint" pos="0 0 0" axis="0 1 0"/>
+          <joint name="shrrt_joint" range="-3.14 3.14" pos="0 0 0" axis="0 1 0"/>
           <geom pos="0.096933 0.04708 -0.010094" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="servos_rr_1"/>
           <geom pos="0.096933 0.04708 -0.010094" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" rgba="0.7 0.7 0.7 1" mesh="servos_rr_1"/>
           <geom pos="0.096933 0.04708 -0.010094" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="shank_rr_1"/>
@@ -239,7 +239,7 @@
         </body>
       </body>
       <body name="servo_neck__1" pos="0.047554 0 0.035941">
-        <joint name="neck_joint" pos="0 0 0" axis="-0.5 0 -0.866025"/>
+        <joint name="neck_joint" range="-3.14 3.14" pos="0 0 0" axis="-0.5 0 -0.866025"/>
         <geom pos="-0.047554 0 -0.035941" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="servo_neck__1"/>
         <geom pos="-0.047554 0 -0.035941" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" rgba="0.7 0.7 0.7 1" mesh="servo_neck__1"/>
         <geom pos="-0.047554 0 -0.035941" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="jaw_1"/>
@@ -252,7 +252,7 @@
         <geom pos="-0.047554 0 -0.035941" type="mesh" contype="0" conaffinity="0" rgba="0.7 0.7 0.7 1" mesh="screw_4_1"/>
       </body>
       <body name="c_thlf_1" pos="0.0525 0.0485 0.022">
-        <joint name="shlfs_joint" pos="0 0 0" axis="0 1 0"/>
+        <joint name="shlfs_joint" range="-3.14 3.14" pos="0 0 0" axis="0 1 0"/>
         <geom pos="-0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="c_thlf_1"/>
         <geom pos="-0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" rgba="0.7 0.7 0.7 1" mesh="c_thlf_1"/>
         <geom pos="-0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="th_lf_1"/>
@@ -268,7 +268,7 @@
         <geom pos="-0.0525 -0.0485 -0.022" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screwm_5_1"/>
         <geom pos="-0.0525 -0.0485 -0.022" type="mesh" contype="0" conaffinity="0" rgba="0.7 0.7 0.7 1" mesh="screwm_5_1"/>
         <body name="servos_lf_1" pos="-0.044433 -0.00142 -0.011906">
-          <joint name="shlft_joint" pos="0 0 0" axis="0 1 0"/>
+          <joint name="shlft_joint" range="-3.14 3.14" pos="0 0 0" axis="0 1 0"/>
           <geom pos="-0.008067 -0.04708 -0.010094" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="servos_lf_1"/>
           <geom pos="-0.008067 -0.04708 -0.010094" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" rgba="0.7 0.7 0.7 1" mesh="servos_lf_1"/>
           <geom pos="-0.008067 -0.04708 -0.010094" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="shank_lf_1"/>
@@ -281,7 +281,7 @@
         </body>
       </body>
       <body name="c_thlr_1" pos="-0.0525 0.0485 0.022">
-        <joint name="shlrs_joint" pos="0 0 0" axis="0 -1 0"/>
+        <joint name="shlrs_joint" range="-3.14 3.14" pos="0 0 0" axis="0 -1 0"/>
         <geom pos="0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="c_thlr_1"/>
         <geom pos="0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" rgba="0.7 0.7 0.7 1" mesh="c_thlr_1"/>
         <geom pos="0.0525 -0.0485 -0.022" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="th_lr__1"/>
@@ -297,7 +297,7 @@
         <geom pos="0.0525 -0.0485 -0.022" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screwm_7_1"/>
         <geom pos="0.0525 -0.0485 -0.022" type="mesh" contype="0" conaffinity="0" rgba="0.7 0.7 0.7 1" mesh="screwm_7_1"/>
         <body name="servos_lr_1" pos="-0.044433 -0.001418 -0.011906">
-          <joint name="shlrt_joint" pos="0 0 0" axis="0 1 0"/>
+          <joint name="shlrt_joint" range="-3.14 3.14" pos="0 0 0" axis="0 1 0"/>
           <geom pos="0.096933 -0.047082 -0.010094" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="servos_lr_1"/>
           <geom pos="0.096933 -0.047082 -0.010094" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" rgba="0.7 0.7 0.7 1" mesh="servos_lr_1"/>
           <geom pos="0.096933 -0.047082 -0.010094" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="shank_lr_1"/>
