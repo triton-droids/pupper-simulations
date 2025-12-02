@@ -213,7 +213,7 @@ class BittleEnv(PipelineEnv):
     }
 
     obs_size = 1 + 3 + 3 + self._nu + self._nu + self._nu
-    obs_history = jp.zeros(3 * obs_size)
+    obs_history = jp.zeros(15 * obs_size)
     obs = self._get_obs(pipeline_state, state_info, obs_history)
     reward, done = jp.zeros(2)
     metrics = {'total_dist': 0.0}
