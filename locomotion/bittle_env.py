@@ -33,7 +33,7 @@ def get_config():
                     # Base state regularizations
                     #lin_vel_z=-2.0,
                     #ang_vel_xy=-0.05,
-                    orientation=-5.0,
+                    #orientation=-5.0,
                     # Joint regularizations
                     #torques=-0.0002,
                     #action_rate=-0.01,
@@ -275,7 +275,7 @@ class BittleEnv(PipelineEnv):
         'tracking_ang_vel': self._reward_tracking_ang_vel(state.info['command'], x, xd),
         #'lin_vel_z': self._reward_lin_vel_z(xd),
         #'ang_vel_xy': self._reward_ang_vel_xy(xd),
-        'orientation': self._reward_orientation(x),
+        #'orientation': self._reward_orientation(x),
         #'torques': self._reward_torques(pipeline_state.qfrc_actuator),
         #'action_rate': self._reward_action_rate(action, state.info['last_act']),
         #'stand_still': self._reward_stand_still(state.info['command'], joint_angles),
