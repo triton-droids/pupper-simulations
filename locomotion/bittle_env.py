@@ -28,7 +28,7 @@ def get_config():
             scales=config_dict.ConfigDict(
                 dict(
                     # Tracking rewards
-                    tracking_lin_vel=3.0,
+                    tracking_lin_vel=10.0,
                     tracking_ang_vel=0.05,
                     # Base state regularizations
                     #lin_vel_z=-2.0,
