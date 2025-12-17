@@ -31,21 +31,21 @@ def get_config():
                     tracking_lin_vel=1.5,
                     tracking_ang_vel=0.8,
                     # Base state regularizations
-                    #lin_vel_z=-2.0,
-                    #ang_vel_xy=-0.05,
-                    #orientation=-10.0,
+                    lin_vel_z=-2.0,
+                    ang_vel_xy=-0.05,
+                    orientation=-10.0,
                     # Joint regularizations
-                    #torques=-0.0002,
-                    #action_rate=-0.01,
-                    #joint_acc=-0.0025,  # Penalize joint acceleration (for smooth velocity changes)
+                    torques=-0.0002,
+                    action_rate=-0.01,
+                    joint_acc=-0.0025,  # Penalize joint acceleration (for smooth velocity changes)
                     # Behavior regularizations
-                    #stand_still=-0.5,
-                    #termination=-1.0,
+                    stand_still=-0.5,
+                    termination=-1.0,
                     # Feet rewards
-                    #feet_air_time=0.1,
-                    #foot_slip=-0.04,
+                    feet_air_time=0.1,
+                    foot_slip=-0.04,
                     # Energy efficiency
-                    #energy=-0.002,
+                    energy=-0.002,
                 )
             ),
             tracking_sigma=0.25,
@@ -260,19 +260,19 @@ class BittleEnv(PipelineEnv):
     rewards = {
         'tracking_lin_vel': self._reward_tracking_lin_vel(state.info['command'], x, xd),
         'tracking_ang_vel': self._reward_tracking_ang_vel(state.info['command'], x, xd),
-        #'lin_vel_z': self._reward_lin_vel_z(xd),
-        #'ang_vel_xy': self._reward_ang_vel_xy(xd),
-        #'orientation': self._reward_orientation(x),
-        #'torques': self._reward_torques(pipeline_state.qfrc_actuator),
-        #'action_rate': self._reward_action_rate(action, state.info['last_act']),
-        #'joint_acc': self._reward_joint_acc(joint_vel, state.info['last_joint_vel']),
-        #'stand_still': self._reward_stand_still(state.info['command'], joint_vel),
-        #'feet_air_time': self._reward_feet_air_time(
-        #    state.info['feet_air_time'], first_contact, state.info['command']
-        #),
-        #'foot_slip': self._reward_foot_slip(pipeline_state, contact_filt),
-        #'termination': self._reward_termination(done, state.info['step']),
-        #'energy': self._reward_energy(joint_vel, pipeline_state.qfrc_actuator),
+        'lin_vel_z': self._reward_lin_vel_z(xd),
+        'ang_vel_xy': self._reward_ang_vel_xy(xd),
+        'orientation': self._reward_orientation(x),
+        'torques': self._reward_torques(pipeline_state.qfrc_actuator),
+        'action_rate': self._reward_action_rate(action, state.info['last_act']),
+        'joint_acc': self._reward_joint_acc(joint_vel, state.info['last_joint_vel']),
+        'stand_still': self._reward_stand_still(state.info['command'], joint_vel),
+        'feet_air_time': self._reward_feet_air_time(
+            state.info['feet_air_time'], first_contact, state.info['command']
+        ),
+        'foot_slip': self._reward_foot_slip(pipeline_state, contact_filt),
+        'termination': self._reward_termination(done, state.info['step']),
+        'energy': self._reward_energy(joint_vel, pipeline_state.qfrc_actuator),
     }
     
     # Scale rewards
