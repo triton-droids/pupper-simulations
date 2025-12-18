@@ -70,7 +70,7 @@ class BittleEnv(PipelineEnv):
       xml_path: str,
       obs_noise: float = 0.05,
       action_scale: float = 5.0,  # Scale for velocity commands (rad/s)
-      kick_vel: float = 0.00, #Formerly 0.05
+      kick_vel: float = 0.05, #Formerly 0.05
       enable_kicks: bool = False,
       **kwargs,
   ):
