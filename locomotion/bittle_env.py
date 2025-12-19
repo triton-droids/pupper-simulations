@@ -71,7 +71,7 @@ class BittleEnv(PipelineEnv):
       obs_noise: float = 0.05,
       action_scale: float = 5.0,  # Scale for velocity commands (rad/s)
       kick_vel: float = 0.05, #Formerly 0.05
-      enable_kicks: bool = False,
+      enable_kicks: bool = True,
       **kwargs,
   ):
     sys = mjcf.load(xml_path)
@@ -80,7 +80,7 @@ class BittleEnv(PipelineEnv):
 
     # Keep damping on actuated joints
     sys = sys.replace(
-        dof_damping=sys.dof_damping.at[6:].set(0.5),
+        dof_damping=sys.dof_damping.at[6:].set(5),
     )
 
     n_frames = kwargs.pop('n_frames', int(self._dt / sys.opt.timestep))
@@ -174,7 +174,7 @@ class BittleEnv(PipelineEnv):
     
     # Initialize with default pose
     qpos = jp.zeros(self.sys.nq)
-    qpos = qpos.at[0:3].set(jp.array([0.0, 0.0, 0.05]))
+    qpos = qpos.at[0:3].set(jp.array([0.0, 0.0, 0.1]))
     qpos = qpos.at[3:7].set(jp.array([1.0, 0.0, 0.0, 0.0]))
     qpos = qpos.at[self._q_joint_start:].set(self._default_pose)
     
