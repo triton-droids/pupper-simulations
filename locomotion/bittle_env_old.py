@@ -119,6 +119,7 @@ class BittleEnv(PipelineEnv):
     self._nv = sys.nv
     self._nu = sys.nu
     
+    print("Running on Oren's Branch")
     print(f"Bittle has {sys.nu} actuators")
     print(f"Bittle has {sys.nq} position DOFs")
     print(f"Bittle has {sys.nv} velocity DOFs")

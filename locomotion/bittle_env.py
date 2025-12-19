@@ -33,7 +33,7 @@ def get_config():
                     # Base state regularizations
                     lin_vel_z=-2.0,
                     ang_vel_xy=-0.05,
-                    orientation=-10.0,
+                    orientation=-5.0,
                     # Joint regularizations
                     torques=-0.0002,
                     action_rate=-0.01,
