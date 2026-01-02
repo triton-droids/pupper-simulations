@@ -253,10 +253,10 @@ class BittleEnv(PipelineEnv):
 
     # Termination conditions
     up_vec = math.rotate(jp.array([0, 0, 1]), x.rot[self._base_body_id])
-    done = up_vec[2] < 0.3
-    done |= pipeline_state.x.pos[self._base_body_id, 2] < 0.06
-    done |= jp.any(joint_angles < self.pos_lowers - 0.1)
-    done |= jp.any(joint_angles > self.pos_uppers + 0.1)
+    done = up_vec[2] < 0.0
+    done |= pipeline_state.x.pos[self._base_body_id, 2] < 0.03
+    done |= jp.any(joint_angles < self.pos_lowers - 0.3)
+    done |= jp.any(joint_angles > self.pos_uppers + 0.3)
     
 
     # Rewards
