@@ -40,7 +40,7 @@ def get_config():
                     joint_acc=-0.0025,  # Penalize joint acceleration (for smooth velocity changes)
                     # Behavior regularizations
                     stand_still=-0.5,
-                    termination=-1.0,
+                    termination=-15.0,
                     # Feet rewards
                     feet_air_time=0.1,
                     foot_slip=-0.04,
