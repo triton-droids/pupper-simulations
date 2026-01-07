@@ -28,34 +28,24 @@ def get_config():
             scales=config_dict.ConfigDict(
                 dict(
                     # Tracking rewards
-                    #tracking_lin_vel=1.5,
-                    tracking_lin_vel=0.0,
-                    #tracking_ang_vel=0.8,
-                    tracking_ang_vel=0.0,
+                    tracking_lin_vel=1.5,
+                    tracking_ang_vel=0.8,
                     # Base state regularizations
-                    #lin_vel_z=-2.0,
-                    lin_vel_z=0.0,
-                    #ang_vel_xy=-0.05,
-                    ang_vel_xy=0.00,
-                    #orientation=-5.0,
-                    orientation=-1.0,
+                    lin_vel_z=-2.0,
+                    ang_vel_xy=-0.05,
+                    orientation=-5.0,
                     # Joint regularizations
                     torques=-0.0002,
                     action_rate=-0.01,
                     joint_acc=-0.0025,  # Penalize joint acceleration (for smooth velocity changes)
                     # Behavior regularizations
-                    #stand_still=-0.5,
-                    stand_still=0.0,
-                    #termination=-1.0,
-                    termination=-10.0,
+                    stand_still=-0.5,
+                    termination=-1.0,
                     # Feet rewards
-                    #feet_air_time=0.1,
-                    feet_air_time=0.0,
-                    #foot_slip=-0.04,
-                    foot_slip=0.00,
+                    feet_air_time=0.1,
+                    foot_slip=-0.04,
                     # Energy efficiency
-                    #energy=-0.002,
-                    energy=0.000,
+                    energy=-0.002,
                 )
             ),
             tracking_sigma=0.25,
@@ -185,7 +175,7 @@ class BittleEnv(PipelineEnv):
     
     # Initialize with default pose
     qpos = jp.zeros(self.sys.nq)
-    qpos = qpos.at[0:3].set(jp.array([0.0, 0.0, 0.1]))
+    qpos = qpos.at[0:3].set(jp.array([0.0, 0.0, 0.052]))
     qpos = qpos.at[3:7].set(jp.array([1.0, 0.0, 0.0, 0.0]))
     qpos = qpos.at[self._q_joint_start:].set(self._default_pose)
     
