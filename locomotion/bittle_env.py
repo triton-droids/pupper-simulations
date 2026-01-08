@@ -1,6 +1,6 @@
 """
-Bittle Quadruped Environment with Direct Velocity Control
-Policy outputs joint velocities, not positions.
+Bittle Quadruped Environment with Relative Position Control
+Policy outputs joint position offsets relative to default pose.
 """
 
 from typing import Any, List, Sequence
@@ -63,13 +63,13 @@ def get_config():
 
 
 class BittleEnv(PipelineEnv):
-  """Environment for Bittle quadruped with direct velocity control."""
+  """Environment for Bittle quadruped with relative position control."""
 
   def __init__(
       self,
       xml_path: str,
       obs_noise: float = 0.05,
-      action_scale: float = 5.0,  # Scale for velocity commands (rad/s)
+      action_scale: float = 1.5708,  # Scale for position offsets (rad, ±π/2)
       kick_vel: float = 0.05, #Formerly 0.05
       enable_kicks: bool = True,
       **kwargs,
@@ -94,7 +94,7 @@ class BittleEnv(PipelineEnv):
     # Find the base body
     self._base_body_id = mujoco.mj_name2id(sys.mj_model, mujoco.mjtObj.mjOBJ_BODY.value, 'base')
     
-    self._action_scale = action_scale  # Max velocity in rad/s
+    self._action_scale = action_scale  # Scale for position offsets (rad)
     self._obs_noise = obs_noise
     self._kick_vel = kick_vel
     self._enable_kicks = enable_kicks
@@ -103,11 +103,12 @@ class BittleEnv(PipelineEnv):
     self._nu = sys.nu
     
     print("Running on Oren's Branch")
-    print(f"Bittle has {sys.nu} actuators (velocity control)")
+    print(f"Bittle has {sys.nu} actuators (position control)")
     print(f"Bittle has {sys.nq} position DOFs")
     print(f"Bittle has {sys.nv} velocity DOFs")
     print(f"Base body ID: {self._base_body_id}")
-    print(f"Action scale: ±{self._action_scale} rad/s")
+    print(f"Action scale: ±{self._action_scale} rad (position offsets from default)")
+    print(f"Control mode: Relative position control")
     
     # Joint indices
     self._q_joint_start = 7   # Skip freejoint in q (7 DOFs)
@@ -132,9 +133,10 @@ class BittleEnv(PipelineEnv):
     # Joint position limits (for termination only, not control)
     self.pos_lowers = jp.array([-1.5] * sys.nu)
     self.pos_uppers = jp.array([1.5] * sys.nu)
-    
-    # Velocity limits (rad/s)
-    self.vel_limit = 10.0  # Should match ctrlrange in MJCF
+
+    # Joint limits for position control (matching MJCF ctrlrange)
+    self._joint_range_lower = jp.full(sys.nu, -3.14159)
+    self._joint_range_upper = jp.full(sys.nu, 3.14159)
     
     # Find lower leg bodies for foot contact detection
     lower_leg_names = [
@@ -207,10 +209,13 @@ class BittleEnv(PipelineEnv):
   def step(self, state: State, action: jax.Array) -> State:
     """
     Step the environment.
-    
+
     Args:
-      action: Joint velocity commands normalized to [-1, 1]
-              Will be scaled to [-action_scale, action_scale] rad/s
+      action: Joint position offsets normalized to [-1, 1]
+              Will be scaled to [-action_scale, action_scale] radians
+              and added to default pose to compute target positions.
+              Example: if default=0, action=0.5, action_scale=π/2
+              → target = 0 + (0.5 * π/2) = π/4
     """
     rng, cmd_rng, kick_rng = jax.random.split(state.info['rng'], 3)
 
@@ -221,12 +226,15 @@ class BittleEnv(PipelineEnv):
         jp.zeros(3)
     )
     
-    # Scale actions to velocity commands (rad/s)
-    velocity_commands = action * self._action_scale
-    velocity_commands = jp.clip(velocity_commands, -self.vel_limit, self.vel_limit)
-    
-    # Physics step with velocity commands
-    pipeline_state = self.pipeline_step(state.pipeline_state, velocity_commands)
+    # Scale actions to position offsets (radians)
+    position_offsets = action * self._action_scale
+    # Compute target positions RELATIVE TO DEFAULT POSE
+    target_positions = self._default_pose + position_offsets
+    # Clip to joint limits
+    target_positions = jp.clip(target_positions, self._joint_range_lower, self._joint_range_upper)
+
+    # Physics step with position commands
+    pipeline_state = self.pipeline_step(state.pipeline_state, target_positions)
     
     # Apply kick to base
     pipeline_state = pipeline_state.replace(

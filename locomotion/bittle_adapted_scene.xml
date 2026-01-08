@@ -23,9 +23,10 @@
     <geom name="floor" size="0 0 0.05" type="plane" material="groundplane"/>
   </worldbody>
   
+
   <!-- Home keyframe with standing pose -->
   <keyframe>
-    <key name="home" qpos="0 0 0.052 1 0 0 0 -0.31416 1.19381 0.188496 1.13098 -0.723 -0.47124 1.28806 0.345576 1.28806" />
+    <key name="home" qpos="0 0 0.07 1 0 0 0 -0.6908 1.9782 0.7222 1.9468 -0.596904 -0.6908 1.9782 0.7222 1.9468" />
   </keyframe>
 
   
