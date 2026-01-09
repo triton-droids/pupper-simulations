@@ -69,7 +69,7 @@ class BittleEnv(PipelineEnv):
       self,
       xml_path: str,
       obs_noise: float = 0.05,
-      action_scale: float = 1.5708,  # Scale for position offsets (rad, ±π/2)
+      action_scale: float = 0.3,  # Scale for position offsets (rad, ±π/2)
       kick_vel: float = 0.05, #Formerly 0.05
       enable_kicks: bool = True,
       **kwargs,
@@ -261,8 +261,8 @@ class BittleEnv(PipelineEnv):
 
     # Termination conditions
     up_vec = math.rotate(jp.array([0, 0, 1]), x.rot[self._base_body_id])
-    done = up_vec[2] < 0.0
-    done |= pipeline_state.x.pos[self._base_body_id, 2] < 0.03
+    done = up_vec[2] < 0.5
+    done |= pipeline_state.x.pos[self._base_body_id, 2] < 0.02
     done |= jp.any(joint_angles < self.pos_lowers - 0.3)
     done |= jp.any(joint_angles > self.pos_uppers + 0.3)
     
