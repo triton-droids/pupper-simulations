@@ -117,17 +117,17 @@ class BittleEnv(PipelineEnv):
     print(f"Joint positions in q: indices [{self._q_joint_start}:{self._q_joint_start + sys.nu}]")
     print(f"Joint velocities in qd: indices [{self._qd_joint_start}:{self._qd_joint_start + sys.nu}]")
     
-    # Default pose for reference
+    # Default pose for reference (from home keyframe)
     self._default_pose = jp.array([
-        -0.31416,   # shrfs
-        1.19381,    # shrft
-        0.188496,   # shrrs
-        1.13098,    # shrrt
-        -0.723,     # neck
-        -0.47124,   # shlfs
-        1.28806,    # shlft
-        0.345576,   # shlrs
-        1.28806,    # shlrt
+        -0.6908,    # shrfs
+        1.9782,     # shrft
+        0.7222,     # shrrs
+        1.9468,     # shrrt
+        -0.596904,  # neck
+        -0.6908,    # shlfs
+        1.9782,     # shlft
+        0.7222,     # shlrs
+        1.9468,     # shlrt
     ])
     
     # Joint position limits (for termination only, not control)
@@ -175,9 +175,9 @@ class BittleEnv(PipelineEnv):
   def reset(self, rng: jax.Array) -> State:
     rng, key = jax.random.split(rng)
     
-    # Initialize with default pose
+    # Initialize with default pose (from home keyframe)
     qpos = jp.zeros(self.sys.nq)
-    qpos = qpos.at[0:3].set(jp.array([0.0, 0.0, 0.052]))
+    qpos = qpos.at[0:3].set(jp.array([0.0, 0.0, 0.068]))
     qpos = qpos.at[3:7].set(jp.array([1.0, 0.0, 0.0, 0.0]))
     qpos = qpos.at[self._q_joint_start:].set(self._default_pose)
     
