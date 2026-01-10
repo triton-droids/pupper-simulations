@@ -1,12 +1,14 @@
-# Core dependencies for Bittle locomotion training
-mujoco==3.3.4
-ml_collections==1.1.0
-jax[cuda12]==0.8.0
-brax==0.13.0
-mediapy==1.2.4
 
-# Additional dependencies (already in brax/jax deps but explicit for clarity)
-numpy
+# Core dependencies for Bittle locomotion training (Python 3.9 ONLY)
+mujoco==3.2.1
+ml_collections==0.1.1
+jax[cuda12]==0.4.23
+jaxlib==0.4.23
+brax==0.10.5
+mediapy==1.2.0
+
+# Additional dependencies
+numpy<2.0
 matplotlib
 pillow
 tensorboardx
