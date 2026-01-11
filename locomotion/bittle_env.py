@@ -1,6 +1,6 @@
 """
-Bittle Quadruped Environment with Direct Velocity Control
-Policy outputs joint velocities, not positions.
+Bittle Quadruped Environment with Relative Position Control
+Policy outputs joint position offsets relative to default pose.
 """
 
 from typing import Any, List, Sequence
@@ -28,12 +28,12 @@ def get_config():
             scales=config_dict.ConfigDict(
                 dict(
                     # Tracking rewards
-                    tracking_lin_vel=1.5,
-                    tracking_ang_vel=0.8,
+                    tracking_lin_vel=2.5,
+                    tracking_ang_vel=1.5,
                     # Base state regularizations
                     lin_vel_z=-2.0,
                     ang_vel_xy=-0.05,
-                    orientation=-10.0,
+                    orientation=-5.0,
                     # Joint regularizations
                     torques=-0.0002,
                     action_rate=-0.01,
@@ -63,15 +63,15 @@ def get_config():
 
 
 class BittleEnv(PipelineEnv):
-  """Environment for Bittle quadruped with direct velocity control."""
+  """Environment for Bittle quadruped with relative position control."""
 
   def __init__(
       self,
       xml_path: str,
       obs_noise: float = 0.05,
-      action_scale: float = 5.0,  # Scale for velocity commands (rad/s)
-      kick_vel: float = 0.00, #Formerly 0.05
-      enable_kicks: bool = False,
+      action_scale: float = 1.5,  # Scale for position offsets (rad, ±π/2)
+      kick_vel: float = 0.05, #Formerly 0.05
+      enable_kicks: bool = True,
       **kwargs,
   ):
     sys = mjcf.load(xml_path)
@@ -80,7 +80,7 @@ class BittleEnv(PipelineEnv):
 
     # Keep damping on actuated joints
     sys = sys.replace(
-        dof_damping=sys.dof_damping.at[6:].set(0.5),
+        dof_damping=sys.dof_damping.at[6:].set(5),
     )
 
     n_frames = kwargs.pop('n_frames', int(self._dt / sys.opt.timestep))
@@ -94,7 +94,7 @@ class BittleEnv(PipelineEnv):
     # Find the base body
     self._base_body_id = mujoco.mj_name2id(sys.mj_model, mujoco.mjtObj.mjOBJ_BODY.value, 'base')
     
-    self._action_scale = action_scale  # Max velocity in rad/s
+    self._action_scale = action_scale  # Scale for position offsets (rad)
     self._obs_noise = obs_noise
     self._kick_vel = kick_vel
     self._enable_kicks = enable_kicks
@@ -102,10 +102,13 @@ class BittleEnv(PipelineEnv):
     self._nv = sys.nv
     self._nu = sys.nu
     
-    print(f"Bittle has {sys.nu} actuators (velocity control)")
+    print("Running on Oren's Branch")
+    print(f"Bittle has {sys.nu} actuators (position control)")
     print(f"Bittle has {sys.nq} position DOFs")
     print(f"Bittle has {sys.nv} velocity DOFs")
-    print(f"Action scale: ±{self._action_scale} rad/s")
+    print(f"Base body ID: {self._base_body_id}")
+    print(f"Action scale: ±{self._action_scale} rad (position offsets from default)")
+    print(f"Control mode: Relative position control")
     
     # Joint indices
     self._q_joint_start = 7   # Skip freejoint in q (7 DOFs)
@@ -114,25 +117,26 @@ class BittleEnv(PipelineEnv):
     print(f"Joint positions in q: indices [{self._q_joint_start}:{self._q_joint_start + sys.nu}]")
     print(f"Joint velocities in qd: indices [{self._qd_joint_start}:{self._qd_joint_start + sys.nu}]")
     
-    # Default pose for reference
+    # Default pose for reference (from home keyframe)
     self._default_pose = jp.array([
-        -0.31416,   # shrfs
-        1.19381,    # shrft
-        0.188496,   # shrrs
-        1.13098,    # shrrt
-        -0.723,     # neck
-        -0.47124,   # shlfs
-        1.28806,    # shlft
-        0.345576,   # shlrs
-        1.28806,    # shlrt
+        -0.6908,    # shrfs
+        1.9782,     # shrft
+        0.7222,     # shrrs
+        1.9468,     # shrrt
+        -0.596904,  # neck
+        -0.6908,    # shlfs
+        1.9782,     # shlft
+        0.7222,     # shlrs
+        1.9468,     # shlrt
     ])
     
     # Joint position limits (for termination only, not control)
     self.pos_lowers = jp.array([-1.5] * sys.nu)
     self.pos_uppers = jp.array([1.5] * sys.nu)
-    
-    # Velocity limits (rad/s)
-    self.vel_limit = 10.0  # Should match ctrlrange in MJCF
+
+    # Joint limits for position control (matching MJCF ctrlrange)
+    self._joint_range_lower = jp.full(sys.nu, -3.14159)
+    self._joint_range_upper = jp.full(sys.nu, 3.14159)
     
     # Find lower leg bodies for foot contact detection
     lower_leg_names = [
@@ -171,9 +175,9 @@ class BittleEnv(PipelineEnv):
   def reset(self, rng: jax.Array) -> State:
     rng, key = jax.random.split(rng)
     
-    # Initialize with default pose
+    # Initialize with default pose (from home keyframe)
     qpos = jp.zeros(self.sys.nq)
-    qpos = qpos.at[0:3].set(jp.array([0.0, 0.0, 0.05]))
+    qpos = qpos.at[0:3].set(jp.array([0.0, 0.0, 0.068]))
     qpos = qpos.at[3:7].set(jp.array([1.0, 0.0, 0.0, 0.0]))
     qpos = qpos.at[self._q_joint_start:].set(self._default_pose)
     
@@ -205,10 +209,13 @@ class BittleEnv(PipelineEnv):
   def step(self, state: State, action: jax.Array) -> State:
     """
     Step the environment.
-    
+
     Args:
-      action: Joint velocity commands normalized to [-1, 1]
-              Will be scaled to [-action_scale, action_scale] rad/s
+      action: Joint position offsets normalized to [-1, 1]
+              Will be scaled to [-action_scale, action_scale] radians
+              and added to default pose to compute target positions.
+              Example: if default=0, action=0.5, action_scale=π/2
+              → target = 0 + (0.5 * π/2) = π/4
     """
     rng, cmd_rng, kick_rng = jax.random.split(state.info['rng'], 3)
 
@@ -219,12 +226,15 @@ class BittleEnv(PipelineEnv):
         jp.zeros(3)
     )
     
-    # Scale actions to velocity commands (rad/s)
-    velocity_commands = action * self._action_scale
-    velocity_commands = jp.clip(velocity_commands, -self.vel_limit, self.vel_limit)
-    
-    # Physics step with velocity commands
-    pipeline_state = self.pipeline_step(state.pipeline_state, velocity_commands)
+    # Scale actions to position offsets (radians)
+    position_offsets = action * self._action_scale
+    # Compute target positions RELATIVE TO DEFAULT POSE
+    target_positions = self._default_pose + position_offsets
+    # Clip to joint limits
+    target_positions = jp.clip(target_positions, self._joint_range_lower, self._joint_range_upper)
+
+    # Physics step with position commands
+    pipeline_state = self.pipeline_step(state.pipeline_state, target_positions)
     
     # Apply kick to base
     pipeline_state = pipeline_state.replace(
@@ -251,10 +261,11 @@ class BittleEnv(PipelineEnv):
 
     # Termination conditions
     up_vec = math.rotate(jp.array([0, 0, 1]), x.rot[self._base_body_id])
-    done = up_vec[2] < 0.3
+    done = up_vec[2] < 0.5
     done |= pipeline_state.x.pos[self._base_body_id, 2] < 0.02
-    done |= jp.any(joint_angles < self.pos_lowers - 0.1)
-    done |= jp.any(joint_angles > self.pos_uppers + 0.1)
+    done |= jp.any(joint_angles < self.pos_lowers - 0.3)
+    done |= jp.any(joint_angles > self.pos_uppers + 0.3)
+    
 
     # Rewards
     rewards = {

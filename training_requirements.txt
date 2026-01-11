@@ -1,5 +1,7 @@
 mujoco==3.3.4
 ml_collections==1.1.0
 jax[cuda12]==0.8.0
+#jax[cuda12]==0.4.3
 brax==0.13.0
+#brax==0.12.1
 mediapy==1.2.4
