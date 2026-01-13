@@ -58,8 +58,8 @@ class TrainingConfig:
             self.num_timesteps = 10_000
             self.num_evals = 2
             self.episode_length = 100
-            self.num_envs = 4
-            self.batch_size = 4
+            self.num_envs = 128
+            self.batch_size = 128
             self.unroll_length = 5
             self.num_minibatches = 2
             self.num_updates_per_batch = 1
