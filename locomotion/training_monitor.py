@@ -245,8 +245,9 @@ class TrainingMonitor:
             # Run for ~5 seconds at 50Hz = 250 steps
             max_steps = 250
             for _ in range(max_steps):
+                rng, key_sample = jax.random.split(rng)
                 obs = state.obs
-                action, _ = jit_inference(obs)
+                action, _ = jit_inference(obs, key_sample)
                 state = jit_step(state, action)
                 states.append(state.pipeline_state)
 
