@@ -1,68 +1,139 @@
+import sys
+import logging
+import argparse
+from pathlib import Path
 from datetime import datetime
-import matplotlib.pyplot as plt
-import jax
+from typing import Any
 
-x_data = []
-y_data = []
-ydataerr = []
-times = [datetime.now()]
+from flax.training import orbax_utils
+from orbax import checkpoint as ocp
 
-max_y, min_y = 40, 0
+# ============================================================================
+# Logging Setup
+# ============================================================================
 
-'''
-Callback function to plot training progress.
-'''
-def progress(num_steps, metrics):
-  print("Evaluating progress now")
-  times.append(datetime.now())
-  x_data.append(num_steps)
-  y_data.append(metrics['eval/episode_reward'])
-  ydataerr.append(metrics['eval/episode_reward_std'])
+def setup_logging(output_dir: Path, level: int = logging.INFO) -> logging.Logger:
+    """
+    Set up comprehensive logging to both console and file.
+    
+    Args:
+        output_dir: Directory for log files
+        level: Logging level (default: INFO)
+    
+    Returns:
+        Configured logger
+    """
+    # Create logs directory
+    log_dir = output_dir / 'logs'
+    log_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Create logger
+    logger = logging.getLogger('bittle_training')
+    logger.setLevel(level)
+    
+    # Console handler with formatting
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(level)
+    console_formatter = logging.Formatter(
+        '%(asctime)s | %(levelname)-8s | %(message)s',
+        datefmt='%H:%M:%S'
+    )
+    console_handler.setFormatter(console_formatter)
+    
+    # File handler with detailed formatting
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    file_handler = logging.FileHandler(log_dir / f'training_{timestamp}.log')
+    file_handler.setLevel(logging.DEBUG)
+    file_formatter = logging.Formatter(
+        '%(asctime)s | %(levelname)-8s | %(name)s | %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    file_handler.setFormatter(file_formatter)
+    
+    # Add handlers
+    logger.addHandler(console_handler)
+    logger.addHandler(file_handler)
+    
+    return logger
 
-  plt.xlim([0, train_fn.keywords['num_timesteps'] * 1.25])
-  plt.ylim([min_y, max_y])
 
-  plt.xlabel('# environment steps')
-  plt.ylabel('reward per episode')
-  plt.title(f'y={y_data[-1]:.3f}')
+def policy_params_callback(output_dir: Path, logger: logging.Logger, monitor=None):
+    """
+    Create a callback for saving policy checkpoints.
 
-  plt.errorbar(
-      x_data, y_data, yerr=ydataerr)
-  plt.show()
+    Args:
+        output_dir: Base output directory
+        logger: Logger instance
+        monitor: TrainingMonitor instance to update with inference function
 
-'''
-Domain randomization for accurate sim-to-real transfer.
-'''
-def domain_randomize(sys, rng):
-  """Randomizes the mjx.Model."""
-  @jax.vmap
-  def rand(rng):
-    _, key = jax.random.split(rng, 2)
-    # friction
-    friction = jax.random.uniform(key, (1,), minval=0.6, maxval=1.4)
-    friction = sys.geom_friction.at[:, 0].set(friction)
-    # actuator
-    _, key = jax.random.split(key, 2)
-    gain_range = (-5, 5)
-    param = jax.random.uniform(
-        key, (1,), minval=gain_range[0], maxval=gain_range[1]
-    ) + sys.actuator_gainprm[:, 0]
-    gain = sys.actuator_gainprm.at[:, 0].set(param)
-    bias = sys.actuator_biasprm.at[:, 1].set(-param)
-    return friction, gain, bias
+    Returns:
+        Callback function
+    """
+    ckpt_path = (output_dir / 'checkpoints').resolve()
+    ckpt_path.mkdir(parents=True, exist_ok=True)
 
-  friction, gain, bias = rand(rng)
+    def callback(current_step: int, make_policy: Any, params: Any) -> None:
+        """Save checkpoint at current step."""
+        # Update monitor with inference function for video generation
+        if monitor is not None and monitor.make_inference_fn_cached is None:
+            monitor.make_inference_fn_cached = make_policy(params)
 
-  in_axes = jax.tree_util.tree_map(lambda x: None, sys)
-  in_axes = in_axes.tree_replace({
-      'geom_friction': 0,
-      'actuator_gainprm': 0,
-      'actuator_biasprm': 0,
-  })
+        orbax_checkpointer = ocp.PyTreeCheckpointer()
+        save_args = orbax_utils.save_args_from_target(params)
+        path = ckpt_path / f'step_{current_step:08d}'
+        orbax_checkpointer.save(path, params, force=True, save_args=save_args)
+        logger.info(f"Saved checkpoint to {path}")
 
-  sys = sys.tree_replace({
-      'geom_friction': friction,
-      'actuator_gainprm': gain,
-      'actuator_biasprm': bias,
-  })
-  return sys, in_axes
+    return callback
+
+# ============================================================================
+# Command Line Interface
+# ============================================================================
+
+def parse_args():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(
+        description='Train Bittle quadruped locomotion policy',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Quick test run
+  python train_bittle.py --test
+  
+  # Full training run
+  python train_bittle.py
+  
+  # Custom output directory
+  python train_bittle.py --output_dir ./experiments/run_001
+        """
+    )
+    
+    parser.add_argument(
+        '--test',
+        action='store_true',
+        help='Run in test mode (minimal training for fast iteration)'
+    )
+    
+    parser.add_argument(
+        '--xml_path',
+        type=str,
+        default='bittle_adapted_scene.xml',
+        help='Path to MuJoCo XML scene file (default: bittle_adapted_scene.xml)'
+    )
+    
+    parser.add_argument(
+        '--output_dir',
+        type=str,
+        default=None,
+        help='Output directory for checkpoints and logs (default: auto-generated)'
+    )
+    
+    parser.add_argument(
+        '--log_level',
+        type=str,
+        default='INFO',
+        choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'],
+        help='Logging level (default: INFO)'
+    )
+    
+    return parser.parse_args()

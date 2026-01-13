@@ -42,6 +42,12 @@ from orbax import checkpoint as ocp
 # Import custom environment
 from bittle_env import BittleEnv
 
+# Import custom modules
+from training_config import TrainingConfig
+from training_helpers import setup_logging, policy_params_callback
+from training_monitor import TrainingMonitor
+from domain_randomization import domain_randomize
+
 
 # ============================================================================
 # Configuration
@@ -701,15 +707,18 @@ Examples:
 def main():
     """Main entry point."""
     args = parse_args()
-    
+
     # Create output directory
     if args.output_dir is None:
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         mode = 'test' if args.test else 'train'
-        output_dir = Path(f'./outputs/bittle_{mode}_{timestamp}')
+        output_dir = Path(f'./outputs/bittle_{mode}_latest')
     else:
         output_dir = Path(args.output_dir)
-    
+
+    # Remove old run if it exists and create fresh directory
+    if output_dir.exists():
+        import shutil
+        shutil.rmtree(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # Set up logging
