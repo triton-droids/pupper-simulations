@@ -44,7 +44,7 @@ from bittle_env import BittleEnv
 
 # Import custom modules
 from training_config import TrainingConfig
-from training_helpers import setup_logging, policy_params_callback
+from training_helpers import setup_logging, policy_params_callback, parse_args
 from training_monitor import TrainingMonitor
 from domain_randomization import domain_randomize
 
