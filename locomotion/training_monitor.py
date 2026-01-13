@@ -7,8 +7,8 @@ from typing import Dict, Any, List
 import jax
 import numpy as np
 from matplotlib import pyplot as plt
-
-from brax.io import html
+import mediapy as media
+from brax.io import image
 
 # ============================================================================
 # Training Callbacks and Visualization
@@ -251,19 +251,24 @@ class TrainingMonitor:
                 state = jit_step(state, action)
                 states.append(state.pipeline_state)
 
-            # Generate HTML with video
-            html_path = self.videos_dir / f'video_step_{num_steps:08d}.html'
-            html_content = html.render(self.env.sys.tree_replace({'opt.timestep': self.env.sys.opt.timestep}), states)
+            # Render frames from states
+            self.logger.info("Rendering frames...")
+            frames = image.render_array(
+                self.env.sys,
+                states,
+                width=640,
+                height=480,
+                camera='track'
+            )
 
-            with open(html_path, 'w') as f:
-                f.write(html_content)
-
-            self.logger.info(f"Saved video to {html_path}")
+            # Save as MP4
+            video_path = self.videos_dir / f'video_step_{num_steps:08d}.mp4'
+            media.write_video(video_path, frames, fps=50)
+            self.logger.info(f"Saved video to {video_path}")
 
             # Also save as latest
-            latest_path = self.videos_dir / 'latest_video.html'
-            with open(latest_path, 'w') as f:
-                f.write(html_content)
+            latest_path = self.videos_dir / 'latest_video.mp4'
+            media.write_video(latest_path, frames, fps=50)
 
         except Exception as e:
             self.logger.warning(f"Failed to generate video: {e}")
