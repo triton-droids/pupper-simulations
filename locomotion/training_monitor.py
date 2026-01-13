@@ -1,5 +1,6 @@
 import logging
 import json
+import os
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, List
@@ -8,7 +9,7 @@ import jax
 import numpy as np
 from matplotlib import pyplot as plt
 import mediapy as media
-from brax.io import image
+import mujoco
 
 # ============================================================================
 # Training Callbacks and Visualization
@@ -228,10 +229,6 @@ class TrainingMonitor:
     def _generate_video(self, num_steps: int, metrics: Dict[str, Any]) -> None:
         """Generate and save a video of the current policy."""
         try:
-            import os
-            # Ensure EGL backend is used for headless rendering
-            os.environ['MUJOCO_GL'] = 'egl'
-
             self.logger.info("Generating video...")
 
             # Create inference function if not already created
@@ -255,16 +252,34 @@ class TrainingMonitor:
                 state = jit_step(state, action)
                 rollout.append(state.pipeline_state)
 
-            # Render frames from states using Brax's image rendering
+            # Render frames from states
             self.logger.info("Rendering frames...")
 
-            # Use brax.io.image which handles headless rendering
-            frames = image.render(
-                self.env.sys,
-                rollout,
-                height=480,
-                width=640,
-            )
+            # Create MuJoCo model from Brax system
+            mj_model = self.env.sys.mj_model
+
+            # Create renderer with EGL backend for headless rendering
+            renderer = mujoco.Renderer(mj_model, height=480, width=640)
+
+            frames = []
+            for pipeline_state in rollout:
+                # Create MuJoCo data from pipeline state
+                mj_data = mujoco.MjData(mj_model)
+                mj_data.qpos[:] = np.array(pipeline_state.q)
+                mj_data.qvel[:] = np.array(pipeline_state.qd)
+
+                # Forward kinematics
+                mujoco.mj_forward(mj_model, mj_data)
+
+                # Update renderer and capture frame
+                renderer.update_scene(mj_data)
+                pixels = renderer.render()
+                frames.append(pixels)
+
+            renderer.close()
+
+            # Convert to numpy array
+            frames = np.array(frames)
 
             # Save as MP4
             video_path = self.videos_dir / f'video_step_{num_steps:08d}.mp4'
