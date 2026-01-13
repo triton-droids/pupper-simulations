@@ -4,7 +4,7 @@ Document detailing the iterative process on simulating reinforcement learning po
 
 ## Setup
 
-See [SSH Setup](SSH_SETUP.md) for instructions on how to obtain a SSH key for the Triton Droids server
+Talk to a Triton Droids lead for instructions on how to obtain a SSH key for the Triton Droids server
 
 1. Connect to the remote server
 
@@ -23,7 +23,7 @@ cd orengershony/pupper-simulations/locomotion
 git pull
 ```
 
-2. Use the UV virtual environment to run the training script (see [train.py](../locomotion/train.py) for how to set up system arguments and custom configs)
+2. Use the UV virtual environment to run the training script (see [train.py](../locomotion/train.py), [training_config.py](../locomotion/training_config.py), and [training_helpers.py](../locomotion/training_helpers.py) for how to set up system arguments and custom configs)
 
 ```bash
 uv run train.py

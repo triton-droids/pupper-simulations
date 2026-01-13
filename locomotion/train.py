@@ -11,15 +11,18 @@ Usage:
 Examples:
     # Quick test run (minimal training)
     python train_bittle.py --test
-    
+
     # Full training run
     python train_bittle.py --config configs/bittle_default.py
-    
+
     # Custom output directory
     python train_bittle.py --output_dir ./experiments/run_001
 """
 
 import os
+# Set MuJoCo rendering backend BEFORE importing any MuJoCo/Brax modules
+os.environ['MUJOCO_GL'] = 'egl'
+
 import sys
 import argparse
 import logging
@@ -91,12 +94,7 @@ def train_bittle(
     for i, device in enumerate(devices):
         logger.info(f"  Device {i}: {device}")
     logger.info("")
-    
-    # Set MuJoCo rendering backend
-    os.environ['MUJOCO_GL'] = 'egl'
-    logger.info("Set MUJOCO_GL=egl for rendering")
-    logger.info("")
-    
+
     # Register environment
     envs.register_environment('bittle', BittleEnv)
     logger.info("Registered Bittle environment")

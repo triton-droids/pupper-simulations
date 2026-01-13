@@ -100,37 +100,6 @@ This will:
 2. Load the Bittle robot model
 3. Launch the interactive 3D viewer
 
-### Training
-
-To train a locomotion policy:
-
-```bash
-cd locomotion
-jupyter notebook training.ipynb
-```
-
-Or use the Python environment directly:
-
-```python
-from bittle_env import BittleEnv, get_config
-
-# Create environment
-config = get_config()
-env = BittleEnv(config=config)
-
-# Train using Brax PPO or other RL algorithms
-```
-
-### Model Conversion
-
-The project includes utilities to convert URDF models to MuJoCo's MJCF format:
-
-```python
-from visualization.model_converter import convert_to_MJCF
-
-convert_to_MJCF(urdf_path, mjcf_path, assets_path, body_path)
-```
-
 ## Dependencies
 
 ### Core Dependencies
