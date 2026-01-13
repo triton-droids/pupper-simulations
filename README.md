@@ -19,29 +19,33 @@ This project provides simulation and reinforcement learning environments for the
 
 ### Prerequisites
 
-- Python 3.13 (or compatible version)
+- Python 3.12 (or compatible version)
 - CUDA 12 support (for GPU-accelerated training)
 
 ### Setup
 
 1. Clone the repository:
+
 ```bash
 git clone <repository-url>
 cd pupper-simulations
 ```
 
 2. Create and activate a virtual environment:
+
 ```bash
 python -m venv simulations-env
 source simulations-env/bin/activate  # On Windows: simulations-env\Scripts\activate
 ```
 
 3. Install basic dependencies:
+
 ```bash
 pip install -r requirements.txt
 ```
 
 4. Install training dependencies (optional, for reinforcement learning):
+
 ```bash
 pip install -r training_requirements.txt
 ```
@@ -91,6 +95,7 @@ python main.py
 ```
 
 This will:
+
 1. Convert URDF to MJCF if necessary
 2. Load the Bittle robot model
 3. Launch the interactive 3D viewer
@@ -129,11 +134,13 @@ convert_to_MJCF(urdf_path, mjcf_path, assets_path, body_path)
 ## Dependencies
 
 ### Core Dependencies
+
 - `numpy==2.3.4` - Numerical computing
 - `mujoco==3.3.4` - Physics simulation engine
 - `xacrodoc==1.3.0` - URDF/Xacro processing
 
 ### Training Dependencies
+
 - `jax[cuda12]==0.8.0` - GPU-accelerated numerical computing
 - `brax==0.13.0` - Reinforcement learning library
 - `ml_collections==1.1.0` - Configuration management
