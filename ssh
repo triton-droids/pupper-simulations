@@ -8,3 +8,9 @@ uv run train.py (--test if testing)
 scp -r orengershony@10.50.2.80:/home/tritondroids/orengershony/pupper-simulations/outputs/bittle_test_latest/videos/ ~/Downloads/
 
 scp -r orengershony@10.50.2.80:/home/tritondroids/orengershony/pupper-simulations/outputs/bittle_train_latest/ ~/Downloads/
+
+#Create a remote server
+uv run python -m http.server 8000
+
+#Access the remote server from local machine
+ssh -L 8000:localhost:8000 -i ~/.ssh/oren-ssh-key tritondroids@132.249.64.152
