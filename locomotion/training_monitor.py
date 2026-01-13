@@ -228,6 +228,10 @@ class TrainingMonitor:
     def _generate_video(self, num_steps: int, metrics: Dict[str, Any]) -> None:
         """Generate and save a video of the current policy."""
         try:
+            import os
+            # Ensure EGL backend is used for headless rendering
+            os.environ['MUJOCO_GL'] = 'egl'
+
             self.logger.info("Generating video...")
 
             # Create inference function if not already created
@@ -240,7 +244,7 @@ class TrainingMonitor:
 
             rng = jax.random.PRNGKey(0)
             state = jit_reset(rng)
-            states = [state.pipeline_state]
+            rollout = [state.pipeline_state]
 
             # Run for ~5 seconds at 50Hz = 250 steps
             max_steps = 250
@@ -249,16 +253,17 @@ class TrainingMonitor:
                 obs = state.obs
                 action, _ = jit_inference(obs, key_sample)
                 state = jit_step(state, action)
-                states.append(state.pipeline_state)
+                rollout.append(state.pipeline_state)
 
-            # Render frames from states
+            # Render frames from states using Brax's image rendering
             self.logger.info("Rendering frames...")
-            frames = image.render_array(
+
+            # Use brax.io.image which handles headless rendering
+            frames = image.render(
                 self.env.sys,
-                states,
-                width=640,
+                rollout,
                 height=480,
-                camera='track'
+                width=640,
             )
 
             # Save as MP4
