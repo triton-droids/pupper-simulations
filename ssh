@@ -1,0 +1,6 @@
+
+#Run train.py
+uv run train.py (--test if testing)
+
+#Download output directory to local machine
+rsync -avz --progress username@remote-server:/home/tritondroids/orengershony/pupper-simulations/outputs/ ~/Downloads/bittle_outputs/

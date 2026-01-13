@@ -35,7 +35,7 @@ from matplotlib import pyplot as plt
 
 from brax import envs
 from brax.training.agents.ppo import train as ppo
-from brax.io import model
+from brax.io import model, html
 from flax.training import orbax_utils
 from orbax import checkpoint as ocp
 
@@ -144,26 +144,32 @@ def setup_logging(output_dir: Path, level: int = logging.INFO) -> logging.Logger
 
 class TrainingMonitor:
     """Monitor training progress with metrics tracking and visualization."""
-    
-    def __init__(self, output_dir: Path, num_timesteps: int, logger: logging.Logger):
+
+    def __init__(self, output_dir: Path, num_timesteps: int, logger: logging.Logger, env=None, make_inference_fn=None):
         self.output_dir = output_dir
         self.num_timesteps = num_timesteps
         self.logger = logger
-        
+        self.env = env
+        self.make_inference_fn_cached = None
+
         # Tracking data
         self.x_data: List[int] = []
         self.y_data: List[float] = []
         self.y_std_data: List[float] = []
         self.times: List[datetime] = [datetime.now()]
         self.all_metrics: List[Dict[str, float]] = []
-        
+
         # Create plots directory
         self.plots_dir = output_dir / 'plots'
         self.plots_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Metrics directory
         self.metrics_dir = output_dir / 'metrics'
         self.metrics_dir.mkdir(parents=True, exist_ok=True)
+
+        # Videos directory
+        self.videos_dir = output_dir / 'videos'
+        self.videos_dir.mkdir(parents=True, exist_ok=True)
     
     def __call__(self, num_steps: int, metrics: Dict[str, Any]) -> None:
         """
@@ -213,9 +219,13 @@ class TrainingMonitor:
         
         # Generate plots
         self._plot_progress(num_steps, metrics)
-        
+
         # Save metrics to JSON
         self._save_metrics(num_steps)
+
+        # Generate video if we have the necessary components
+        if self.env is not None and self.make_inference_fn_cached is not None:
+            self._generate_video(num_steps, metrics)
     
     def _plot_progress(self, num_steps: int, metrics: Dict[str, Any]) -> None:
         """Generate and save training progress plots."""
@@ -342,7 +352,49 @@ class TrainingMonitor:
             json.dump(metrics_data, f, indent=2)
         
         self.logger.debug(f"Saved metrics to {metrics_path}")
-    
+
+    def _generate_video(self, num_steps: int, metrics: Dict[str, Any]) -> None:
+        """Generate and save a video of the current policy."""
+        try:
+            self.logger.info("Generating video...")
+
+            # Create inference function if not already created
+            inference_fn = self.make_inference_fn_cached
+
+            # Run a single episode to collect states
+            jit_reset = jax.jit(self.env.reset)
+            jit_step = jax.jit(self.env.step)
+            jit_inference = jax.jit(inference_fn)
+
+            rng = jax.random.PRNGKey(0)
+            state = jit_reset(rng)
+            states = [state.pipeline_state]
+
+            # Run for ~5 seconds at 50Hz = 250 steps
+            max_steps = 250
+            for _ in range(max_steps):
+                obs = state.obs
+                action, _ = jit_inference(obs)
+                state = jit_step(state, action)
+                states.append(state.pipeline_state)
+
+            # Generate HTML with video
+            html_path = self.videos_dir / f'video_step_{num_steps:08d}.html'
+            html_content = html.render(self.env.sys.tree_replace({'opt.timestep': self.env.sys.opt.timestep}), states)
+
+            with open(html_path, 'w') as f:
+                f.write(html_content)
+
+            self.logger.info(f"Saved video to {html_path}")
+
+            # Also save as latest
+            latest_path = self.videos_dir / 'latest_video.html'
+            with open(latest_path, 'w') as f:
+                f.write(html_content)
+
+        except Exception as e:
+            self.logger.warning(f"Failed to generate video: {e}")
+
     def get_summary(self) -> Dict[str, Any]:
         """Get summary statistics from training."""
         if not self.y_data:
@@ -359,28 +411,33 @@ class TrainingMonitor:
         }
 
 
-def policy_params_callback(output_dir: Path, logger: logging.Logger):
+def policy_params_callback(output_dir: Path, logger: logging.Logger, monitor=None):
     """
     Create a callback for saving policy checkpoints.
-    
+
     Args:
         output_dir: Base output directory
         logger: Logger instance
-    
+        monitor: TrainingMonitor instance to update with inference function
+
     Returns:
         Callback function
     """
-    ckpt_path = output_dir / 'checkpoints'
+    ckpt_path = (output_dir / 'checkpoints').resolve()
     ckpt_path.mkdir(parents=True, exist_ok=True)
-    
+
     def callback(current_step: int, make_policy: Any, params: Any) -> None:
         """Save checkpoint at current step."""
+        # Update monitor with inference function for video generation
+        if monitor is not None and monitor.make_inference_fn_cached is None:
+            monitor.make_inference_fn_cached = make_policy(params)
+
         orbax_checkpointer = ocp.PyTreeCheckpointer()
         save_args = orbax_utils.save_args_from_target(params)
         path = ckpt_path / f'step_{current_step:08d}'
         orbax_checkpointer.save(path, params, force=True, save_args=save_args)
         logger.info(f"Saved checkpoint to {path}")
-    
+
     return callback
 
 
@@ -500,10 +557,10 @@ def train_bittle(
     logger.info("")
     
     # Set up monitoring
-    monitor = TrainingMonitor(output_dir, config.num_timesteps, logger)
-    
+    monitor = TrainingMonitor(output_dir, config.num_timesteps, logger, env=env)
+
     # Set up checkpoint callback
-    checkpoint_callback = policy_params_callback(output_dir, logger)
+    checkpoint_callback = policy_params_callback(output_dir, logger, monitor=monitor)
     
     # Start training
     logger.info("Starting training...")
