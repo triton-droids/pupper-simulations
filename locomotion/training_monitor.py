@@ -8,7 +8,7 @@ from typing import Dict, Any, List
 import jax
 import numpy as np
 from matplotlib import pyplot as plt
-import mediapy as media
+import cv2
 import mujoco
 
 # ============================================================================
@@ -278,20 +278,49 @@ class TrainingMonitor:
 
             renderer.close()
 
-            # Convert to numpy array
-            frames = np.array(frames)
-
-            # Save as MP4
+            # Save video using OpenCV
             video_path = self.videos_dir / f'video_step_{num_steps:08d}.mp4'
-            media.write_video(video_path, frames, fps=50)
+            self._write_video_opencv(frames, video_path, fps=50)
             self.logger.info(f"Saved video to {video_path}")
 
             # Also save as latest
             latest_path = self.videos_dir / 'latest_video.mp4'
-            media.write_video(latest_path, frames, fps=50)
+            self._write_video_opencv(frames, latest_path, fps=50)
 
         except Exception as e:
             self.logger.warning(f"Failed to generate video: {e}")
+
+    def _write_video_opencv(self, frames: List[np.ndarray], output_path: Path, fps: int = 50) -> None:
+        """
+        Write video using OpenCV VideoWriter.
+        
+        Args:
+            frames: List of frames (H, W, C) in RGB format
+            output_path: Path to save the video
+            fps: Frames per second
+        """
+        if not frames:
+            raise ValueError("No frames to write")
+        
+        # Get frame dimensions
+        height, width, channels = frames[0].shape
+        
+        # Define the codec and create VideoWriter object
+        # Use mp4v codec for MP4 files
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        out = cv2.VideoWriter(str(output_path), fourcc, fps, (width, height))
+        
+        if not out.isOpened():
+            raise RuntimeError(f"Failed to open video writer for {output_path}")
+        
+        # Write frames (convert RGB to BGR for OpenCV)
+        for frame in frames:
+            # Convert RGB to BGR
+            frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            out.write(frame_bgr)
+        
+        # Release the VideoWriter
+        out.release()
 
     def get_summary(self) -> Dict[str, Any]:
         """Get summary statistics from training."""
