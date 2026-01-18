@@ -27,7 +27,6 @@ dependencies = [
     # "jax[cuda12]==0.8.0",
     "brax==0.13.0",
     "opencv-python>=4.8.0",
-    "mediapy==1.2.4",
 ]
 
 [project.optional-dependencies]

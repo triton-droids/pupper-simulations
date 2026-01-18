@@ -30,6 +30,10 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, List
 import json
+import warnings
+
+# Suppress JAX overflow warning in type casting
+warnings.filterwarnings('ignore', message='overflow encountered in cast')
 
 import jax
 import jax.numpy as jp
