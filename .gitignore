@@ -1,4 +1,4 @@
-simulations-env/
+.venv/
 renderingEnv/
 .DS_Store
 
@@ -7,3 +7,5 @@ renderingEnv/
 __pycache__/
 
 MUJOCO_LOG.TXT
+
+ssh

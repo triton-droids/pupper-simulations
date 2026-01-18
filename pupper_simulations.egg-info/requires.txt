@@ -1,0 +1,17 @@
+numpy==2.3.4
+mujoco==3.3.4
+xacrodoc==1.3.0
+ml_collections==1.1.0
+brax==0.13.0
+opencv-python>=4.8.0
+mediapy==1.2.4
+
+[dev]
+jupyter
+notebook
+ipython
+
+[training]
+matplotlib
+pillow
+tensorboardx

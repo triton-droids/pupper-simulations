@@ -1,6 +1,7 @@
 '''
 Helper script to test whether the environment builds or not
 '''
+
 from bittle_env import BittleEnv
 
 from brax import envs
