@@ -27,6 +27,7 @@ dependencies = [
     "jax[cuda12]==0.8.2",
     "brax==0.13.0",
     "opencv-python>=4.8.0",
+    "matplotlib==3.10.8",
 ]
 
 [project.optional-dependencies]
