@@ -69,7 +69,7 @@ class BittleEnv(PipelineEnv):
       self,
       xml_path: str,
       obs_noise: float = 0.05,
-      action_scale: float = 1.5,  # Scale for position offsets (rad, ±π/2)
+      action_scale: float = 1.2,  # Scale for position offsets (rad, ±π/2)
       kick_vel: float = 0.05, #Formerly 0.05
       enable_kicks: bool = True,
       **kwargs,
