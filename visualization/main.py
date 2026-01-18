@@ -37,8 +37,7 @@ if __name__ == "__main__":
     logger.info(f"Model stats: {model.nbody} bodies, {model.njnt} joints, "
                 f"{model.nv} DOF, {model.nu} actuators, {model.nmesh} meshes")
     
-    # Launch viewer
-    logger.info("Launching Mujoco viewer")
+
     mujoco.viewer.launch(model, data)
 
     
