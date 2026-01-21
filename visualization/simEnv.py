@@ -5,7 +5,7 @@ import numpy as np
 from typing import Callable, NamedTuple, Optional, Union, List
 
 # Graphics and plotting.
-import mediapy as media
+import cv2
 import matplotlib.pyplot as plt
 
 # More legible printing from numpy.
@@ -27,7 +27,6 @@ import numpy as np
 from flax.training import orbax_utils
 from flax import struct
 from matplotlib import pyplot as plt
-import mediapy as media
 from orbax import checkpoint as ocp
 
 import mujoco
@@ -65,5 +64,28 @@ while mj_data.time < duration:
     pixels = renderer.render()
     frames.append(pixels)
 
-# Simulate and display video.
-media.show_video(frames, fps=framerate)
+# Save video using OpenCV
+def save_video_opencv(frames, output_path, fps=60):
+    """Save video frames to file using OpenCV."""
+    if not frames:
+        print("No frames to save")
+        return
+
+    height, width, channels = frames[0].shape
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+
+    if not out.isOpened():
+        print(f"Failed to open video writer for {output_path}")
+        return
+
+    for frame in frames:
+        # Convert RGB to BGR for OpenCV
+        frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+        out.write(frame_bgr)
+
+    out.release()
+    print(f"Video saved to {output_path}")
+
+# Save video to file
+save_video_opencv(frames, "simulation_output.mp4", fps=framerate)
