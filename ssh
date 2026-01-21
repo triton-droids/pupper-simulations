@@ -15,4 +15,4 @@ uv run python -m http.server 8000
 #Access the remote server from local machine
 ssh -L 8000:localhost:8000 -i ~/.ssh/oren-ssh-key tritondroids@132.249.64.152
 
-scp -i ~/.ssh/oren-ssh-key -r tritondroids@132.249.64.152:/pupper-simulations/locomotion/outputs/* ./outputs/
+curl -O http://localhost:8000/orengershony/pupper-simulations/locomotion/outputs/bittle_train_latest/videos/latest_video.mp4
