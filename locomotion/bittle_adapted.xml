@@ -6,6 +6,9 @@
   <default>
     <!-- <joint damping="15.0" frictionloss="1.0"/> -->
     <joint damping="2.0" frictionloss="1.0"/>
+    <!-- Leg contact params -->
+    <geom solref="0.005 1.5" solimp="0.95 0.97 0.001" 
+      friction="1.5 0.005 0.0005"/>
   </default>
 
   <asset>
