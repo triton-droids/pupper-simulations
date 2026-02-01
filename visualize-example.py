@@ -17,32 +17,45 @@ from debug import format_obs_detailed, policies, height_policies
 from policy_exporter import save_as_gif, save_as_mp4
 
 # Parse command line arguments
-parser = argparse.ArgumentParser(description='Generate validation videos for humanoid environments')
-parser.add_argument('--duration', type=float, default=5.0,
-                    help='Video duration in seconds (default: 5.0)')
-parser.add_argument('--fps', type=int, default=50,
-                    help='Frames per second (default: 50)')
-parser.add_argument('--policy', type=str, default=None,
-                    help='Path to policy .pth file (default: None, uses standing pose policy)')
+parser = argparse.ArgumentParser(
+    description="Generate validation videos for humanoid environments"
+)
+parser.add_argument(
+    "--duration",
+    type=float,
+    default=5.0,
+    help="Video duration in seconds (default: 5.0)",
+)
+parser.add_argument(
+    "--fps", type=int, default=50, help="Frames per second (default: 50)"
+)
+parser.add_argument(
+    "--policy",
+    type=str,
+    default=None,
+    help="Path to policy .pth file (default: None, uses standing pose policy)",
+)
 args = parser.parse_args()
 
 include_height = args.policy in height_policies if args.policy is not None else False
 
 
-
-# Import appropriate environment (default to disturbance)
+# Import appropriate environment  (default to disturbance)
 if args.policy:
     env_name = policies[args.policy]
     if env_name == "locomotion_env":
         from envs.locomotion_env import HumanoidLocomotionEnv as Env
+
         env_name = "Locomotion"
         print("Using locomotion_env.py")
     else:
         from envs.disturbance_env import HumanoidDisturbanceEnv as Env
+
         env_name = "Disturbance"
         print("Using disturbance_env.py")
 else:
     from envs.disturbance_env import HumanoidDisturbanceEnv as Env
+
     env_name = "Disturbance"
     print("Using disturbance_env.py")
 
@@ -50,7 +63,7 @@ else:
 env = Env(xml_path="robot_description/scene.xml", include_height=include_height)
 obs = env.reset()
 
-#Debugging
+# Debugging
 torso_quat = env.data.xquat[env._torso_body_id]
 up_world = np.array([0, 0, 1.0])
 up_b = env._rotate_vector(up_world, torso_quat, inverse=True)
@@ -70,14 +83,14 @@ print(f"Action dimension: {action_dim}")
 use_trained_policy = args.policy is not None
 
 # Setup policy based on mode
-if use_trained_policy: 
-    policy = torch.jit.load(args.policy, map_location = "cpu")
+if use_trained_policy:
+    policy = torch.jit.load(args.policy, map_location="cpu")
     policy.eval()
     print("Using trained policy")
 
 else:
     # Use standing pose policy
-    standing_joint_positions = env._standing_qpos[env._q_joint_start:]
+    standing_joint_positions = env._standing_qpos[env._q_joint_start :]
     standing_actions = standing_joint_positions / env._action_scale
     print(f"Using standing policy")
     policy = None
@@ -98,18 +111,19 @@ if use_trained_policy:
             # Get action from policy
             action_tensor = policy(obs_tensor)
 
-
             if step == 0:
                 print(f"First action from trained policy: {action_tensor}")
 
-            action = action_tensor.squeeze(0).numpy()  # Remove batch dimension, convert to numpy
+            action = action_tensor.squeeze(
+                0
+            ).numpy()  # Remove batch dimension, convert to numpy
 
             # Clip action to valid range
             action = np.clip(action, -1.0, 1.0)
 
             # Step environment
             obs = env.step(action)
-            #print(obs)
+            # print(obs)
             frames.append(env.render())
 
             if (step + 1) % args.fps == 0:
@@ -141,10 +155,10 @@ save_as_gif(frames, gif_filename, args.fps)
 mp4_filename = f"output/test_{env_name.lower()}_{policy_suffix}.mp4"
 save_as_mp4(frames, mp4_filename, args.fps)
 
-print(f"\n{'='*60}")
+print(f"\n{'=' * 60}")
 print(f"Environment: {env_name}")
 print(f"Policy: {args.policy if use_trained_policy else 'Standing pose'}")
 print(f"Duration: {args.duration}s @ {args.fps} FPS")
 print(f"GIF: {gif_filename}")
 print(f"MP4: {mp4_filename}")
-print(f"{'='*60}")
+print(f"{'=' * 60}")
