@@ -30,8 +30,6 @@ git push -u origin $BRANCH_NAME
 # SSH into node
 echo "Connecting to remote server at $DROIDS_IP_ADDRESS"
 
-ssh -i $SSH_KEY_PATH $DROIDS_IP_ADDRESS
-
 ssh -i "$SSH_KEY_PATH" "$DROIDS_IP_ADDRESS" << 'EOF'
   set -e
 
