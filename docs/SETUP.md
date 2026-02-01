@@ -125,8 +125,6 @@ The `train.sh` script automates deploying your code to the remote server and sta
 **Usage:**
 
 ```bash
-brew install sshpass    # You may need to install sshpass first to use these deployment scripts
-
 ./train.sh              # Full training (10M timesteps, ~30 minutes)
 ./train.sh --test       # Test run (10K timesteps, ~6 minutes)
 ```
