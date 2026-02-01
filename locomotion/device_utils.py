@@ -7,6 +7,7 @@ Utilities for managing JAX device allocation and limiting.
 
 import os
 import subprocess
+import sys
 from typing import Optional
 
 
@@ -21,10 +22,17 @@ def setup_device_limit() -> Optional[int]:
     Returns:
         Number of devices that will be used, or None if detection failed
     """
+    print("=" * 80, file=sys.stderr)
+    print("DEVICE SETUP", file=sys.stderr)
+    print("=" * 80, file=sys.stderr)
+
     # Check if CUDA_VISIBLE_DEVICES is already set
     if "CUDA_VISIBLE_DEVICES" in os.environ:
-        visible_devices = os.environ["CUDA_VISIBLE_DEVICES"].split(",")
+        existing_value = os.environ["CUDA_VISIBLE_DEVICES"]
+        visible_devices = [d.strip() for d in existing_value.split(",") if d.strip()]
         num_visible = len(visible_devices)
+        print(f"CUDA_VISIBLE_DEVICES already set: {existing_value}", file=sys.stderr)
+        print(f"Detected {num_visible} pre-configured devices", file=sys.stderr)
     else:
         # Try to detect GPU count using nvidia-smi
         try:
@@ -38,11 +46,20 @@ def setup_device_limit() -> Optional[int]:
                 gpu_lines = [line for line in result.stdout.strip().split("\n") if line]
                 num_visible = len(gpu_lines)
                 visible_devices = [str(i) for i in range(num_visible)]
+                print(f"nvidia-smi detected {num_visible} GPUs", file=sys.stderr)
             else:
-                # Can't detect GPUs, let JAX handle it
+                print(f"nvidia-smi failed with return code {result.returncode}", file=sys.stderr)
+                print(f"stderr: {result.stderr}", file=sys.stderr)
+                print("Skipping device limiting - letting JAX auto-detect", file=sys.stderr)
+                print("=" * 80, file=sys.stderr)
                 return None
-        except (subprocess.TimeoutExpired, FileNotFoundError):
-            # nvidia-smi not available or timeout, let JAX handle it
+        except FileNotFoundError:
+            print("nvidia-smi not found - skipping device limiting", file=sys.stderr)
+            print("=" * 80, file=sys.stderr)
+            return None
+        except subprocess.TimeoutExpired:
+            print("nvidia-smi timeout - skipping device limiting", file=sys.stderr)
+            print("=" * 80, file=sys.stderr)
             return None
 
     # Calculate maximum number divisible by 4
@@ -52,17 +69,17 @@ def setup_device_limit() -> Optional[int]:
         # Limit to first num_to_use devices
         devices_to_use = ",".join(visible_devices[:num_to_use])
         os.environ["CUDA_VISIBLE_DEVICES"] = devices_to_use
-        print(
-            f"Device limiting: {num_visible} GPUs available, using {num_to_use} (max divisible by 4)"
-        )
+        print(f"✓ Limiting to {num_to_use}/{num_visible} GPUs (max divisible by 4)", file=sys.stderr)
+        print(f"✓ Set CUDA_VISIBLE_DEVICES={devices_to_use}", file=sys.stderr)
+        print("=" * 80, file=sys.stderr)
         return num_to_use
     elif num_to_use == 0:
         # Less than 4 devices, use what we have
-        print(
-            f"Device limiting: Only {num_visible} GPUs available (less than 4), using all"
-        )
+        print(f"⚠ Only {num_visible} GPUs available (less than 4) - using all", file=sys.stderr)
+        print("=" * 80, file=sys.stderr)
         return num_visible
     else:
         # num_to_use == num_visible, perfect multiple of 4
-        print(f"Device limiting: Using all {num_visible} GPUs (divisible by 4)")
+        print(f"✓ Using all {num_visible} GPUs (already divisible by 4)", file=sys.stderr)
+        print("=" * 80, file=sys.stderr)
         return num_visible
