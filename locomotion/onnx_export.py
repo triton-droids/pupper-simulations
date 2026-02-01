@@ -29,10 +29,14 @@ def export_policy_to_onnx(params, output_path: str, deterministic: bool = True):
     # Brax PPO returns params as tuple: (normalizer_params, policy_params, value_params)
     normalizer_params, policy_params, value_params = params
 
+    # Policy params structure: {'params': {'hidden_0': {...}, 'hidden_1': {...}, ...}}
+    network_params = policy_params['params']
+
     # Convert JAX arrays to numpy and extract weights
+    # Note: output layer is 'hidden_4', not 'output'
     weights = {}
-    for layer_name in ['hidden_0', 'hidden_1', 'hidden_2', 'hidden_3', 'output']:
-        layer_params = policy_params[layer_name]
+    for layer_name in ['hidden_0', 'hidden_1', 'hidden_2', 'hidden_3', 'hidden_4']:
+        layer_params = network_params[layer_name]
         kernel = np.array(layer_params['kernel'], dtype=np.float32)
         bias = np.array(layer_params['bias'], dtype=np.float32)
         weights[layer_name] = {'kernel': kernel, 'bias': bias}
@@ -106,18 +110,18 @@ def export_policy_to_onnx(params, output_path: str, deterministic: bool = True):
 
         current_input = swish_out
 
-    # Output layer (no activation yet)
+    # Output layer (hidden_4, no activation yet)
     # MatMul
     nodes.append(helper.make_node(
         'MatMul',
-        inputs=[current_input, 'output_weight'],
-        outputs=['output_matmul']
+        inputs=[current_input, 'hidden_4_weight'],
+        outputs=['hidden_4_matmul']
     ))
 
     # Add bias
     nodes.append(helper.make_node(
         'Add',
-        inputs=['output_matmul', 'output_bias'],
+        inputs=['hidden_4_matmul', 'hidden_4_bias'],
         outputs=['logits']
     ))
 
