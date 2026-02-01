@@ -20,19 +20,32 @@ Examples:
 """
 
 import os
+import sys
 
 # Set MuJoCo rendering backend BEFORE importing any MuJoCo/Brax modules
 os.environ["MUJOCO_GL"] = "egl"
 
-# Limit devices to maximum divisible by 4 BEFORE importing JAX
-from device_utils import setup_device_limit
-setup_device_limit()
+# Limit CUDA devices to maximum divisible by 4 BEFORE any other imports
+import subprocess
+try:
+    result = subprocess.run(
+        ["nvidia-smi", "--query-gpu=index", "--format=csv,noheader"],
+        capture_output=True,
+        text=True,
+        timeout=5,
+    )
+    if result.returncode == 0:
+        gpu_count = len([line for line in result.stdout.strip().split("\n") if line.strip()])
+        devices_to_use = (gpu_count // 4) * 4
+        if devices_to_use > 0 and devices_to_use < gpu_count:
+            os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(str(i) for i in range(devices_to_use))
+            print(f"Limiting GPUs: {gpu_count} available, using {devices_to_use} (max divisible by 4)", file=sys.stderr)
+        elif devices_to_use > 0:
+            os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(str(i) for i in range(devices_to_use))
+            print(f"Using {devices_to_use} GPUs (divisible by 4)", file=sys.stderr)
+except:
+    pass  # Silently continue if GPU detection fails
 
-# Verify the environment variable is set correctly
-import sys
-_cuda_visible = os.environ.get("CUDA_VISIBLE_DEVICES", "not set")
-print(f"After device setup, CUDA_VISIBLE_DEVICES = {_cuda_visible}", file=sys.stderr)
-print("=" * 80, file=sys.stderr)
 import argparse
 import logging
 from pathlib import Path
@@ -44,7 +57,6 @@ import warnings
 # Suppress JAX overflow warning in type casting
 warnings.filterwarnings("ignore", message="overflow encountered in cast")
 
-# Now import JAX and JAX-dependent modules
 import jax
 import jax.numpy as jp
 import numpy as np
@@ -56,8 +68,10 @@ from brax.io import model, html
 from flax.training import orbax_utils
 from orbax import checkpoint as ocp
 
-# Import custom modules (these import JAX, so must come after device setup)
+# Import custom environment
 from bittle_env import BittleEnv
+
+# Import custom modules
 from training_config import TrainingConfig
 from training_helpers import setup_logging, policy_params_callback, parse_args
 from training_monitor import TrainingMonitor
