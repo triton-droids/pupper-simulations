@@ -100,7 +100,14 @@ If successful, you'll be logged into the remote server.
 ```bash
 # On the remote ML node (after SSH)
 git clone -b your-branch-name <repo-url>
-cd pupper-simulations/locomotion
+cd pupper-simulations
+
+# Create uv environment and install dependencies from pyproject.toml
+uv venv
+source .venv/bin/activate
+uv pip install -e .
+
+cd locomotion
 ```
 
 ---
@@ -202,7 +209,7 @@ pkill -f 'ssh.*8000:localhost:8000'  # Replace 8000 with your SSH_PORT
 For inspecting robot models and MJCF/URDF files before training, use the visualization tool:
 
 ```bash
-python visualization/main.py
+python asset-visualization/main.py
 ```
 
 This opens an interactive 3D viewer where you can load and inspect the Bittle robot model. Useful for debugging model configurations and understanding joint movements.
