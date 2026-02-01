@@ -20,32 +20,11 @@ Examples:
 """
 
 import os
-import sys
 
 # Set MuJoCo rendering backend BEFORE importing any MuJoCo/Brax modules
 os.environ["MUJOCO_GL"] = "egl"
 
-# Limit CUDA devices to maximum divisible by 4 BEFORE any other imports
-import subprocess
-try:
-    result = subprocess.run(
-        ["nvidia-smi", "--query-gpu=index", "--format=csv,noheader"],
-        capture_output=True,
-        text=True,
-        timeout=5,
-    )
-    if result.returncode == 0:
-        gpu_count = len([line for line in result.stdout.strip().split("\n") if line.strip()])
-        devices_to_use = (gpu_count // 4) * 4
-        if devices_to_use > 0 and devices_to_use < gpu_count:
-            os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(str(i) for i in range(devices_to_use))
-            print(f"Limiting GPUs: {gpu_count} available, using {devices_to_use} (max divisible by 4)", file=sys.stderr)
-        elif devices_to_use > 0:
-            os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(str(i) for i in range(devices_to_use))
-            print(f"Using {devices_to_use} GPUs (divisible by 4)", file=sys.stderr)
-except:
-    pass  # Silently continue if GPU detection fails
-
+import sys
 import argparse
 import logging
 from pathlib import Path
