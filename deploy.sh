@@ -19,7 +19,7 @@ git add .
 
 git commit -m "Deploying latest changes for training"
 
-git push origin main
+git push -u origin $BRANCH_NAME
 
 #2. SSH into the remote server
 
