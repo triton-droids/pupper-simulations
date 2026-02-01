@@ -13,15 +13,52 @@ import os
 import sys
 from pathlib import Path
 from typing import List, Tuple, Any
+import platform
 
 # Set MuJoCo backend BEFORE importing MuJoCo/Brax
-# osmesa enables CPU-based headless rendering (works everywhere, no GPU needed)
-os.environ["MUJOCO_GL"] = "osmesa"
+# Try different backends based on platform and what's available
+def setup_mujoco_backend():
+    """Setup MuJoCo rendering backend based on platform."""
+    # Clear any existing value
+    if "MUJOCO_GL" in os.environ:
+        del os.environ["MUJOCO_GL"]
+
+    system = platform.system()
+
+    # Try different backends in order of preference
+    backends_to_try = []
+    if system == "Darwin":  # macOS
+        backends_to_try = ["glfw"]  # macOS typically only supports glfw
+    elif system == "Linux":
+        backends_to_try = ["egl", "glfw"]  # Try headless first, then GUI
+    else:  # Windows
+        backends_to_try = ["glfw"]
+
+    # Try each backend
+    for backend in backends_to_try:
+        os.environ["MUJOCO_GL"] = backend
+        try:
+            import mujoco
+            print(f"Successfully initialized MuJoCo with {backend} backend")
+            return mujoco
+        except RuntimeError as e:
+            if "invalid value" in str(e):
+                continue
+            else:
+                raise
+
+    # If all failed, raise error
+    raise RuntimeError(
+        f"Could not initialize MuJoCo with any backend. Tried: {backends_to_try}\n"
+        f"Platform: {system}"
+    )
+
+# Setup MuJoCo backend before other imports
+mujoco = setup_mujoco_backend()
 
 import jax
 import jax.numpy as jp
 import numpy as np
-import mujoco
 import cv2
 from PIL import Image
 import onnxruntime as ort
@@ -310,7 +347,7 @@ def main():
         print(f"  Output:    {output_dir}/")
         print(f"  Duration:  {DURATION}s @ {FPS} FPS ({NUM_STEPS} steps)")
         print(f"  Rendering: {RENDER_WIDTH}x{RENDER_HEIGHT}")
-        print(f"  Backend:   {os.environ['MUJOCO_GL']}")
+        print(f"  Backend:   {os.environ.get('MUJOCO_GL', 'auto-detected')}")
 
         # Step 1: Setup environment
         print("\n[1/6] Setting up environment...")
