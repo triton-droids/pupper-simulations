@@ -1,8 +1,12 @@
 #!/bin/bash
 
+#Author: Your goat Oren Gershony
+
 ############################################
 # Deployment script for remote training    #
 ############################################
+
+set -e
 
 # Pull local variables from .env file
 source .env
@@ -28,14 +32,17 @@ echo "Connecting to remote server at $DROIDS_IP_ADDRESS"
 
 ssh -i $SSH_KEY_PATH $DROIDS_IP_ADDRESS
 
-cd $SSH_DIRECTORY/pupper-simulations/locomotion
+ssh -i "$SSH_KEY_PATH" "$DROIDS_IP_ADDRESS" << 'EOF'
+  set -e
 
-# Pull changes from branch
-git pull
+  cd ~/pupper-simulations/locomotion
 
-# Run training script
-uv run train.py
+  # Pull changes from branch
+  git pull
 
+  # Run training script
+  uv run train.py
+EOF
 
 
 
