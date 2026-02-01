@@ -19,7 +19,7 @@ echo "Staging and comitting changes"
 
 git add .
 
-git commit -m "Deploying latest changes for training"
+git commit -m "Deploying latest changes for training" || echo "No changes to commit"
 
 git push -u origin $BRANCH_NAME
 
