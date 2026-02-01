@@ -37,7 +37,7 @@ ssh -i "$SSH_KEY_PATH" "$DROIDS_IP_ADDRESS" << EOF
   git pull
 
   # Run training script
-  uv run train.py
+  uv run train.py $@
 EOF
 
 
