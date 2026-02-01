@@ -39,37 +39,23 @@ fi
 #1. SSH into node and host a remote python server
 echo "Connecting to remote server at $DROIDS_IP_ADDRESS"
 
-sshpass -p "$SSH_PASSWORD" ssh -i "$SSH_KEY_PATH" "$DROIDS_IP_ADDRESS" << EOF
+sshpass -p "$SSH_PASSWORD" ssh -i "$SSH_KEY_PATH" "$DROIDS_IP_ADDRESS" "bash -c '
   set -e
-
-  echo "Connected to SSH node"
-
+  echo \"Connected to SSH node\"
   cd ~/$SSH_DIRECTORY/pupper-simulations/locomotion
-
-  # Kill any existing HTTP server on this port
-  echo "Checking for existing processes on port $SSH_PORT..."
-
-  # Try multiple methods to kill the process
-  fuser -k $SSH_PORT/tcp 2>/dev/null && echo "Killed process using fuser" || echo "fuser found no process"
-
-  # Wait for port to be released
+  echo \"Checking for existing processes on port $SSH_PORT...\"
+  fuser -k $SSH_PORT/tcp 2>/dev/null && echo \"Killed process using fuser\" || echo \"fuser found no process\"
   sleep 2
-
-  # Verify port is available
-  if ss -tulpn | grep ":$SSH_PORT " > /dev/null 2>&1; then
-    echo "ERROR: Port $SSH_PORT is still in use:"
-    ss -tulpn | grep ":$SSH_PORT "
+  if ss -tulpn | grep \":$SSH_PORT \" > /dev/null 2>&1; then
+    echo \"ERROR: Port $SSH_PORT is still in use:\"
+    ss -tulpn | grep \":$SSH_PORT \"
     exit 1
   fi
-
-  echo "Port $SSH_PORT is now available"
-
-  # Start HTTP server in the background
+  echo \"Port $SSH_PORT is now available\"
   nohup uv run python -m http.server $SSH_PORT > /tmp/http_server_$SSH_PORT.log 2>&1 &
-
-  echo "HTTP server started on port $SSH_PORT (PID: \$!)"
+  echo \"HTTP server started on port $SSH_PORT (PID: \$!)\"
   sleep 1
-EOF
+'"
 
 #2. Setup port forwarding to local machine
 echo "Setting up port forwarding from remote server to local machine..."
