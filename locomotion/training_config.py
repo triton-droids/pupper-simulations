@@ -28,9 +28,11 @@ class TrainingConfig:
             self.episode_length = 1000
             # self.num_envs = 4096
             self.num_envs = 5000
-            self.batch_size = 512
+            # self.batch_size = 512
+            self.batch_size = 500
             self.unroll_length = 20
-            self.num_minibatches = 8
+            # self.num_minibatches = 8
+            self.num_minibatches = 10
             self.num_updates_per_batch = 1
 
     def to_dict(self) -> Dict[str, Any]:
