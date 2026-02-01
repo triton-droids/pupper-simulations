@@ -11,8 +11,6 @@ set -e
 # Pull local variables from .env file
 source .env
 
-# Configuration
-DROIDS_IP_ADDRESS="tritondroids@132.249.64.152"
 
 echo "Starting deployment process..."
 
@@ -33,7 +31,7 @@ echo "Connecting to remote server at $DROIDS_IP_ADDRESS"
 ssh -i "$SSH_KEY_PATH" "$DROIDS_IP_ADDRESS" << 'EOF'
   set -e
 
-  cd ~/orengershony/pupper-simulations/locomotion
+  cd ~/$SSH_DIRECTORY/pupper-simulations/locomotion
 
   # Pull changes from branch
   git pull
