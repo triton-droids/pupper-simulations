@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "MuJoCo and Brax-based simulation and reinforcement learning for quadruped locomotion"
 readme = "README.md"
 requires-python = ">=3.11"
-license = {text = "MIT"}
+license = "MIT"
 authors = [
     {name = "Oren Gershony"},
 ]
@@ -45,7 +45,7 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["locomotion", "visualization"]
+packages = ["locomotion"]
 
 [tool.setuptools.package-data]
 "*" = ["*.xml", "*.mjcf"]
