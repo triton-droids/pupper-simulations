@@ -24,6 +24,10 @@ import os
 # Set MuJoCo rendering backend BEFORE importing any MuJoCo/Brax modules
 os.environ["MUJOCO_GL"] = "egl"
 
+# Limit devices to maximum divisible by 4 BEFORE importing JAX
+from device_utils import setup_device_limit
+setup_device_limit()
+
 import sys
 import argparse
 import logging
