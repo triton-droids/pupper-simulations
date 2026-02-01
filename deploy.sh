@@ -33,7 +33,7 @@ echo "Connecting to remote server at $DROIDS_IP_ADDRESS"
 ssh -i "$SSH_KEY_PATH" "$DROIDS_IP_ADDRESS" << 'EOF'
   set -e
 
-  cd ~/pupper-simulations/locomotion
+  cd ~/orengershony/pupper-simulations/locomotion
 
   # Pull changes from branch
   git pull
