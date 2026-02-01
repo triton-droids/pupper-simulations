@@ -28,17 +28,12 @@ git push -u origin $BRANCH_NAME
 # SSH into node
 echo "Connecting to remote server at $DROIDS_IP_ADDRESS"
 
-sshpass -p "$SSH_PASSWORD" ssh -i "$SSH_KEY_PATH" "$DROIDS_IP_ADDRESS" << EOF
+sshpass -p "$SSH_PASSWORD" ssh -i "$SSH_KEY_PATH" "$DROIDS_IP_ADDRESS" "bash -c '
   set -e
-
   cd ~/$SSH_DIRECTORY/pupper-simulations/locomotion
-
-  # Pull changes from branch
   git pull
-
-  # Run training script
   uv run train.py $@
-EOF
+'"
 
 
 
