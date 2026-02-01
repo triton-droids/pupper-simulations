@@ -179,6 +179,14 @@ def train_bittle(
         model.save_params(str(policy_export_path), params)
         logger.info("Policy exported successfully")
 
+        # Export policy to ONNX format
+        from onnx_export import export_policy_to_onnx
+
+        onnx_export_path = output_dir / "policy.onnx"
+        logger.info(f"Exporting policy to ONNX format at {onnx_export_path}...")
+        export_policy_to_onnx(params, str(onnx_export_path), deterministic=True)
+        logger.info("ONNX export successful")
+
         # Save training summary
         summary_path = output_dir / "training_summary.json"
         summary["config"] = config.to_dict()
