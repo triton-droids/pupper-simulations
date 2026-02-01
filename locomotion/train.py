@@ -28,7 +28,11 @@ os.environ["MUJOCO_GL"] = "egl"
 from device_utils import setup_device_limit
 setup_device_limit()
 
+# Verify the environment variable is set correctly
 import sys
+_cuda_visible = os.environ.get("CUDA_VISIBLE_DEVICES", "not set")
+print(f"After device setup, CUDA_VISIBLE_DEVICES = {_cuda_visible}", file=sys.stderr)
+print("=" * 80, file=sys.stderr)
 import argparse
 import logging
 from pathlib import Path
