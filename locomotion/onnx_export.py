@@ -26,14 +26,8 @@ def export_policy_to_onnx(params, output_path: str, deterministic: bool = True):
     """
     logger.info("Extracting policy weights from Brax params...")
 
-    # Brax PPO returns params as tuple: (normalizer_params, network_params)
-    # network_params has .policy and .value attributes
-    if isinstance(params, tuple):
-        normalizer_params, network_params = params
-        policy_params = network_params.policy
-    else:
-        # Fallback if structure is different
-        policy_params = params.policy if hasattr(params, 'policy') else params
+    # Brax PPO returns params as tuple: (normalizer_params, policy_params, value_params)
+    normalizer_params, policy_params, value_params = params
 
     # Convert JAX arrays to numpy and extract weights
     weights = {}
