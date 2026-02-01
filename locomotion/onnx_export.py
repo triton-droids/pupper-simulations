@@ -175,7 +175,6 @@ def export_policy_to_onnx(params, output_path: str, deterministic: bool = True):
     onnx.save(model_def, output_path)
 
     # Log model info
-    file_size_kb = len(onnx._serialize(model_def)) / 1024
-    logger.info(f"ONNX export complete! Model size: {file_size_kb:.1f} KB")
+    logger.info(f"ONNX export complete!")
     logger.info(f"  Input: observation [1, 510] float32")
     logger.info(f"  Output: action [1, 9] float32 in range [-1, 1]")
