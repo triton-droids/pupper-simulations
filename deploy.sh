@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#Author: Your goat Oren Gershony
+#Author: The GOAT Oren Gershony
 
 ############################################
 # Deployment script for remote training    #
@@ -25,7 +25,7 @@ git commit -m "Deploying latest changes for training"
 
 git push -u origin $BRANCH_NAME
 
-#2. SSH into the remote server
+#2. SSH into the remote server and run training script
 
 # SSH into node
 echo "Connecting to remote server at $DROIDS_IP_ADDRESS"

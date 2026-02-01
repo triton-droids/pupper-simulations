@@ -10,18 +10,19 @@ Usage:
 
 Examples:
     # Quick test run (minimal training)
-    python train_bittle.py --test
+    python train.py --test
 
     # Full training run
-    python train_bittle.py --config configs/bittle_default.py
+    python train.py --config configs/bittle_default.py
 
     # Custom output directory
-    python train_bittle.py --output_dir ./experiments/run_001
+    python train.py --output_dir ./experiments/run_001
 """
 
 import os
+
 # Set MuJoCo rendering backend BEFORE importing any MuJoCo/Brax modules
-os.environ['MUJOCO_GL'] = 'egl'
+os.environ["MUJOCO_GL"] = "egl"
 
 import sys
 import argparse
@@ -33,7 +34,7 @@ import json
 import warnings
 
 # Suppress JAX overflow warning in type casting
-warnings.filterwarnings('ignore', message='overflow encountered in cast')
+warnings.filterwarnings("ignore", message="overflow encountered in cast")
 
 import jax
 import jax.numpy as jp
@@ -60,6 +61,7 @@ from domain_randomization import domain_randomize
 # Main Training Function
 # ============================================================================
 
+
 def train_bittle(
     config: TrainingConfig,
     xml_path: str,
@@ -68,13 +70,13 @@ def train_bittle(
 ) -> Dict[str, Any]:
     """
     Train Bittle locomotion policy.
-    
+
     Args:
         config: Training configuration
         xml_path: Path to MuJoCo XML file
         output_dir: Output directory for checkpoints and logs
         logger: Logger instance
-    
+
     Returns:
         Dictionary with training results
     """
@@ -85,13 +87,13 @@ def train_bittle(
     logger.info(f"Output directory: {output_dir}")
     logger.info(f"XML path: {xml_path}")
     logger.info("")
-    
+
     # Log configuration
     logger.info("Training Configuration:")
     for key, value in config.to_dict().items():
         logger.info(f"  {key:30s}: {value}")
     logger.info("")
-    
+
     # Check JAX devices
     devices = jax.devices()
     logger.info(f"JAX devices available: {len(devices)}")
@@ -100,25 +102,25 @@ def train_bittle(
     logger.info("")
 
     # Register environment
-    envs.register_environment('bittle', BittleEnv)
+    envs.register_environment("bittle", BittleEnv)
     logger.info("Registered Bittle environment")
-    
+
     # Create environment
     logger.info("Creating environment...")
-    env = envs.get_environment('bittle', xml_path=xml_path)
+    env = envs.get_environment("bittle", xml_path=xml_path)
     logger.info("Environment created successfully")
     logger.info("")
-    
+
     # Set up monitoring
     monitor = TrainingMonitor(output_dir, config.num_timesteps, logger, env=env)
 
     # Set up checkpoint callback
     checkpoint_callback = policy_params_callback(output_dir, logger, monitor=monitor)
-    
+
     # Start training
     logger.info("Starting training...")
     start_time = datetime.now()
-    
+
     try:
         make_inference_fn, params, _ = ppo.train(
             environment=env,
@@ -133,69 +135,76 @@ def train_bittle(
             progress_fn=monitor,
             policy_params_fn=checkpoint_callback,
         )
-        
+
         end_time = datetime.now()
         training_time = (end_time - start_time).total_seconds()
-        
+
         logger.info("")
         logger.info("=" * 80)
         logger.info("TRAINING COMPLETED")
         logger.info("=" * 80)
-        logger.info(f"Total time: {training_time:.2f}s ({training_time/60:.2f} min)")
-        logger.info(f"Time to JIT: {(monitor.times[1] - monitor.times[0]).total_seconds():.2f}s")
-        logger.info(f"Time to train: {(monitor.times[-1] - monitor.times[1]).total_seconds():.2f}s")
-        
+        logger.info(f"Total time: {training_time:.2f}s ({training_time / 60:.2f} min)")
+        logger.info(
+            f"Time to JIT: {(monitor.times[1] - monitor.times[0]).total_seconds():.2f}s"
+        )
+        logger.info(
+            f"Time to train: {(monitor.times[-1] - monitor.times[1]).total_seconds():.2f}s"
+        )
+
         # Log summary statistics
         summary = monitor.get_summary()
         logger.info("")
         logger.info("Training Summary:")
-        logger.info(f"  Final reward:      {summary['final_reward']:.4f} ± {summary['final_std']:.4f}")
+        logger.info(
+            f"  Final reward:      {summary['final_reward']:.4f} ± {summary['final_std']:.4f}"
+        )
         logger.info(f"  Best reward:       {summary['best_reward']:.4f}")
         logger.info(f"  Mean reward:       {summary['mean_reward']:.4f}")
         logger.info(f"  Worst reward:      {summary['worst_reward']:.4f}")
         logger.info(f"  Num evaluations:   {summary['num_evaluations']}")
         logger.info("")
-        
+
         # Save final model
-        model_dir = output_dir / 'models'
+        model_dir = output_dir / "models"
         model_dir.mkdir(parents=True, exist_ok=True)
-        model_path = model_dir / 'final_policy'
-        
+        model_path = model_dir / "final_policy"
+
         logger.info(f"Saving final model to {model_path}...")
         model.save_params(str(model_path), params)
         logger.info("Model saved successfully")
-        
+
         # Save training summary
-        summary_path = output_dir / 'training_summary.json'
-        summary['config'] = config.to_dict()
-        summary['training_time'] = training_time
-        summary['start_time'] = start_time.isoformat()
-        summary['end_time'] = end_time.isoformat()
-        
-        with open(summary_path, 'w') as f:
+        summary_path = output_dir / "training_summary.json"
+        summary["config"] = config.to_dict()
+        summary["training_time"] = training_time
+        summary["start_time"] = start_time.isoformat()
+        summary["end_time"] = end_time.isoformat()
+
+        with open(summary_path, "w") as f:
             json.dump(summary, f, indent=2)
         logger.info(f"Saved training summary to {summary_path}")
-        
+
         logger.info("=" * 80)
-        
+
         return {
-            'success': True,
-            'params': params,
-            'make_inference_fn': make_inference_fn,
-            'summary': summary,
+            "success": True,
+            "params": params,
+            "make_inference_fn": make_inference_fn,
+            "summary": summary,
         }
-        
+
     except Exception as e:
         logger.error("=" * 80)
         logger.error("TRAINING FAILED")
         logger.error("=" * 80)
         logger.error(f"Error: {str(e)}", exc_info=True)
         logger.error("=" * 80)
-        
+
         return {
-            'success': False,
-            'error': str(e),
+            "success": False,
+            "error": str(e),
         }
+
 
 def main():
     """Main entry point."""
@@ -203,24 +212,25 @@ def main():
 
     # Create output directory
     if args.output_dir is None:
-        mode = 'test' if args.test else 'train'
-        output_dir = Path(f'./outputs/bittle_{mode}_latest')
+        mode = "test" if args.test else "train"
+        output_dir = Path(f"./outputs/bittle_{mode}_latest")
     else:
         output_dir = Path(args.output_dir)
 
     # Remove old run if it exists and create fresh directory
     if output_dir.exists():
         import shutil
+
         shutil.rmtree(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Set up logging
     log_level = getattr(logging, args.log_level.upper())
     logger = setup_logging(output_dir, level=log_level)
-    
+
     # Create configuration
     config = TrainingConfig(test_mode=args.test)
-    
+
     # Train
     results = train_bittle(
         config=config,
@@ -228,10 +238,10 @@ def main():
         output_dir=output_dir,
         logger=logger,
     )
-    
+
     # Exit with appropriate code
-    sys.exit(0 if results['success'] else 1)
+    sys.exit(0 if results["success"] else 1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
