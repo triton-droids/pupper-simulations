@@ -173,6 +173,12 @@ def train_bittle(
         model.save_params(str(model_path), params)
         logger.info("Model saved successfully")
 
+        # Export policy to outputs/policy.pt for easy retrieval
+        policy_export_path = output_dir / "policy.pt"
+        logger.info(f"Exporting policy to {policy_export_path}...")
+        model.save_params(str(policy_export_path), params)
+        logger.info("Policy exported successfully")
+
         # Save training summary
         summary_path = output_dir / "training_summary.json"
         summary["config"] = config.to_dict()

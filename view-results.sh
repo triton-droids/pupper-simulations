@@ -3,15 +3,38 @@
 #Author: The GOAT Oren Gershony
 
 #############################################################################
-# Connects to SSH server via port forwarding and load latest training video #    
+# Connects to SSH server via port forwarding and load latest training video #
 #############################################################################
+
+# Parse command line arguments
+TEST_MODE=false
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --test)
+      TEST_MODE=true
+      shift
+      ;;
+    *)
+      echo "Unknown option: $1"
+      echo "Usage: $0 [--test]"
+      exit 1
+      ;;
+  esac
+done
 
 set -e
 
 # Pull local variables from .env file
 source .env
 
-echo "Viewing latest training results..."
+# Determine output directory based on mode
+if [ "$TEST_MODE" = true ]; then
+  OUTPUT_DIR="outputs/bittle_test_latest"
+  echo "Viewing TEST results..."
+else
+  OUTPUT_DIR="outputs/bittle_train_latest"
+  echo "Viewing latest training results..."
+fi
 
 #1. SSH into node and host a remote python server
 echo "Connecting to remote server at $DROIDS_IP_ADDRESS"
@@ -58,14 +81,28 @@ ssh -L $SSH_PORT:localhost:$SSH_PORT -i "$SSH_KEY_PATH" "$DROIDS_IP_ADDRESS" -N 
 sleep 2
 
 echo "Port forwarding established."
-echo "Opening latest training video in browser..."
 
-# Open the latest video
-curl -L -o locomotion/sim-outputs/latest_video.mp4 "http://localhost:$SSH_PORT/outputs/bittle_train_latest/videos/latest_video.mp4"
-open locomotion/sim-outputs/latest_video.mp4
+# Create local directories for organized storage
+mkdir -p locomotion/sim-outputs/policies
+mkdir -p locomotion/sim-outputs/media
+
+echo "Downloading results..."
+
+# Download latest video
+curl -L -o locomotion/sim-outputs/media/latest_video.mp4 "http://localhost:$SSH_PORT/$OUTPUT_DIR/videos/latest_video.mp4"
+
+# Download trained policy
+curl -L -o locomotion/sim-outputs/policies/policy.pt "http://localhost:$SSH_PORT/$OUTPUT_DIR/policy.pt"
+
+# Open video in file system viewer
+open -R locomotion/sim-outputs/media/latest_video.mp4
 
 echo ""
-echo "Video opened! Port forwarding is running in the background."
+echo "Results downloaded successfully!"
+echo "  Policy: locomotion/sim-outputs/policies/policy.pt"
+echo "  Video: locomotion/sim-outputs/media/latest_video.mp4"
+echo ""
+echo "Video location revealed in Finder. Port forwarding is running in the background."
 echo "To stop port forwarding later, run: pkill -f 'ssh.*$SSH_PORT:localhost:$SSH_PORT'"
 
 
