@@ -28,7 +28,7 @@ git push -u origin $BRANCH_NAME
 # SSH into node
 echo "Connecting to remote server at $DROIDS_IP_ADDRESS"
 
-sshpass -p "$SSH_PASSWORD" ssh -i "$SSH_KEY_PATH" "$DROIDS_IP_ADDRESS" "bash -c '
+sshpass -p "$SSH_PASSWORD" ssh -o PubkeyAuthentication=no -o StrictHostKeyChecking=no "$DROIDS_IP_ADDRESS" "bash -c '
   set -e
   cd ~/$SSH_DIRECTORY/pupper-simulations/locomotion
   git pull

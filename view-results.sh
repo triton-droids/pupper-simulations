@@ -39,7 +39,7 @@ fi
 #1. SSH into node and host a remote python server
 echo "Connecting to remote server at $DROIDS_IP_ADDRESS"
 
-sshpass -p "$SSH_PASSWORD" ssh -i "$SSH_KEY_PATH" "$DROIDS_IP_ADDRESS" "bash -c '
+sshpass -p "$SSH_PASSWORD" ssh -o PubkeyAuthentication=no -o StrictHostKeyChecking=no "$DROIDS_IP_ADDRESS" "bash -c '
   set -e
   echo \"Connected to SSH node\"
   cd ~/$SSH_DIRECTORY/pupper-simulations/locomotion
@@ -61,7 +61,7 @@ sshpass -p "$SSH_PASSWORD" ssh -i "$SSH_KEY_PATH" "$DROIDS_IP_ADDRESS" "bash -c 
 echo "Setting up port forwarding from remote server to local machine..."
 
 # Start SSH port forwarding in the background (-f flag)
-sshpass -p "$SSH_PASSWORD" ssh -L $SSH_PORT:localhost:$SSH_PORT -i "$SSH_KEY_PATH" "$DROIDS_IP_ADDRESS" -N -f
+sshpass -p "$SSH_PASSWORD" ssh -o PubkeyAuthentication=no -o StrictHostKeyChecking=no -L $SSH_PORT:localhost:$SSH_PORT "$DROIDS_IP_ADDRESS" -N -f
 
 # Wait for the tunnel to establish
 sleep 2
