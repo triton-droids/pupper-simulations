@@ -91,15 +91,15 @@ echo "Downloading results..."
 # Download latest video
 curl -L -o locomotion/sim-outputs/media/latest_video.mp4 "http://localhost:$SSH_PORT/$OUTPUT_DIR/videos/latest_video.mp4"
 
-# Download trained policy
-curl -L -o locomotion/sim-outputs/policies/policy.pt "http://localhost:$SSH_PORT/$OUTPUT_DIR/policy.pt"
+# Download trained policy (ONNX format)
+curl -L -o locomotion/sim-outputs/policies/policy.onnx "http://localhost:$SSH_PORT/$OUTPUT_DIR/policy.onnx"
 
 # Open video in file system viewer
 open -R locomotion/sim-outputs/media/latest_video.mp4
 
 echo ""
 echo "Results downloaded successfully!"
-echo "  Policy: locomotion/sim-outputs/policies/policy.pt"
+echo "  Policy: locomotion/sim-outputs/policies/policy.onnx"
 echo "  Video: locomotion/sim-outputs/media/latest_video.mp4"
 echo ""
 echo "Video location revealed in Finder. Port forwarding is running in the background."
