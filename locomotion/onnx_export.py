@@ -26,14 +26,21 @@ def export_policy_to_onnx(params, output_path: str, deterministic: bool = True):
     """
     logger.info("Extracting policy weights from Brax params...")
 
-    # Extract policy network weights (ignore value network)
-    policy_params = params['policy']
+    # Brax PPO returns params as tuple: (normalizer_params, network_params)
+    # network_params has .policy and .value attributes
+    if isinstance(params, tuple):
+        normalizer_params, network_params = params
+        policy_params = network_params.policy
+    else:
+        # Fallback if structure is different
+        policy_params = params.policy if hasattr(params, 'policy') else params
 
     # Convert JAX arrays to numpy and extract weights
     weights = {}
     for layer_name in ['hidden_0', 'hidden_1', 'hidden_2', 'hidden_3', 'output']:
-        kernel = np.array(policy_params[layer_name]['kernel'], dtype=np.float32)
-        bias = np.array(policy_params[layer_name]['bias'], dtype=np.float32)
+        layer_params = policy_params[layer_name]
+        kernel = np.array(layer_params['kernel'], dtype=np.float32)
+        bias = np.array(layer_params['bias'], dtype=np.float32)
         weights[layer_name] = {'kernel': kernel, 'bias': bias}
         logger.info(f"  {layer_name}: kernel {kernel.shape}, bias {bias.shape}")
 
