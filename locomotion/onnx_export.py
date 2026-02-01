@@ -163,7 +163,7 @@ def export_policy_to_onnx(params, output_path: str, deterministic: bool = True):
     model_def = helper.make_model(
         graph_def,
         producer_name='brax-onnx-exporter',
-        opset_imports=[helper.make_opsetid('', 13)]
+        opset_imports=[helper.make_opsetid('', 11)]
     )
 
     # Check model validity
