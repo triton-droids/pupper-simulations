@@ -40,6 +40,7 @@ import warnings
 # Suppress JAX overflow warning in type casting
 warnings.filterwarnings("ignore", message="overflow encountered in cast")
 
+# Now import JAX and JAX-dependent modules
 import jax
 import jax.numpy as jp
 import numpy as np
@@ -51,10 +52,8 @@ from brax.io import model, html
 from flax.training import orbax_utils
 from orbax import checkpoint as ocp
 
-# Import custom environment
+# Import custom modules (these import JAX, so must come after device setup)
 from bittle_env import BittleEnv
-
-# Import custom modules
 from training_config import TrainingConfig
 from training_helpers import setup_logging, policy_params_callback, parse_args
 from training_monitor import TrainingMonitor
