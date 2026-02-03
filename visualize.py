@@ -111,7 +111,7 @@ def setup_environment(scene_path: str) -> Any:
 
 def load_onnx_policy(policy_path: str) -> Tuple[ort.InferenceSession, str, str]:
     """
-    Load ONNX policy model.
+    Load ONNX policy model, converting IR version if needed.
 
     Args:
         policy_path: Path to ONNX policy file
@@ -121,11 +121,46 @@ def load_onnx_policy(policy_path: str) -> Tuple[ort.InferenceSession, str, str]:
     """
     print(f"      Loading ONNX model from {policy_path}...")
 
-    # Load ONNX model with CPU execution provider
-    session = ort.InferenceSession(
-        policy_path,
-        providers=['CPUExecutionProvider']
-    )
+    try:
+        # Try loading directly first
+        session = ort.InferenceSession(
+            policy_path,
+            providers=['CPUExecutionProvider']
+        )
+    except Exception as e:
+        if "Unsupported model IR version" in str(e):
+            print(f"      Model IR version incompatible, converting...")
+
+            # Import onnx for conversion
+            try:
+                import onnx
+                from onnx import version_converter
+            except ImportError:
+                raise RuntimeError(
+                    "ONNX package required for version conversion. "
+                    "Install with: pip install onnx"
+                )
+
+            # Load and convert to compatible IR version
+            model = onnx.load(policy_path)
+            print(f"      Original IR version: {model.ir_version}")
+
+            # Convert to IR version 9 (widely supported)
+            converted_model = version_converter.convert_version(model, 9)
+            print(f"      Converted to IR version: {converted_model.ir_version}")
+
+            # Save converted model to temporary location
+            temp_path = str(Path(policy_path).parent / "policy_converted.onnx")
+            onnx.save(converted_model, temp_path)
+            print(f"      Saved converted model to {temp_path}")
+
+            # Load converted model
+            session = ort.InferenceSession(
+                temp_path,
+                providers=['CPUExecutionProvider']
+            )
+        else:
+            raise
 
     # Get input/output names
     input_name = session.get_inputs()[0].name
