@@ -166,6 +166,11 @@ def export_policy_to_onnx(params, output_path: str, deterministic: bool = True):
         opset_imports=[helper.make_opsetid('', 11)]
     )
 
+    # Set IR version to 9 for maximum compatibility with older ONNX Runtime versions
+    # IR version 9 is widely supported and compatible with opset 11
+    model_def.ir_version = 9
+    logger.info(f"Set model IR version to {model_def.ir_version}")
+
     # Check model validity
     logger.info("Validating ONNX model...")
     onnx.checker.check_model(model_def)
