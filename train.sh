@@ -31,6 +31,8 @@ echo "Connecting to remote server at $DROIDS_IP_ADDRESS"
 ssh -i "$SSH_KEY_PATH" "$DROIDS_IP_ADDRESS" << EOF
   set -e
 
+  pkill -9 -f train.py || echo "No existing training process found"
+
   cd ~/$SSH_DIRECTORY/pupper-simulations/locomotion
 
   # Pull changes from branch
