@@ -11,6 +11,8 @@ from matplotlib import pyplot as plt
 import cv2
 import mujoco
 
+from diagnostic_logger import create_logger
+
 # ============================================================================
 # Training Callbacks and Visualization
 # ============================================================================
@@ -231,6 +233,10 @@ class TrainingMonitor:
         try:
             self.logger.info("Generating video...")
 
+            # Create diagnostic logger
+            log_path = self.output_dir / 'logs' / 'training_video_diagnostic.json'
+            diag_logger = create_logger(str(log_path))
+
             # Create inference function if not already created
             inference_fn = self.make_inference_fn_cached
 
@@ -243,14 +249,40 @@ class TrainingMonitor:
             state = jit_reset(rng)
             rollout = [state.pipeline_state]
 
-            # Run for ~5 seconds at 50Hz = 250 steps
+            # Log metadata
             max_steps = 250
-            for _ in range(max_steps):
+            diag_logger.log_metadata(seed=0, num_steps=max_steps, source="training_video")
+
+            # Log reset data
+            diag_logger.log_reset(
+                command=state.info['command'],
+                initial_obs=state.obs
+            )
+
+            # Run for ~5 seconds at 50Hz = 250 steps
+            for step_i in range(max_steps):
                 rng, key_sample = jax.random.split(rng)
                 obs = state.obs
                 action, _ = jit_inference(obs, key_sample)
                 state = jit_step(state, action)
                 rollout.append(state.pipeline_state)
+
+                # Log every 25 steps
+                if step_i % 25 == 0:
+                    pipeline_state = state.pipeline_state
+                    diag_logger.log_step(
+                        step=step_i,
+                        obs=obs,
+                        action=action,
+                        base_pos=pipeline_state.x.pos[0],  # Base is first body
+                        base_vel=pipeline_state.xd.vel[0],
+                        joint_pos=pipeline_state.q[7:]  # Skip base pose (7 DOF: 3 pos + 4 quat)
+                    )
+
+            # Compute and save summary
+            diag_logger.compute_and_log_summary()
+            diag_logger.save()
+            self.logger.info(f"Saved diagnostic log to {log_path}")
 
             # Render frames from states
             self.logger.info("Rendering frames...")

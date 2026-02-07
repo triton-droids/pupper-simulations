@@ -34,6 +34,7 @@ from brax import envs
 # Add locomotion directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent / "locomotion"))
 from bittle_env import BittleEnv
+from diagnostic_logger import create_logger
 
 
 # ============================================================================
@@ -177,6 +178,10 @@ def generate_rollout(env: Any, inference_fn: Any, num_steps: int = 250) -> List[
     """
     print(f"      Running {num_steps} steps...")
 
+    # Create diagnostic logger
+    log_path = OUTPUT_DIR / 'visualization_diagnostic.json'
+    diag_logger = create_logger(str(log_path))
+
     # JIT compile for performance
     jit_reset = jax.jit(env.reset)
     jit_step = jax.jit(env.step)
@@ -185,6 +190,15 @@ def generate_rollout(env: Any, inference_fn: Any, num_steps: int = 250) -> List[
     rng = jax.random.PRNGKey(0)
     state = jit_reset(rng)
     rollout = [state.pipeline_state]
+
+    # Log metadata
+    diag_logger.log_metadata(seed=0, num_steps=num_steps, source="visualization")
+
+    # Log reset data
+    diag_logger.log_reset(
+        command=state.info['command'],
+        initial_obs=state.obs
+    )
 
     # Run episode
     for step_i in range(num_steps):
@@ -195,6 +209,23 @@ def generate_rollout(env: Any, inference_fn: Any, num_steps: int = 250) -> List[
             print(f"      Step {step_i + 1}/{num_steps} - Action: {action}")
         state = jit_step(state, action)
         rollout.append(state.pipeline_state)
+
+        # Log every 25 steps
+        if step_i % 25 == 0:
+            pipeline_state = state.pipeline_state
+            diag_logger.log_step(
+                step=step_i,
+                obs=obs,
+                action=action,
+                base_pos=pipeline_state.x.pos[0],  # Base is first body
+                base_vel=pipeline_state.xd.vel[0],
+                joint_pos=pipeline_state.q[7:]  # Skip base pose (7 DOF: 3 pos + 4 quat)
+            )
+
+    # Compute and save summary
+    diag_logger.compute_and_log_summary()
+    diag_logger.save()
+    print(f"      Saved diagnostic log to {log_path}")
 
     print(f"      Collected {len(rollout)} states")
 

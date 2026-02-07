@@ -85,6 +85,7 @@ echo "Port forwarding established."
 # Create local directories for organized storage
 mkdir -p locomotion/sim-outputs/policies
 mkdir -p locomotion/sim-outputs/media
+mkdir -p locomotion/sim-outputs/logs
 
 echo "Downloading results..."
 
@@ -94,6 +95,9 @@ curl -L -o locomotion/sim-outputs/media/latest_video.mp4 "http://localhost:$SSH_
 # Download trained policy (ONNX format)
 curl -L -o locomotion/sim-outputs/policies/policy.onnx "http://localhost:$SSH_PORT/$OUTPUT_DIR/policy.onnx"
 
+# Download diagnostic log (if exists)
+curl -L -o locomotion/sim-outputs/logs/training_video_diagnostic.json "http://localhost:$SSH_PORT/$OUTPUT_DIR/logs/training_video_diagnostic.json" 2>/dev/null || echo "Note: No diagnostic log found (will be generated on next training run)"
+
 # Open video in file system viewer
 open -R locomotion/sim-outputs/media/latest_video.mp4
 
@@ -101,6 +105,7 @@ echo ""
 echo "Results downloaded successfully!"
 echo "  Policy: locomotion/sim-outputs/policies/policy.onnx"
 echo "  Video: locomotion/sim-outputs/media/latest_video.mp4"
+echo "  Diagnostic log: locomotion/sim-outputs/logs/training_video_diagnostic.json"
 echo ""
 echo "Video location revealed in Finder. Port forwarding is running in the background."
 echo "To stop port forwarding later, run: pkill -f 'ssh.*$SSH_PORT:localhost:$SSH_PORT'"
