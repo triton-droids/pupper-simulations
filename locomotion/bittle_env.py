@@ -36,13 +36,13 @@ def get_config():
                     orientation=-5.0,
                     # Joint regularizations
                     torques=-0.0002,
-                    action_rate=-0.01,
+                    action_rate=-0.001,
                     joint_acc=-0.0025,  # Penalize joint acceleration (for smooth velocity changes)
                     # Behavior regularizations
                     stand_still=-0.5,
                     termination=-1.0,
                     # Feet rewards
-                    feet_air_time=0.1,
+                    feet_air_time=1.0,
                     foot_slip=-0.04,
                     # Energy efficiency
                     energy=-0.002,
@@ -69,7 +69,7 @@ class BittleEnv(PipelineEnv):
       self,
       xml_path: str,
       obs_noise: float = 0.05,
-      action_scale: float = 1.5,  # Scale for position offsets (rad, ±π/2)
+      action_scale: float = 0.5,  # Scale for position offsets (rad, ±π/2)
       kick_vel: float = 0.05, #Formerly 0.05
       enable_kicks: bool = True,
       **kwargs,
@@ -177,7 +177,7 @@ class BittleEnv(PipelineEnv):
     
     # Initialize with default pose (from home keyframe)
     qpos = jp.zeros(self.sys.nq)
-    qpos = qpos.at[0:3].set(jp.array([0.0, 0.0, 0.068]))
+    qpos = qpos.at[0:3].set(jp.array([0.0, 0.0, 0.075]))
     qpos = qpos.at[3:7].set(jp.array([1.0, 0.0, 0.0, 0.0]))
     qpos = qpos.at[self._q_joint_start:].set(self._default_pose)
     
@@ -402,7 +402,7 @@ class BittleEnv(PipelineEnv):
       self, air_time: jax.Array, first_contact: jax.Array, commands: jax.Array
   ) -> jax.Array:
     """Reward appropriate swing durations."""
-    rew_air_time = jp.sum((air_time - 0.05) * first_contact)
+    rew_air_time = jp.sum((air_time - 0.15) * first_contact)
     rew_air_time *= math.normalize(commands[:2])[1] > 0.05
     return rew_air_time
 

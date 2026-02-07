@@ -1,9 +1,18 @@
-simulations-env/
+.venv/
 renderingEnv/
 .DS_Store
 
-
+outputs/*
+!outputs/.gitkeep
+locomotion/sim-outputs/media/*
+!locomotion/sim-outputs/media/.gitkeep
+locomotion/sim-outputs/policies/*
+!locomotion/sim-outputs/policies/.gitkeep
 
 __pycache__/
 
 MUJOCO_LOG.TXT
+
+ssh
+
+.env

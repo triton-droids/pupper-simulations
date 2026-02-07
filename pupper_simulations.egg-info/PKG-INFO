@@ -1,8 +1,32 @@
-
-
-
-Readme · MD
-Copy
+Metadata-Version: 2.4
+Name: pupper-simulations
+Version: 0.1.0
+Summary: MuJoCo and Brax-based simulation and reinforcement learning for quadruped locomotion
+Author: Oren Gershony
+License-Expression: MIT
+Project-URL: Homepage, https://github.com/triton-pupper-simulations/pupper-simulations
+Project-URL: Repository, https://github.com/triton-pupper-simulations/pupper-simulations
+Project-URL: Issues, https://github.com/triton-pupper-simulations/pupper-simulations/issues
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: numpy==2.3.4
+Requires-Dist: mujoco==3.3.4
+Requires-Dist: xacrodoc==1.3.0
+Requires-Dist: ml_collections==1.1.0
+Requires-Dist: jax[cuda12]==0.8.2
+Requires-Dist: brax==0.13.0
+Requires-Dist: opencv-python>=4.8.0
+Requires-Dist: matplotlib==3.10.8
+Requires-Dist: onnx>=1.15.0
+Requires-Dist: onnxruntime>=1.16.0
+Provides-Extra: training
+Requires-Dist: matplotlib; extra == "training"
+Requires-Dist: pillow; extra == "training"
+Requires-Dist: tensorboardx; extra == "training"
+Provides-Extra: dev
+Requires-Dist: jupyter; extra == "dev"
+Requires-Dist: notebook; extra == "dev"
+Requires-Dist: ipython; extra == "dev"
 
 # pupper-simulations
 
@@ -33,7 +57,7 @@ This project provides simulation and reinforcement learning environments for the
 1. Clone the repository:
 
 ```bash
-git clone 
+git clone <repository-url>
 cd pupper-simulations
 ```
 
@@ -121,44 +145,6 @@ This will:
 - `ml_collections==1.1.0` - Configuration management
 - `mediapy==1.2.4` - Media processing
 
-## Development Workflow
-
-### Working on Locomotion
-
-If you're developing locomotion policies or environment code, follow this workflow:
-
-1. **Create your development branch:**
-```bash
-git checkout -b /locomotion
-git push -u origin /locomotion
-```
-
-2. **Modify the training notebook:**
-
-In `locomotion/training.ipynb`, change the first cell to clone your specific branch:
-
-```python
-!git clone --branch /locomotion --single-branch https://github.com/triton-droids/pupper-simulations.git
-%cd pupper-simulations
-```
-
-Replace `<your-name>` with your actual name (e.g., `oren/locomotion`).
-
-3. **Develop and test:**
-- Make changes to environment code, reward functions, or training parameters
-- Test in Google Colab or locally
-- Commit frequently to your branch
-
-4. **Merge when ready:**
-- Once your locomotion policy is working well, create a pull request to merge into `main`
-- Include training metrics and videos in your PR description
-
-**Why this workflow?** This ensures:
-- Your Colab notebook always pulls your latest code
-- You can experiment freely without affecting others
-- Multiple team members can work on locomotion simultaneously
-- Easy to compare different approaches before merging
-
 ## Known Issues
 
 ### URDF to MJCF Conversion Error
@@ -181,7 +167,7 @@ pip install mujoco==3.3.4
 
 ## Contributing
 
-This is the official repository for the Triton Pupper Simulations team. For contributions, please follow the team's development guidelines and the branch workflow described above.
+This is the official repository for the Triton Pupper Simulations team. For contributions, please follow the team's development guidelines.
 
 ## License
 
