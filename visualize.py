@@ -10,51 +10,17 @@ Usage:
 """
 
 import os
+
+# Setup MuJoCo backend before other imports
+os.environ["MUJOCO_GL"] = "glfw"  # Default to glfw, will try others if it fails
+
 import sys
 from pathlib import Path
 from typing import List, Tuple, Any
-import platform
+import warnings
 
-# Set MuJoCo backend BEFORE importing MuJoCo/Brax
-# Try different backends based on platform and what's available
-def setup_mujoco_backend():
-    """Setup MuJoCo rendering backend based on platform."""
-    # Clear any existing value
-    if "MUJOCO_GL" in os.environ:
-        del os.environ["MUJOCO_GL"]
-
-    system = platform.system()
-
-    # Try different backends in order of preference
-    backends_to_try = []
-    if system == "Darwin":  # macOS
-        backends_to_try = ["glfw"]  # macOS typically only supports glfw
-    elif system == "Linux":
-        backends_to_try = ["egl", "glfw"]  # Try headless first, then GUI
-    else:  # Windows
-        backends_to_try = ["glfw"]
-
-    # Try each backend
-    for backend in backends_to_try:
-        os.environ["MUJOCO_GL"] = backend
-        try:
-            import mujoco
-            print(f"Successfully initialized MuJoCo with {backend} backend")
-            return mujoco
-        except RuntimeError as e:
-            if "invalid value" in str(e):
-                continue
-            else:
-                raise
-
-    # If all failed, raise error
-    raise RuntimeError(
-        f"Could not initialize MuJoCo with any backend. Tried: {backends_to_try}\n"
-        f"Platform: {system}"
-    )
-
-# Setup MuJoCo backend before other imports
-mujoco = setup_mujoco_backend()
+# Suppress JAX overflow warning in type casting
+warnings.filterwarnings("ignore", category=RuntimeWarning, message="overflow encountered in cast")
 
 import jax
 import jax.numpy as jp
@@ -62,7 +28,7 @@ import numpy as np
 import cv2
 from PIL import Image
 import onnxruntime as ort
-
+import mujoco
 from brax import envs
 
 # Add locomotion directory to path for imports
@@ -89,6 +55,7 @@ RENDER_HEIGHT = 480
 # ============================================================================
 # Helper Functions
 # ============================================================================
+
 
 def setup_environment(scene_path: str) -> Any:
     """
@@ -123,10 +90,7 @@ def load_onnx_policy(policy_path: str) -> Tuple[ort.InferenceSession, str, str]:
 
     try:
         # Try loading directly first
-        session = ort.InferenceSession(
-            policy_path,
-            providers=['CPUExecutionProvider']
-        )
+        session = ort.InferenceSession(policy_path, providers=["CPUExecutionProvider"])
     except Exception as e:
         if "Unsupported model IR version" in str(e):
             print(f"      Model IR version incompatible, converting...")
@@ -156,8 +120,7 @@ def load_onnx_policy(policy_path: str) -> Tuple[ort.InferenceSession, str, str]:
 
             # Load converted model
             session = ort.InferenceSession(
-                temp_path,
-                providers=['CPUExecutionProvider']
+                temp_path, providers=["CPUExecutionProvider"]
             )
         else:
             raise
@@ -171,9 +134,9 @@ def load_onnx_policy(policy_path: str) -> Tuple[ort.InferenceSession, str, str]:
     return session, input_name, output_name
 
 
-def create_inference_fn(session: ort.InferenceSession,
-                       input_name: str,
-                       output_name: str):
+def create_inference_fn(
+    session: ort.InferenceSession, input_name: str, output_name: str
+):
     """
     Create inference function from ONNX session.
 
@@ -185,6 +148,7 @@ def create_inference_fn(session: ort.InferenceSession,
     Returns:
         Inference function compatible with Brax
     """
+
     def inference_fn(obs, rng_key):
         """Run inference using ONNX model."""
         # Convert JAX array to numpy and reshape for batch dimension
@@ -199,9 +163,7 @@ def create_inference_fn(session: ort.InferenceSession,
     return inference_fn
 
 
-def generate_rollout(env: Any,
-                    inference_fn: Any,
-                    num_steps: int = 250) -> List[Any]:
+def generate_rollout(env: Any, inference_fn: Any, num_steps: int = 250) -> List[Any]:
     """
     Generate a rollout by running the policy in the environment.
 
@@ -225,10 +187,12 @@ def generate_rollout(env: Any,
     rollout = [state.pipeline_state]
 
     # Run episode
-    for _ in range(num_steps):
+    for step_i in range(num_steps):
         rng, key_sample = jax.random.split(rng)
         obs = state.obs
         action, _ = inference_fn(obs, key_sample)
+        if step_i % 50 == 0:
+            print(f"      Step {step_i + 1}/{num_steps} - Action: {action}")
         state = jit_step(state, action)
         rollout.append(state.pipeline_state)
 
@@ -237,10 +201,9 @@ def generate_rollout(env: Any,
     return rollout
 
 
-def render_frames(env: Any,
-                 rollout: List[Any],
-                 width: int = 640,
-                 height: int = 480) -> List[np.ndarray]:
+def render_frames(
+    env: Any, rollout: List[Any], width: int = 640, height: int = 480
+) -> List[np.ndarray]:
     """
     Render frames from pipeline states.
 
@@ -285,9 +248,7 @@ def render_frames(env: Any,
     return frames
 
 
-def save_video_mp4(frames: List[np.ndarray],
-                  output_path: Path,
-                  fps: int = 50) -> None:
+def save_video_mp4(frames: List[np.ndarray], output_path: Path, fps: int = 50) -> None:
     """
     Save frames as MP4 video using OpenCV.
 
@@ -302,7 +263,7 @@ def save_video_mp4(frames: List[np.ndarray],
     height, width, _ = frames[0].shape
 
     # Create VideoWriter with mp4v codec
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     out = cv2.VideoWriter(str(output_path), fourcc, fps, (width, height))
 
     if not out.isOpened():
@@ -316,9 +277,7 @@ def save_video_mp4(frames: List[np.ndarray],
     out.release()
 
 
-def save_video_gif(frames: List[np.ndarray],
-                  output_path: Path,
-                  fps: int = 50) -> None:
+def save_video_gif(frames: List[np.ndarray], output_path: Path, fps: int = 50) -> None:
     """
     Save frames as animated GIF using Pillow.
 
@@ -342,13 +301,14 @@ def save_video_gif(frames: List[np.ndarray],
         save_all=True,
         append_images=pil_frames[1:],
         duration=duration_ms,
-        loop=0  # Loop forever
+        loop=0,  # Loop forever
     )
 
 
 # ============================================================================
 # Main Execution
 # ============================================================================
+
 
 def main():
     """Main execution function."""
@@ -366,7 +326,9 @@ def main():
         print("\nValidating inputs...")
         if not policy_path.exists():
             print(f"Error: Policy file not found: {policy_path}")
-            print("Please train and export a policy first by running: python locomotion/train.py")
+            print(
+                "Please train and export a policy first by running: python locomotion/train.py"
+            )
             return 1
 
         if not scene_path.exists():
@@ -387,7 +349,9 @@ def main():
         # Step 1: Setup environment
         print("\n[1/6] Setting up environment...")
         env = setup_environment(str(scene_path))
-        print(f"      Environment created (obs={env.observation_size}, act={env.action_size})")
+        print(
+            f"      Environment created (obs={env.observation_size}, act={env.action_size})"
+        )
 
         # Step 2: Load policy
         print("[2/6] Loading policy...")
@@ -433,6 +397,7 @@ def main():
     except Exception as e:
         print(f"\nError: {e}", file=sys.stderr)
         import traceback
+
         traceback.print_exc()
         return 1
 
