@@ -30,7 +30,6 @@ class TrainingConfig:
             self.batch_size = 512
             self.unroll_length = 20
             self.num_minibatches = 8
-            self.num_minibatches = 10
             self.num_updates_per_batch = 1
 
     def to_dict(self) -> Dict[str, Any]:
