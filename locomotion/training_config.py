@@ -16,10 +16,8 @@ class TrainingConfig:
             self.num_timesteps = 10_000
             self.num_evals = 2
             self.episode_length = 100
-            # self.num_envs = 8
-            self.num_envs = 10
-            # self.batch_size = 128
-            self.batch_size = 100
+            self.num_envs = 8
+            self.batch_size = 128
             self.unroll_length = 5
             self.num_minibatches = 2
             self.num_updates_per_batch = 1
@@ -28,12 +26,10 @@ class TrainingConfig:
             self.num_timesteps = 10_000_000
             self.num_evals = 10
             self.episode_length = 1000
-            # self.num_envs = 4096
-            self.num_envs = 5000
-            # self.batch_size = 512
-            self.batch_size = 500
+            self.num_envs = 4096
+            self.batch_size = 512
             self.unroll_length = 20
-            # self.num_minibatches = 8
+            self.num_minibatches = 8
             self.num_minibatches = 10
             self.num_updates_per_batch = 1
 
