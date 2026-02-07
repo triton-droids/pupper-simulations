@@ -85,9 +85,9 @@ pupper-simulations/
 
 ## Usage
 
-### Visualization
+### Model Visualization
 
-To launch the interactive MuJoCo viewer:
+To launch the interactive MuJoCo viewer for inspecting robot models:
 
 ```bash
 cd visualization
@@ -99,6 +99,32 @@ This will:
 1. Convert URDF to MJCF if necessary
 2. Load the Bittle robot model
 3. Launch the interactive 3D viewer
+
+### Policy Visualization
+
+To visualize trained policies and generate videos:
+
+```bash
+python visualize.py
+```
+
+This script:
+
+1. Loads a trained policy from ONNX format
+2. Runs the policy in the Bittle environment
+3. Generates MP4 and GIF videos of the robot's behavior
+4. Saves outputs to the `outputs/` directory
+
+**Configuration:** Edit the paths in `visualize.py`:
+- `POLICY_PATH` - Path to your ONNX policy file (default: `locomotion/sim-outputs/policies/policy.onnx`)
+- `SCENE_PATH` - Path to the scene XML file (default: `locomotion/bittle_adapted_scene.xml`)
+- `OUTPUT_DIR` - Output directory for videos (default: `outputs`)
+
+This is useful for:
+- Testing policies locally before deploying to the robot
+- Iterating on environment design and reward functions
+- Creating demonstration videos
+- Debugging locomotion behaviors
 
 ## Dependencies
 

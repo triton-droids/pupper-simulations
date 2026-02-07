@@ -34,7 +34,7 @@ import json
 import warnings
 
 # Suppress JAX overflow warning in type casting
-warnings.filterwarnings("ignore", message="overflow encountered in cast")
+warnings.filterwarnings("ignore", category=RuntimeWarning, message="overflow encountered in cast")
 
 import jax
 import jax.numpy as jp
