@@ -8,44 +8,45 @@ source "$SCRIPT_DIR/.env"
 set +a
 
 echo "Starting deployment process..."
-
-# 1) Stage, commit, and push current working changes
 echo "Staging and committing changes"
 
 git add .
 git commit -m "Deploying latest changes for training" || echo "No changes to commit"
 git push -u origin "$BRANCH_NAME"
 
-# 2) Ensure local ssh-agent has GitHub key loaded (needed for -A forwarding)
+# Ensure local ssh-agent has GitHub key loaded (needed for -A forwarding)
 if ! ssh-add -l >/dev/null 2>&1; then
   eval "$(ssh-agent -s)" >/dev/null
 fi
-
-# Only add if not already present
-if ! ssh-add -l 2>/dev/null | grep -q "$(basename "$GITHUB_KEY_PATH")"; then
-  ssh-add "$GITHUB_KEY_PATH"
-fi
+ssh-add "$GITHUB_KEY_PATH" >/dev/null 2>&1 || true
 
 echo "Connecting to remote server at $DROIDS_IP_ADDRESS"
 
-# 3) SSH into remote and run training
-ssh -A -p "$SSH_PORT" -i "$SSH_KEY_PATH" "$DROIDS_IP_ADDRESS" bash -lc "
-  set -euo pipefail
+ssh -A -p "$SSH_PORT" -i "$SSH_KEY_PATH" "$DROIDS_IP_ADDRESS" bash -s -- "$BRANCH_NAME" "$SSH_DIRECTORY" "$GITHUB_REPO_SSH" "$@" <<'REMOTE'
+set -euo pipefail
 
-  mkdir -p \"$SSH_DIRECTORY\"
-  cd \"$SSH_DIRECTORY\"
+BRANCH_NAME="$1"; shift
+SSH_DIRECTORY="$1"; shift
+GITHUB_REPO_SSH="$1"; shift
 
-  # If this directory is not a git repo yet, clone into it
-  if [ ! -d .git ]; then
-    git clone \"$GITHUB_REPO_SSH\" .
-  fi
+# Pick GPU and tame JAX memory behavior (adjust as needed)
+export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
+export XLA_PYTHON_CLIENT_PREALLOCATE="${XLA_PYTHON_CLIENT_PREALLOCATE:-false}"
+export XLA_PYTHON_CLIENT_MEM_FRACTION="${XLA_PYTHON_CLIENT_MEM_FRACTION:-0.70}"
 
-  git fetch origin
-  git checkout \"$BRANCH_NAME\" || git checkout -b \"$BRANCH_NAME\" \"origin/$BRANCH_NAME\"
-  git reset --hard \"origin/$BRANCH_NAME\"
+mkdir -p "$SSH_DIRECTORY"
+cd "$SSH_DIRECTORY"
 
-  cd locomotion
+if [ ! -d .git ]; then
+  git clone "$GITHUB_REPO_SSH" .
+fi
 
-  # Run training (forward any args you pass to train.sh)
-  uv run train.py \"\$@\"
-" _ "$@"
+git fetch origin
+git checkout "$BRANCH_NAME" || git checkout -b "$BRANCH_NAME" "origin/$BRANCH_NAME"
+git reset --hard "origin/$BRANCH_NAME"
+
+cd locomotion
+
+# Run training (forward args passed to train.sh)
+uv run train.py "$@"
+REMOTE
