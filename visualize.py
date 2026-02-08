@@ -179,7 +179,7 @@ def generate_rollout(env: Any, inference_fn: Any, num_steps: int = 250) -> List[
     print(f"      Running {num_steps} steps...")
 
     # Create diagnostic logger
-    log_path = OUTPUT_DIR / 'visualization_diagnostic.json'
+    log_path = Path(OUTPUT_DIR) / 'visualization_diagnostic.json'
     diag_logger = create_logger(str(log_path))
 
     # JIT compile for performance
