@@ -1,5 +1,10 @@
 #!/bin/bash
 
+#Pycharm Alterations
+set -a
+source "$(dirname "$0")/.env"
+set +a
+
 #Author: The GOAT Oren Gershony
 
 ############################################
