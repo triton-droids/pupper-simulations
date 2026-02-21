@@ -67,8 +67,7 @@ from brax import envs
 
 # Add locomotion directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent / "locomotion"))
-from bittle_env import BittleEnv
-
+from locomotion.bittle_env import BittleEnv
 
 # ============================================================================
 # Configuration
