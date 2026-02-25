@@ -25,6 +25,8 @@ dev = [
     "jupyter",
     "notebook",
     "ipython",
+    "pytest>=7.0",
+    "pytest-timeout>=2.0",
 ]
 
 [project.urls]
@@ -41,3 +43,7 @@ packages = ["locomotion"]
 
 [tool.setuptools.package-data]
 "*" = ["*.xml", "*.mjcf"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+timeout = 10
