@@ -1,0 +1,58 @@
+[project]
+name = "pupper-simulations"
+version = "0.1.0"
+description = "MuJoCo and Brax-based simulation and reinforcement learning for quadruped locomotion"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {text = "MIT"}
+authors = [
+    {name = "Triton Pupper Simulations Team"},
+]
+keywords = ["robotics", "simulation", "mujoco", "brax", "reinforcement-learning", "quadruped", "locomotion"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+
+dependencies = [
+    "numpy==2.3.4",
+    "mujoco==3.3.4",
+    "xacrodoc==1.3.0",
+    "ml_collections==1.1.0",
+    "jax[cuda12]==0.8.0",
+    "brax==0.13.0",
+    "mediapy==1.2.4",
+]
+
+[project.optional-dependencies]
+training = [
+    "matplotlib",
+    "pillow",
+    "tensorboardx",
+]
+
+dev = [
+    "jupyter",
+    "notebook",
+    "ipython",
+]
+
+[project.urls]
+Homepage = "https://github.com/triton-pupper-simulations/pupper-simulations"
+Repository = "https://github.com/triton-pupper-simulations/pupper-simulations"
+Issues = "https://github.com/triton-pupper-simulations/pupper-simulations/issues"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["locomotion", "visualization"]
+
+[tool.setuptools.package-data]
+"*" = ["*.xml", "*.mjcf"]

@@ -1,0 +1,9 @@
+simulations-env/
+renderingEnv/
+.DS_Store
+
+
+
+__pycache__/
+
+MUJOCO_LOG.TXT

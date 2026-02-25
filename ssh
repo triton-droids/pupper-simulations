@@ -1,0 +1,10 @@
+#SSH into the remote server
+ssh -i ~/.ssh/oren-ssh-key tritondroids@132.249.64.152
+
+#Run train.py
+uv run train.py (--test if testing)
+
+#Download output directory to local machine
+scp -r orengershony@10.50.2.80:/home/tritondroids/orengershony/pupper-simulations/outputs/bittle_test_latest/videos/ ~/Downloads/
+
+scp -r orengershony@10.50.2.80:/home/tritondroids/orengershony/pupper-simulations/outputs/bittle_train_latest/ ~/Downloads/
