@@ -6,7 +6,8 @@ Welcome to the Pupper Simulations project! This guide will walk you through sett
 
 - Python 3.11 or higher
 - Git
-- SSH client (built-in on macOS/Linux, Git Bash on Windows)
+- SSH client (built-in on macOS/Linux, Git Bash or OpenSSH on Windows)
+- CUDA 12 support (optional, for local GPU training)
 
 ---
 
@@ -33,21 +34,51 @@ git checkout -b your-name/feature-name
 
 Set up a Python virtual environment using the project's `pyproject.toml`:
 
+**macOS/Linux:**
 ```bash
 python -m venv .venv
-source .venv/bin/activate  # On macOS/Linux
-# .venv\Scripts\activate   # On Windows
+source .venv/bin/activate
+pip install -e .
+```
+
+**Windows (PowerShell):**
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -e .
+```
+
+**Windows (Command Prompt):**
+```cmd
+python -m venv .venv
+.venv\Scripts\activate.bat
 pip install -e .
 ```
 
 This installs all required dependencies including MuJoCo, Brax, JAX, and other RL training tools.
 
+**Note for Windows users:** If you encounter execution policy errors when activating the virtual environment, run PowerShell as Administrator and execute:
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
 ### Configure Environment Variables
 
 Create your `.env` file from the example template:
 
+**macOS/Linux:**
 ```bash
 cp .env.example .env
+```
+
+**Windows (PowerShell):**
+```powershell
+Copy-Item .env.example .env
+```
+
+**Windows (Command Prompt):**
+```cmd
+copy .env.example .env
 ```
 
 Then edit `.env` with your configuration:
@@ -77,11 +108,19 @@ Before you can use the remote ML node, you need SSH access:
 
 ### Generate SSH Key (if you don't have one)
 
+**macOS/Linux:**
 ```bash
 ssh-keygen -t ed25519 -C "your-email@example.com"
 ```
 
-This creates `~/.ssh/id_ed25519` (private key) and `~/.ssh/id_ed25519.pub` (public key). Share the `.pub` file with iwebster@ucsd.edu.
+**Windows (PowerShell or Command Prompt):**
+```cmd
+ssh-keygen -t ed25519 -C "your-email@example.com"
+```
+
+This creates `~/.ssh/id_ed25519` (private key) and `~/.ssh/id_ed25519.pub` (public key) on macOS/Linux, or `C:\Users\YourName\.ssh\id_ed25519` on Windows. Share the `.pub` file with iwebster@ucsd.edu.
+
+**Windows users:** Make sure OpenSSH is installed. On Windows 10/11, you can install it via Settings → Apps → Optional Features → Add a feature → OpenSSH Client.
 
 For detailed SSH setup instructions, see [How to SSH into the ML Node.pdf](./How%20to%20SSH%20into%20the%20ML%20Node.pdf).
 
@@ -155,8 +194,14 @@ This gives you access to the remote `locomotion/` directory where you can:
 
 **To stop port forwarding:**
 
+**macOS/Linux:**
 ```bash
 pkill -f 'ssh.*8000:localhost:8000'  # Replace 8000 with your SSH_PORT
+```
+
+**Windows (PowerShell):**
+```powershell
+Get-Process | Where-Object {$_.ProcessName -eq "ssh"} | Stop-Process
 ```
 
 #### Typical Iteration Process
@@ -166,20 +211,56 @@ pkill -f 'ssh.*8000:localhost:8000'  # Replace 8000 with your SSH_PORT
 3. **Deploy and train**: `./train.sh` or `./train.sh --test`
 4. **Wait** for training to complete (~6 min for test, ~30 min for full)
 5. **View results**: `./view-results.sh` or `./view-results.sh --test`
-6. **Analyze** the training video and metrics at `http://localhost:$SSH_PORT`
-7. **Iterate** based on performance, repeat from step 1
+6. **Visualize locally**: `python visualize.py` to see detailed policy behavior
+7. **Analyze** the training video, local visualization, and metrics at `http://localhost:$SSH_PORT`
+8. **Iterate** based on performance, repeat from step 1
+
+**Note for Windows users:** The shell scripts (`train.sh`, `view-results.sh`) require Bash. Use Git Bash, WSL (Windows Subsystem for Linux), or manually run the commands in the scripts using PowerShell equivalents.
 
 ---
 
-## 4. Local Visualization
+## 4. Local Testing and Visualization
 
-For inspecting robot models and MJCF/URDF files before training, use the visualization tool:
+### Model Visualization
+
+For inspecting robot models and MJCF/URDF files before training, use the asset visualization tool:
 
 ```bash
 python asset-visualization/main.py
 ```
 
 This opens an interactive 3D viewer where you can load and inspect the Bittle robot model. Useful for debugging model configurations and understanding joint movements.
+
+### Policy Visualization and Environment Iteration
+
+To test trained policies locally and iterate on the environment:
+
+```bash
+python visualize.py
+```
+
+**What it does:**
+- Loads a trained policy from ONNX format
+- Runs the policy in the Bittle simulation environment
+- Generates MP4 and GIF videos showing the robot's behavior
+- Saves outputs to the `outputs/` directory
+
+**Configuration:** Edit `visualize.py` to customize:
+- `POLICY_PATH` - Path to your ONNX policy file
+- `SCENE_PATH` - Scene configuration file
+- `DURATION` / `NUM_STEPS` - Length of visualization
+- `RENDER_WIDTH` / `RENDER_HEIGHT` - Video resolution
+
+**Typical workflow for environment iteration:**
+
+1. **Make changes** to reward functions, observations, or environment parameters in `locomotion/bittle_env.py`
+2. **Train remotely** using `./train.sh --test` (quick 6-minute test run)
+3. **Download results** using `./view-results.sh --test`
+4. **Visualize locally** with `python visualize.py` to see the policy behavior
+5. **Analyze** the videos and metrics to understand what needs improvement
+6. **Iterate** - repeat from step 1 with refined changes
+
+This allows rapid iteration without waiting for full training runs.
 
 ---
 

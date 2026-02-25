@@ -1,9 +1,3 @@
-
-
-
-Readme · MD
-Copy
-
 # pupper-simulations
 
 Official repository for the Triton Pupper Simulations team - a robotics simulation project focused on quadruped locomotion using MuJoCo and Brax.
@@ -33,7 +27,7 @@ This project provides simulation and reinforcement learning environments for the
 1. Clone the repository:
 
 ```bash
-git clone 
+git clone <repository-url>
 cd pupper-simulations
 ```
 
@@ -91,9 +85,9 @@ pupper-simulations/
 
 ## Usage
 
-### Visualization
+### Model Visualization
 
-To launch the interactive MuJoCo viewer:
+To launch the interactive MuJoCo viewer for inspecting robot models:
 
 ```bash
 cd visualization
@@ -105,6 +99,32 @@ This will:
 1. Convert URDF to MJCF if necessary
 2. Load the Bittle robot model
 3. Launch the interactive 3D viewer
+
+### Policy Visualization
+
+To visualize trained policies and generate videos:
+
+```bash
+python visualize.py
+```
+
+This script:
+
+1. Loads a trained policy from ONNX format
+2. Runs the policy in the Bittle environment
+3. Generates MP4 and GIF videos of the robot's behavior
+4. Saves outputs to the `outputs/` directory
+
+**Configuration:** Edit the paths in `visualize.py`:
+- `POLICY_PATH` - Path to your ONNX policy file (default: `locomotion/sim-outputs/policies/policy.onnx`)
+- `SCENE_PATH` - Path to the scene XML file (default: `locomotion/bittle_adapted_scene.xml`)
+- `OUTPUT_DIR` - Output directory for videos (default: `outputs`)
+
+This is useful for:
+- Testing policies locally before deploying to the robot
+- Iterating on environment design and reward functions
+- Creating demonstration videos
+- Debugging locomotion behaviors
 
 ## Dependencies
 
@@ -120,44 +140,6 @@ This will:
 - `brax==0.13.0` - Reinforcement learning library
 - `ml_collections==1.1.0` - Configuration management
 - `mediapy==1.2.4` - Media processing
-
-## Development Workflow
-
-### Working on Locomotion
-
-If you're developing locomotion policies or environment code, follow this workflow:
-
-1. **Create your development branch:**
-```bash
-git checkout -b /locomotion
-git push -u origin /locomotion
-```
-
-2. **Modify the training notebook:**
-
-In `locomotion/training.ipynb`, change the first cell to clone your specific branch:
-
-```python
-!git clone --branch /locomotion --single-branch https://github.com/triton-droids/pupper-simulations.git
-%cd pupper-simulations
-```
-
-Replace `<your-name>` with your actual name (e.g., `oren/locomotion`).
-
-3. **Develop and test:**
-- Make changes to environment code, reward functions, or training parameters
-- Test in Google Colab or locally
-- Commit frequently to your branch
-
-4. **Merge when ready:**
-- Once your locomotion policy is working well, create a pull request to merge into `main`
-- Include training metrics and videos in your PR description
-
-**Why this workflow?** This ensures:
-- Your Colab notebook always pulls your latest code
-- You can experiment freely without affecting others
-- Multiple team members can work on locomotion simultaneously
-- Easy to compare different approaches before merging
 
 ## Known Issues
 
@@ -181,7 +163,7 @@ pip install mujoco==3.3.4
 
 ## Contributing
 
-This is the official repository for the Triton Pupper Simulations team. For contributions, please follow the team's development guidelines and the branch workflow described above.
+This is the official repository for the Triton Pupper Simulations team. For contributions, please follow the team's development guidelines.
 
 ## License
 

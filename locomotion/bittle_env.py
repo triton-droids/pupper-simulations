@@ -4,6 +4,10 @@ Policy outputs joint position offsets relative to default pose.
 """
 
 from typing import Any, List, Sequence
+import warnings
+
+# Suppress JAX overflow warning in type casting
+warnings.filterwarnings("ignore", category=RuntimeWarning, message="overflow encountered in cast")
 
 import jax
 import jax.numpy as jp
