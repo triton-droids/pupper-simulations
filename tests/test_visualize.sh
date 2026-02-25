@@ -51,8 +51,15 @@ echo ""
 
 # 1. Missing .env → clear error
 run_test "Missing .env produces error"
-# Run with a non-existent .env by temporarily hiding the real one
-output=$(cd /tmp && bash "$VISUALIZE" 2>&1 || true)
+mv_env=false
+if [ -f "$PROJECT_DIR/.env" ]; then
+  mv "$PROJECT_DIR/.env" "$PROJECT_DIR/.env.bak"
+  mv_env=true
+fi
+output=$(bash "$VISUALIZE" 2>&1 || true)
+if [ "$mv_env" = true ]; then
+  mv "$PROJECT_DIR/.env.bak" "$PROJECT_DIR/.env"
+fi
 if echo "$output" | grep -q "Error: .env file not found"; then
   pass
 else
