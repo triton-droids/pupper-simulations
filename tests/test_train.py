@@ -11,7 +11,9 @@ import train as train_module
 
 def test_main(monkeypatch, fake_policy_params):
     """main() registers env, calls ppo.train with test config, and exports ONNX."""
-    monkeypatch.setattr(sys, "argv", ["train.py", "--test", "--output", "/tmp/test_policy.onnx"])
+    monkeypatch.setattr(sys, "argv", [
+        "train.py", "--test", "--no-video", "--output", "/tmp/test_policy.onnx",
+    ])
 
     mock_ppo_train = MagicMock(return_value=(MagicMock(), fake_policy_params, {}))
     mock_export = MagicMock()

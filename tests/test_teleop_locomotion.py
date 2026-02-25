@@ -1,4 +1,4 @@
-"""Tests for teleop_locomotion.py (7 tests)."""
+"""Tests for locomotion/teleop.py (7 tests)."""
 
 from unittest.mock import MagicMock, patch, call
 from types import SimpleNamespace
@@ -7,7 +7,7 @@ import sys
 import numpy as np
 import pytest
 
-import teleop_locomotion  # conftest pre-imports mujoco so this is safe
+from locomotion import teleop as teleop_mod  # conftest pre-imports mujoco so this is safe
 
 
 # ---------------------------------------------------------------------------
@@ -16,8 +16,7 @@ import teleop_locomotion  # conftest pre-imports mujoco so this is safe
 
 class TestTerminalInputInit:
     def test_terminal_input_init(self):
-        from teleop_locomotion import _TerminalInput
-        ti = _TerminalInput()
+        ti = teleop_mod._TerminalInput()
         assert ti.enabled is False
         assert ti._fd is None
         assert ti._old_term is None
@@ -25,15 +24,13 @@ class TestTerminalInputInit:
 
 class TestTerminalInputEnter:
     def test_enter(self):
-        from teleop_locomotion import _TerminalInput
-
-        ti = _TerminalInput()
+        ti = teleop_mod._TerminalInput()
         fake_fd = 0
         fake_old = [0] * 7  # termios attr list
 
         with patch.object(sys, "stdin") as mock_stdin, \
-             patch("teleop_locomotion.termios.tcgetattr", return_value=fake_old), \
-             patch("teleop_locomotion.tty.setcbreak") as mock_cbreak:
+             patch.object(teleop_mod.termios, "tcgetattr", return_value=fake_old), \
+             patch.object(teleop_mod.tty, "setcbreak") as mock_cbreak:
 
             mock_stdin.isatty.return_value = True
             mock_stdin.fileno.return_value = fake_fd
@@ -47,14 +44,12 @@ class TestTerminalInputEnter:
 
 class TestTerminalInputExit:
     def test_exit(self):
-        from teleop_locomotion import _TerminalInput
-
-        ti = _TerminalInput()
+        ti = teleop_mod._TerminalInput()
         ti.enabled = True
         ti._fd = 0
         ti._old_term = [0] * 7
 
-        with patch("teleop_locomotion.termios.tcsetattr") as mock_tc:
+        with patch.object(teleop_mod.termios, "tcsetattr") as mock_tc:
             ti.__exit__(None, None, None)
 
         mock_tc.assert_called_once()
@@ -63,15 +58,13 @@ class TestTerminalInputExit:
 
 class TestReadArrowTail:
     def test_read_arrow_tail(self):
-        from teleop_locomotion import _TerminalInput
-
-        ti = _TerminalInput()
+        ti = teleop_mod._TerminalInput()
         ti.enabled = True
 
         # Simulate reading "[D" (left arrow tail)
         read_calls = iter(["[", "D"])
         with patch.object(sys, "stdin") as mock_stdin, \
-             patch("teleop_locomotion.select.select") as mock_select:
+             patch.object(teleop_mod.select, "select") as mock_select:
 
             mock_stdin.read = lambda n: next(read_calls)
             # Both select calls return readable
@@ -84,10 +77,8 @@ class TestReadArrowTail:
 
 class TestReadKeys:
     def test_read_keys(self):
-        from teleop_locomotion import _TerminalInput
-
         # Disabled returns empty
-        ti = _TerminalInput()
+        ti = teleop_mod._TerminalInput()
         assert ti.read_keys() == []
 
         # Enabled returns chars
@@ -97,7 +88,7 @@ class TestReadKeys:
             ([True], [], []),  # first call: readable
             ([], [], []),       # second call: nothing
         ])
-        with patch("teleop_locomotion.select.select", side_effect=select_results), \
+        with patch.object(teleop_mod.select, "select", side_effect=select_results), \
              patch.object(sys, "stdin") as mock_stdin:
             mock_stdin.read = lambda n: next(chars)
             keys = ti.read_keys()
@@ -111,7 +102,7 @@ class TestReadKeys:
 
 class TestBuildObs:
     def test_build_obs(self):
-        from teleop_locomotion import build_obs, OBS_SIZE, TOTAL_OBS, DEFAULT_POSE, NUM_ACTUATORS
+        from locomotion.constants import OBS_SIZE, TOTAL_OBS, NUM_ACTUATORS
 
         data = SimpleNamespace(
             xmat=np.tile(np.eye(3).flatten(), (5, 1)),  # identity rotation per body
@@ -120,21 +111,21 @@ class TestBuildObs:
             qvel=np.zeros(15, dtype=np.float64),
         )
         # Set joint positions to default pose
-        data.qpos[7:16] = DEFAULT_POSE
+        data.qpos[7:16] = teleop_mod.DEFAULT_POSE
 
         base_body_id = 1
         command = np.array([0.1, 0.0, 0.0], dtype=np.float32)
         last_action = np.zeros(NUM_ACTUATORS, dtype=np.float32)
         obs_history = np.zeros(TOTAL_OBS, dtype=np.float32)
 
-        obs = build_obs(data, base_body_id, command, last_action, obs_history)
+        obs = teleop_mod.build_obs(data, base_body_id, command, last_action, obs_history)
         assert obs.shape == (TOTAL_OBS,)
 
         # First OBS_SIZE elements should be set (not all zero due to gravity)
         assert not np.allclose(obs[:OBS_SIZE], 0.0)
 
         # Second call should stack (history rolls)
-        obs2 = build_obs(data, base_body_id, command, last_action, obs)
+        obs2 = teleop_mod.build_obs(data, base_body_id, command, last_action, obs)
         assert not np.allclose(obs2[OBS_SIZE:2 * OBS_SIZE], 0.0)
 
         # All values within clip bounds
@@ -148,7 +139,7 @@ class TestBuildObs:
 class TestMain:
     def test_main(self, monkeypatch):
         monkeypatch.setattr(sys, "argv", [
-            "teleop_locomotion.py",
+            "teleop.py",
             "--no-policy",
             "--xml-path", "dummy.xml",
         ])
@@ -170,19 +161,19 @@ class TestMain:
         mock_term_inst = MagicMock()
         mock_term_inst.read_keys.return_value = []
 
-        with patch.object(teleop_locomotion.mujoco.MjModel, "from_xml_path", mock_from_xml), \
-             patch.object(teleop_locomotion.mujoco, "MjData", return_value=mock_data), \
-             patch.object(teleop_locomotion.mujoco, "mj_name2id", return_value=1), \
-             patch.object(teleop_locomotion.mujoco, "mj_resetData"), \
-             patch.object(teleop_locomotion.mujoco, "mj_forward"), \
-             patch.object(teleop_locomotion.mujoco, "viewer") as mock_viewer_mod, \
-             patch.object(teleop_locomotion, "_TerminalInput") as mock_term_cls:
+        with patch.object(teleop_mod.mujoco.MjModel, "from_xml_path", mock_from_xml), \
+             patch.object(teleop_mod.mujoco, "MjData", return_value=mock_data), \
+             patch.object(teleop_mod.mujoco, "mj_name2id", return_value=1), \
+             patch.object(teleop_mod.mujoco, "mj_resetData"), \
+             patch.object(teleop_mod.mujoco, "mj_forward"), \
+             patch.object(teleop_mod.mujoco, "viewer") as mock_viewer_mod, \
+             patch.object(teleop_mod, "_TerminalInput") as mock_term_cls:
 
             mock_viewer_mod.launch_passive.return_value.__enter__ = MagicMock(return_value=mock_viewer_ctx)
             mock_viewer_mod.launch_passive.return_value.__exit__ = MagicMock(return_value=False)
             mock_term_cls.return_value.__enter__ = MagicMock(return_value=mock_term_inst)
             mock_term_cls.return_value.__exit__ = MagicMock(return_value=False)
 
-            teleop_locomotion.main()
+            teleop_mod.main()
 
         mock_from_xml.assert_called_once_with("dummy.xml")
