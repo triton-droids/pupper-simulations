@@ -26,6 +26,8 @@ dev = [
     "jupyter",
     "notebook",
     "ipython",
+    "pytest>=8.0",
+    "pytest-mock>=3.12",
 ]
 
 [project.urls]
@@ -42,3 +44,7 @@ packages = ["locomotion"]
 
 [tool.setuptools.package-data]
 "*" = ["*.xml", "*.mjcf"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
