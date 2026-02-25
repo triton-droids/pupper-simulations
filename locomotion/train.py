@@ -11,12 +11,16 @@ from brax.training.agents.ppo import train as ppo
 from bittle_env import BittleEnv
 from onnx_export import export_policy_to_onnx
 from training_config import TrainingConfig
+from video_recorder import record_video
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--test", action="store_true")
     parser.add_argument("--xml-path", default="bittle_adapted_scene.xml")
     parser.add_argument("--output", default="outputs/policy.onnx")
+    parser.add_argument("--no-video", action="store_true", help="Skip video recording after training")
+    parser.add_argument("--video-output", default="outputs/videos/latest_video.mp4",
+                        help="Path for recorded video (default: outputs/videos/latest_video.mp4)")
     args = parser.parse_args()
 
     config = TrainingConfig(test_mode=args.test)
@@ -29,7 +33,7 @@ def main():
     def progress(step, metrics):
         print(f"  Step {step:>10,} | Reward: {float(metrics['eval/episode_reward']):.4f}")
 
-    _, params, _ = ppo.train(
+    make_policy, params, _ = ppo.train(
         environment=env,
         progress_fn=progress,
         num_timesteps=config.num_timesteps,
@@ -45,6 +49,12 @@ def main():
     os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)
     export_policy_to_onnx(params, args.output)
     print(f"Policy saved to {args.output}")
+
+    if not args.no_video:
+        try:
+            record_video(env, make_policy, params, args.video_output)
+        except Exception as e:
+            print(f"Warning: Video recording failed: {e}")
 
 if __name__ == "__main__":
     main()
