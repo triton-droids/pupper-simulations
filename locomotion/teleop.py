@@ -25,7 +25,7 @@ import mujoco
 import mujoco.viewer
 import numpy as np
 
-from .constants import (
+from locomotion.constants import (
     DEFAULT_POSE as _DEFAULT_POSE_LIST,
     ACTION_SCALE,
     OBS_SIZE,
