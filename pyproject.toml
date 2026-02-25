@@ -16,19 +16,11 @@ dependencies = [
     "ml_collections==1.1.0",
     "jax[cuda12]==0.8.2",
     "brax==0.13.0",
-    "opencv-python>=4.8.0",
-    "matplotlib==3.10.8",
     "onnx>=1.15.0",
     "onnxruntime>=1.16.0",
 ]
 
 [project.optional-dependencies]
-training = [
-    "matplotlib",
-    "pillow",
-    "tensorboardx",
-]
-
 dev = [
     "jupyter",
     "notebook",
