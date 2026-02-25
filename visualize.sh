@@ -106,7 +106,7 @@ if [ "$DOWNLOAD_ONLY" = true ]; then
   exit 0
 fi
 
-TELEOP_CMD="mjpython $SCRIPT_DIR/teleop_locomotion.py --policy $LOCAL_POLICY"
+TELEOP_CMD="mjpython $SCRIPT_DIR/locomotion/teleop.py --policy $LOCAL_POLICY"
 
 if [ "$DRY_RUN" = true ]; then
   echo "[dry-run] $TELEOP_CMD"

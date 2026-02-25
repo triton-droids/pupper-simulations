@@ -10,7 +10,7 @@ Controls:
   R              reset
   Q              quit
 
-Run:  mjpython teleop_locomotion.py
+Run:  mjpython locomotion/teleop.py
 """
 
 import argparse
@@ -25,22 +25,23 @@ import mujoco
 import mujoco.viewer
 import numpy as np
 
-# ---------------------------------------------------------------------------
-# Constants (must match BittleEnv)
-# ---------------------------------------------------------------------------
-DEFAULT_POSE = np.array([
-    -0.6908, 1.9782, 0.7222, 1.9468, -0.596904,
-    -0.6908, 1.9782, 0.7222, 1.9468,
-], dtype=np.float32)
+from .constants import (
+    DEFAULT_POSE as _DEFAULT_POSE_LIST,
+    ACTION_SCALE,
+    OBS_SIZE,
+    HISTORY_LEN,
+    TOTAL_OBS,
+    NUM_ACTUATORS,
+    NSUBSTEPS,
+    PHYSICS_TIMESTEP,
+    INIT_QPOS_BASE as _INIT_QPOS_BASE_LIST,
+    Q_JOINT_START,
+    QD_JOINT_START,
+    JOINT_DAMPING,
+)
 
-ACTION_SCALE = 0.5
-OBS_SIZE = 34          # 1 + 3 + 3 + 9 + 9 + 9
-HISTORY_LEN = 15
-TOTAL_OBS = OBS_SIZE * HISTORY_LEN  # 510
-NUM_ACTUATORS = 9
-NSUBSTEPS = 5          # 0.004s timestep * 5 = 0.02s control dt (50 Hz)
-
-INIT_QPOS_BASE = np.array([0.0, 0.0, 0.075, 1.0, 0.0, 0.0, 0.0], dtype=np.float64)
+DEFAULT_POSE = np.array(_DEFAULT_POSE_LIST, dtype=np.float32)
+INIT_QPOS_BASE = np.array(_INIT_QPOS_BASE_LIST, dtype=np.float64)
 
 # ---------------------------------------------------------------------------
 # Terminal input (non-blocking WASD + arrows)
@@ -116,9 +117,9 @@ def build_obs(data, base_body_id, command, last_action, obs_history):
     # Projected gravity: R^T @ [0, 0, -1]
     proj_gravity = R.T @ np.array([0.0, 0.0, -1.0])
 
-    # Joint states (skip 7 freejoint qpos, 6 freejoint qvel)
-    joint_angles = data.qpos[7:7 + NUM_ACTUATORS].astype(np.float32)
-    joint_vels = data.qvel[6:6 + NUM_ACTUATORS].astype(np.float32)
+    # Joint states (skip freejoint qpos/qvel)
+    joint_angles = data.qpos[Q_JOINT_START:Q_JOINT_START + NUM_ACTUATORS].astype(np.float32)
+    joint_vels = data.qvel[QD_JOINT_START:QD_JOINT_START + NUM_ACTUATORS].astype(np.float32)
 
     obs = np.concatenate([
         np.array([local_ang_vel[2]], dtype=np.float32) * 0.25,       # yaw rate (1)
@@ -151,8 +152,8 @@ def main():
 
     # Load MuJoCo model and set physics to match training
     model = mujoco.MjModel.from_xml_path(args.xml_path)
-    model.opt.timestep = 0.004
-    model.dof_damping[6:] = 5.0
+    model.opt.timestep = PHYSICS_TIMESTEP
+    model.dof_damping[QD_JOINT_START:] = JOINT_DAMPING
     data = mujoco.MjData(model)
 
     base_body_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "base")
@@ -179,8 +180,8 @@ def main():
     def reset():
         nonlocal last_action, obs_history
         mujoco.mj_resetData(model, data)
-        data.qpos[:7] = INIT_QPOS_BASE
-        data.qpos[7:7 + NUM_ACTUATORS] = DEFAULT_POSE
+        data.qpos[:Q_JOINT_START] = INIT_QPOS_BASE
+        data.qpos[Q_JOINT_START:Q_JOINT_START + NUM_ACTUATORS] = DEFAULT_POSE
         mujoco.mj_forward(model, data)
         last_action = np.zeros(NUM_ACTUATORS, dtype=np.float32)
         obs_history = np.zeros(TOTAL_OBS, dtype=np.float32)

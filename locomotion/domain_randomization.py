@@ -1,3 +1,10 @@
+"""
+Domain randomization utilities for sim-to-real transfer.
+
+NOT YET INTEGRATED into the training loop.  See train.py for where to add
+domain_randomize() calls when ready to bridge the sim-to-real gap.
+"""
+
 import jax
 import jax.numpy as jp
 

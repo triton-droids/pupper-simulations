@@ -1,13 +1,13 @@
 # Pupper Simulations Setup Guide
 
-Welcome to the Pupper Simulations project! This guide will walk you through setting up your local development environment, connecting to the remote ML training node, and using the training workflow.
+Welcome to the Pupper Simulations project! This guide walks you through setting up your local development environment, connecting to the remote ML training node, and using the training workflow.
 
 ## Prerequisites
 
 - Python 3.11 or higher
 - Git
 - SSH client (built-in on macOS/Linux, Git Bash or OpenSSH on Windows)
-- CUDA 12 support (optional, for local GPU training)
+- CUDA 12 support (on the remote training node)
 
 ---
 
@@ -66,29 +66,15 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 Create your `.env` file from the example template:
 
-**macOS/Linux:**
 ```bash
 cp .env.example .env
-```
-
-**Windows (PowerShell):**
-```powershell
-Copy-Item .env.example .env
-```
-
-**Windows (Command Prompt):**
-```cmd
-copy .env.example .env
 ```
 
 Then edit `.env` with your configuration:
 
 ```bash
-BRANCH_NAME="your-branch"              # Your git branch name
 SSH_KEY_PATH="~/.ssh/id_ed25519"       # Path to your SSH private key
-SSH_PASSWORD="your-ssh-password"       # (Optional) SSH password if required
-SSH_DIRECTORY="your-directory"         # Your directory on the remote server
-SSH_PORT="8000"                        # Port for HTTP server (choose any free port like 8000, 8080, etc.)
+SSH_DIRECTORY="your-directory"         # Your project directory on the remote server
 DROIDS_IP_ADDRESS="tritondroids@132.249.64.152"  # Remote server address
 ```
 
@@ -108,19 +94,11 @@ Before you can use the remote ML node, you need SSH access:
 
 ### Generate SSH Key (if you don't have one)
 
-**macOS/Linux:**
 ```bash
 ssh-keygen -t ed25519 -C "your-email@example.com"
 ```
 
-**Windows (PowerShell or Command Prompt):**
-```cmd
-ssh-keygen -t ed25519 -C "your-email@example.com"
-```
-
-This creates `~/.ssh/id_ed25519` (private key) and `~/.ssh/id_ed25519.pub` (public key) on macOS/Linux, or `C:\Users\YourName\.ssh\id_ed25519` on Windows. Share the `.pub` file with iwebster@ucsd.edu.
-
-**Windows users:** Make sure OpenSSH is installed. On Windows 10/11, you can install it via Settings → Apps → Optional Features → Add a feature → OpenSSH Client.
+This creates `~/.ssh/id_ed25519` (private key) and `~/.ssh/id_ed25519.pub` (public key). Share the `.pub` file with iwebster@ucsd.edu.
 
 For detailed SSH setup instructions, see [How to SSH into the ML Node.pdf](./How%20to%20SSH%20into%20the%20ML%20Node.pdf).
 
@@ -153,124 +131,67 @@ cd locomotion
 
 ## 3. Development Workflow
 
-### Remote Training Workflow
+### Training (Remote)
 
-#### train.sh - Deploy and Train
-
-The `train.sh` script automates deploying your code to the remote server and starting training.
-
-**What it does:** Commits your changes, pushes to your branch, SSHs into the remote server, pulls the latest code, and runs training.
-
-**Usage:**
+SSH into the ML node and run training:
 
 ```bash
-./train.sh              # Full training (10M timesteps, ~30 minutes)
-./train.sh --test       # Test run (10K timesteps, ~6 minutes)
+ssh -i ~/.ssh/your-key tritondroids@132.249.64.152
+cd pupper-simulations/locomotion
+python train.py              # Full training (~30 minutes)
+python train.py --test       # Quick test run (~6 minutes)
 ```
 
-#### view-results.sh - View Training Results
+### Download + Visualize (Local)
 
-The `view-results.sh` script downloads your training results and sets up port forwarding to browse remote files.
-
-**What it does:** Connects to the remote server, downloads the latest training video and policy, opens the video locally, and keeps port forwarding active.
-
-**Usage:**
+Use `visualize.sh` to download the trained policy and launch the interactive teleop viewer:
 
 ```bash
-./view-results.sh         # View full training results
-./view-results.sh --test  # View test run results
+./visualize.sh               # Download policy + launch teleop
+./visualize.sh --dry-run     # Print commands without executing
+./visualize.sh --download-only  # Download only, no teleop
+./visualize.sh --video       # Also download training video
 ```
 
-**Accessing the remote output directory:**
+Or run the teleop directly with an already-downloaded policy:
 
-While port forwarding is active, navigate to `http://localhost:$SSH_PORT` in your browser (replace `$SSH_PORT` with your port from `.env`, e.g., `http://localhost:8000`).
-
-This gives you access to the remote `locomotion/` directory where you can:
-
-- Browse all training outputs
-- View TensorBoard logs
-- Download additional checkpoints
-- Inspect training metrics
-
-**To stop port forwarding:**
-
-**macOS/Linux:**
 ```bash
-pkill -f 'ssh.*8000:localhost:8000'  # Replace 8000 with your SSH_PORT
+mjpython locomotion/teleop.py --policy locomotion/outputs/policy.onnx
 ```
 
-**Windows (PowerShell):**
-```powershell
-Get-Process | Where-Object {$_.ProcessName -eq "ssh"} | Stop-Process
+### Model Inspection
+
+To inspect the robot model without a trained policy:
+
+```bash
+mjpython locomotion/teleop.py --no-policy --xml-path locomotion/bittle_adapted_scene.xml
 ```
 
-#### Typical Iteration Process
+Or use the built-in MuJoCo viewer:
 
-1. **Make changes** to your code locally (e.g., modify `bittle_env.py`, `training_config.py`)
-2. **Test locally** (optional but recommended): `python locomotion/train.py --test`
-3. **Deploy and train**: `./train.sh` or `./train.sh --test`
-4. **Wait** for training to complete (~6 min for test, ~30 min for full)
-5. **View results**: `./view-results.sh` or `./view-results.sh --test`
-6. **Visualize locally**: `python visualize.py` to see detailed policy behavior
-7. **Analyze** the training video, local visualization, and metrics at `http://localhost:$SSH_PORT`
-8. **Iterate** based on performance, repeat from step 1
+```bash
+python -m mujoco.viewer --mjcf locomotion/bittle_adapted_scene.xml
+```
 
-**Note for Windows users:** The shell scripts (`train.sh`, `view-results.sh`) require Bash. Use Git Bash, WSL (Windows Subsystem for Linux), or manually run the commands in the scripts using PowerShell equivalents.
+### Typical Iteration Process
+
+1. **Make changes** to your code locally (e.g., modify `locomotion/bittle_env.py`, `locomotion/training_config.py`)
+2. **Push changes** to your branch
+3. **SSH into ML node**, pull changes, and train: `cd locomotion && python train.py --test`
+4. **Download + visualize**: `./visualize.sh`
+5. **Iterate** based on performance, repeat from step 1
+
+**Note for Windows users:** The shell scripts (`visualize.sh`) require Bash. Use Git Bash or WSL (Windows Subsystem for Linux).
 
 ---
 
-## 4. Local Testing and Visualization
-
-### Model Visualization
-
-For inspecting robot models and MJCF/URDF files before training, use the asset visualization tool:
-
-```bash
-python asset-visualization/main.py
-```
-
-This opens an interactive 3D viewer where you can load and inspect the Bittle robot model. Useful for debugging model configurations and understanding joint movements.
-
-### Policy Visualization and Environment Iteration
-
-To test trained policies locally and iterate on the environment:
-
-```bash
-python visualize.py
-```
-
-**What it does:**
-- Loads a trained policy from ONNX format
-- Runs the policy in the Bittle simulation environment
-- Generates MP4 and GIF videos showing the robot's behavior
-- Saves outputs to the `outputs/` directory
-
-**Configuration:** Edit `visualize.py` to customize:
-- `POLICY_PATH` - Path to your ONNX policy file
-- `SCENE_PATH` - Scene configuration file
-- `DURATION` / `NUM_STEPS` - Length of visualization
-- `RENDER_WIDTH` / `RENDER_HEIGHT` - Video resolution
-
-**Typical workflow for environment iteration:**
-
-1. **Make changes** to reward functions, observations, or environment parameters in `locomotion/bittle_env.py`
-2. **Train remotely** using `./train.sh --test` (quick 6-minute test run)
-3. **Download results** using `./view-results.sh --test`
-4. **Visualize locally** with `python visualize.py` to see the policy behavior
-5. **Analyze** the videos and metrics to understand what needs improvement
-6. **Iterate** - repeat from step 1 with refined changes
-
-This allows rapid iteration without waiting for full training runs.
-
----
-
-## 5. Opening a Pull Request
+## 4. Opening a Pull Request
 
 Before opening a pull request:
 
-1. **Test your changes** - Run both local and remote tests to ensure everything works
-2. **Check the build** - Make sure `pip install -e .` succeeds with no errors
-3. **Review your changes** - Use `git diff` to verify you're only committing intended changes
+1. **Test your changes** — Run tests to ensure everything works
+2. **Check the build** — Make sure `pip install -e .` succeeds with no errors
+3. **Review your changes** — Use `git diff` to verify you're only committing intended changes
 4. **Update documentation** if you've added new features or changed workflows
 
 **To open a PR:**
@@ -293,12 +214,8 @@ The team will review your code before merging to `main`.
 
 ---
 
-## 6. Additional Resources
+## 5. Additional Resources
 
-- **Main README**: [README.md](../README.md) - Project overview and architecture
-- **SSH Guide**: [How to SSH into the ML Node.pdf](./How%20to%20SSH%20into%20the%20ML%20Node.pdf) - Detailed SSH setup
+- **Main README**: [README.md](../README.md) — Project overview and workflow
+- **SSH Guide**: [How to SSH into the ML Node.pdf](./How%20to%20SSH%20into%20the%20ML%20Node.pdf) — Detailed SSH setup
 - **Need help?** Contact iwebster@ucsd.edu (Discord: jahovajenkins)
-
----
-
-**Happy training! 🤖🐕**
