@@ -4,6 +4,8 @@ renderingEnv/
 
 outputs/*
 !outputs/.gitkeep
+locomotion/outputs/*
+!locomotion/outputs/.gitkeep
 locomotion/sim-outputs/media/*
 !locomotion/sim-outputs/media/.gitkeep
 locomotion/sim-outputs/policies/*
