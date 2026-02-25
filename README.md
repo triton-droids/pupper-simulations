@@ -1,170 +1,121 @@
 # pupper-simulations
 
-Official repository for the Triton Pupper Simulations team - a robotics simulation project focused on quadruped locomotion using MuJoCo and Brax.
+Simulation and reinforcement learning for the Bittle quadruped robot, using MuJoCo and Brax.
 
 ## Overview
 
-This project provides simulation and reinforcement learning environments for the Bittle quadruped robot. It includes tools for visualization, training locomotion policies, and converting between different model formats (URDF, MJCF).
-
-## Features
-
-- MuJoCo-based physics simulation for quadruped robots
-- Brax reinforcement learning environment for locomotion training
-- Interactive 3D visualization using MuJoCo viewer
-- Model conversion utilities (URDF to MJCF)
-- Configurable reward functions for training
-- JAX-accelerated training with GPU support
+This project trains locomotion policies for the Bittle robot via RL on a remote GPU node, then visualizes the results locally with an interactive MuJoCo teleop viewer.
 
 ## Installation
 
-### Prerequisites
-
-- Python 3.12 (or compatible version)
-- CUDA 12 support (for GPU-accelerated training)
-
-### Setup
-
-1. Clone the repository:
+Requires Python 3.11+. All dependencies are declared in `pyproject.toml`.
 
 ```bash
 git clone <repository-url>
 cd pupper-simulations
+python -m venv .venv
+source .venv/bin/activate
+pip install -e .
 ```
 
-2. Create and activate a virtual environment:
-
-```bash
-python -m venv simulations-env
-source simulations-env/bin/activate  # On Windows: simulations-env\Scripts\activate
-```
-
-3. Install basic dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-4. Install training dependencies (optional, for reinforcement learning):
-
-```bash
-pip install -r training_requirements.txt
-```
+For the interactive viewer, you also need `mjpython` (ships with the `mujoco` package).
 
 ## Directory Structure
 
 ```
 pupper-simulations/
-├── assets/                      # Robot models and media files
-│   ├── descriptions/           # Robot description files
-│   │   └── bittle/            # Bittle quadruped robot
-│   │       ├── meshes/        # STL mesh files
-│   │       ├── mjcf/          # MuJoCo model files
-│   │       ├── urdf/          # URDF robot descriptions
-│   │       └── xacro/         # Xacro source files
-│   └── media/                 # Media assets
+├── locomotion/                    # RL training environment + teleop
+│   ├── constants.py               # Shared robot parameters (single source of truth)
+│   ├── bittle_env.py              # Brax environment for Bittle
+│   ├── teleop.py                  # Interactive MuJoCo teleop viewer
+│   ├── train.py                   # Training entry point
+│   ├── training_config.py         # Hyperparameters
+│   ├── onnx_export.py             # Export trained policy to ONNX
+│   ├── domain_randomization.py    # Domain randomization (not yet integrated)
+│   ├── env_test.py                # Quick env build test
+│   ├── bittle_adapted.xml         # MuJoCo robot model
+│   ├── bittle_adapted_scene.xml   # Scene with floor, lighting, keyframe
+│   └── outputs/                   # Training outputs (gitignored)
 │
-├── locomotion/                 # RL training environment
-│   ├── bittle_env.py          # Brax environment for Bittle
-│   ├── training_helpers.py    # Training utilities
-│   ├── training.ipynb         # Training notebook
-│   ├── env_test.py            # Environment testing
-│   ├── bittle_adapted.xml     # Adapted model configuration
-│   └── bittle_adapted_scene.xml  # Scene configuration
+├── assets/                        # Robot meshes and description files
+│   └── descriptions/bittle/       # STL meshes, URDF, MJCF, Xacro
 │
-├── visualization/              # Visualization and simulation tools
-│   ├── main.py                # Main visualization script
-│   ├── model_converter.py     # URDF to MJCF converter
-│   ├── simEnv.py              # Simulation environment
-│   ├── constants.py           # Configuration constants
-│   └── init.py                # Initialization utilities
+├── tests/
+│   ├── test_visualize.sh          # Shell tests for visualize.sh
+│   └── test_constants.py          # Constants consistency tests
 │
-├── requirements.txt            # Core dependencies
-├── training_requirements.txt   # Training-specific dependencies
-└── README.md                  # This file
+├── docs/
+│   └── SETUP.md                   # Detailed setup and SSH guide
+│
+├── visualize.sh                   # Download policy + launch teleop
+├── pyproject.toml                 # Python project and dependencies
+└── .env.example                   # Template for SSH credentials
 ```
 
-## Usage
+## Workflow
 
-### Model Visualization
-
-To launch the interactive MuJoCo viewer for inspecting robot models:
+### 1. Train (remote SSH node)
 
 ```bash
-cd visualization
-python main.py
+ssh -i ~/.ssh/your-key tritondroids@132.249.64.152
+cd pupper-simulations/locomotion
+python train.py              # full training
+python train.py --test       # quick test run
 ```
 
-This will:
+Training outputs a policy to `locomotion/outputs/policy.onnx`.
 
-1. Convert URDF to MJCF if necessary
-2. Load the Bittle robot model
-3. Launch the interactive 3D viewer
-
-### Policy Visualization
-
-To visualize trained policies and generate videos:
+### 2. Download + Visualize (local)
 
 ```bash
-python visualize.py
+./visualize.sh               # download policy from remote + launch teleop
+./visualize.sh --dry-run     # print commands without executing
+./visualize.sh --download-only  # download only, skip teleop
+./visualize.sh --video       # also download training video
 ```
 
-This script:
+### 3. Interactive Teleop Controls
 
-1. Loads a trained policy from ONNX format
-2. Runs the policy in the Bittle environment
-3. Generates MP4 and GIF videos of the robot's behavior
-4. Saves outputs to the `outputs/` directory
+| Key | Action |
+|-----|--------|
+| W / S | Forward / backward velocity |
+| A / D | Left / right velocity |
+| Left / Right arrows | Yaw |
+| Space | Zero all commands |
+| R | Reset simulation |
+| Q | Quit |
 
-**Configuration:** Edit the paths in `visualize.py`:
-- `POLICY_PATH` - Path to your ONNX policy file (default: `locomotion/sim-outputs/policies/policy.onnx`)
-- `SCENE_PATH` - Path to the scene XML file (default: `locomotion/bittle_adapted_scene.xml`)
-- `OUTPUT_DIR` - Output directory for videos (default: `outputs`)
+### Model Inspection
 
-This is useful for:
-- Testing policies locally before deploying to the robot
-- Iterating on environment design and reward functions
-- Creating demonstration videos
-- Debugging locomotion behaviors
+To view the robot model without a policy:
+
+```bash
+mjpython locomotion/teleop.py --no-policy --xml-path locomotion/bittle_adapted_scene.xml
+```
+
+Or use the built-in MuJoCo viewer:
+
+```bash
+python -m mujoco.viewer --mjcf locomotion/bittle_adapted_scene.xml
+```
+
+## Configuration
+
+Environment variables (in `.env`, see `.env.example`):
+
+| Variable | Description |
+|----------|-------------|
+| `SSH_KEY_PATH` | Path to your SSH private key |
+| `SSH_DIRECTORY` | Your project directory on the remote server |
+| `DROIDS_IP_ADDRESS` | Remote server address (user@host) |
 
 ## Dependencies
 
-### Core Dependencies
+All dependencies are managed in `pyproject.toml`. Key packages:
 
-- `numpy==2.3.4` - Numerical computing
-- `mujoco==3.3.4` - Physics simulation engine
-- `xacrodoc==1.3.0` - URDF/Xacro processing
+- **mujoco** — physics simulation
+- **brax** — RL environment and training
+- **jax[cuda12]** — GPU-accelerated training
+- **onnxruntime** — policy inference for teleop
 
-### Training Dependencies
-
-- `jax[cuda12]==0.8.0` - GPU-accelerated numerical computing
-- `brax==0.13.0` - Reinforcement learning library
-- `ml_collections==1.1.0` - Configuration management
-- `mediapy==1.2.4` - Media processing
-
-## Known Issues
-
-### URDF to MJCF Conversion Error
-
-If you encounter this error during URDF to MJCF conversion:
-
-```
-model = mujoco.MjModel.from_xml_path(URDF_PATH)
-ValueError: Error: error 'inertia must have positive eigenvalues' in alternative for principal axes
-Element name 'f_1', id 74
-```
-
-**Solution:** Uninstall MuJoCo 3.3.4, install earlier versions (3.2.7, 3.3.1, or 3.3.3), then reinstall MuJoCo 3.3.4 as the primary library:
-
-```bash
-pip uninstall mujoco
-pip install mujoco==3.2.7  # Or 3.3.1, 3.3.3
-pip install mujoco==3.3.4
-```
-
-## Contributing
-
-This is the official repository for the Triton Pupper Simulations team. For contributions, please follow the team's development guidelines.
-
-## License
-
-See the repository license file for details.
+See [docs/SETUP.md](docs/SETUP.md) for detailed setup instructions.

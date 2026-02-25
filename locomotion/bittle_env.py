@@ -22,6 +22,17 @@ from brax.base import Motion, Transform
 from brax.envs.base import PipelineEnv, State
 from brax.io import mjcf
 
+from locomotion.constants import (
+    DEFAULT_POSE as _DEFAULT_POSE_LIST,
+    ACTION_SCALE,
+    CONTROL_DT,
+    PHYSICS_TIMESTEP,
+    Q_JOINT_START,
+    QD_JOINT_START,
+    JOINT_DAMPING,
+    INIT_QPOS_BASE as _INIT_QPOS_BASE_LIST,
+)
+
 
 def get_config():
   """Returns reward config for bittle quadruped environment."""
@@ -73,18 +84,18 @@ class BittleEnv(PipelineEnv):
       self,
       xml_path: str,
       obs_noise: float = 0.05,
-      action_scale: float = 0.5,  # Scale for position offsets (rad, ±π/2)
+      action_scale: float = ACTION_SCALE,
       kick_vel: float = 0.05, #Formerly 0.05
       enable_kicks: bool = True,
       **kwargs,
   ):
     sys = mjcf.load(xml_path)
-    self._dt = 0.02  # 50 fps
-    sys = sys.tree_replace({'opt.timestep': 0.004})
+    self._dt = CONTROL_DT
+    sys = sys.tree_replace({'opt.timestep': PHYSICS_TIMESTEP})
 
     # Keep damping on actuated joints
     sys = sys.replace(
-        dof_damping=sys.dof_damping.at[6:].set(5),
+        dof_damping=sys.dof_damping.at[QD_JOINT_START:].set(JOINT_DAMPING),
     )
 
     n_frames = kwargs.pop('n_frames', int(self._dt / sys.opt.timestep))
@@ -115,24 +126,14 @@ class BittleEnv(PipelineEnv):
     print(f"Control mode: Relative position control")
     
     # Joint indices
-    self._q_joint_start = 7   # Skip freejoint in q (7 DOFs)
-    self._qd_joint_start = 6  # Skip freejoint in qd (6 DOFs)
+    self._q_joint_start = Q_JOINT_START
+    self._qd_joint_start = QD_JOINT_START
     
     print(f"Joint positions in q: indices [{self._q_joint_start}:{self._q_joint_start + sys.nu}]")
     print(f"Joint velocities in qd: indices [{self._qd_joint_start}:{self._qd_joint_start + sys.nu}]")
     
     # Default pose for reference (from home keyframe)
-    self._default_pose = jp.array([
-        -0.6908,    # shrfs
-        1.9782,     # shrft
-        0.7222,     # shrrs
-        1.9468,     # shrrt
-        -0.596904,  # neck
-        -0.6908,    # shlfs
-        1.9782,     # shlft
-        0.7222,     # shlrs
-        1.9468,     # shlrt
-    ])
+    self._default_pose = jp.array(_DEFAULT_POSE_LIST)
     
     # Joint position limits (for termination only, not control)
     self.pos_lowers = jp.array([-1.5] * sys.nu)
@@ -181,8 +182,7 @@ class BittleEnv(PipelineEnv):
     
     # Initialize with default pose (from home keyframe)
     qpos = jp.zeros(self.sys.nq)
-    qpos = qpos.at[0:3].set(jp.array([0.0, 0.0, 0.075]))
-    qpos = qpos.at[3:7].set(jp.array([1.0, 0.0, 0.0, 0.0]))
+    qpos = qpos.at[:7].set(jp.array(_INIT_QPOS_BASE_LIST))
     qpos = qpos.at[self._q_joint_start:].set(self._default_pose)
     
     qvel = jp.zeros(self.sys.nv)
