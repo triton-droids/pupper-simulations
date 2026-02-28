@@ -8,6 +8,7 @@ Controls:
   Left / Right   yaw +-key_value
   Space          zero commands
   R              reset
+  P              pause/play
   Q              quit
 
 Run:  mjpython locomotion/teleop.py
@@ -34,14 +35,12 @@ from locomotion.constants import (
     NUM_ACTUATORS,
     NSUBSTEPS,
     PHYSICS_TIMESTEP,
-    INIT_QPOS_BASE as _INIT_QPOS_BASE_LIST,
     Q_JOINT_START,
     QD_JOINT_START,
     JOINT_DAMPING,
 )
 
 DEFAULT_POSE = np.array(_DEFAULT_POSE_LIST, dtype=np.float32)
-INIT_QPOS_BASE = np.array(_INIT_QPOS_BASE_LIST, dtype=np.float64)
 
 
 # ---------------------------------------------------------------------------
@@ -165,6 +164,8 @@ def main():
     data = mujoco.MjData(model)
 
     base_body_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "base")
+    home_key_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_KEY, "home")
+    assert home_key_id >= 0, "XML model missing 'home' keyframe"
 
     # Load ONNX policy
     session = None
@@ -185,15 +186,19 @@ def main():
     obs_history = np.zeros(TOTAL_OBS, dtype=np.float32)
 
     active_until = {"w": 0.0, "s": 0.0, "a": 0.0, "d": 0.0, "LEFT": 0.0, "RIGHT": 0.0}
+    paused = True
+
+    DIAG_INTERVAL = 50   # steps per second at 50 Hz
+    DIAG_SECONDS = 5
+    step_count = 0
 
     def reset():
-        nonlocal last_action, obs_history
-        mujoco.mj_resetData(model, data)
-        data.qpos[:Q_JOINT_START] = INIT_QPOS_BASE
-        data.qpos[Q_JOINT_START : Q_JOINT_START + NUM_ACTUATORS] = DEFAULT_POSE
+        nonlocal last_action, obs_history, step_count
+        mujoco.mj_resetDataKeyframe(model, data, home_key_id)
         mujoco.mj_forward(model, data)
         last_action = np.zeros(NUM_ACTUATORS, dtype=np.float32)
         obs_history = np.zeros(TOTAL_OBS, dtype=np.float32)
+        step_count = 0
         # Prime history with initial observation
         build_obs(data, base_body_id, command, last_action, obs_history)
 
@@ -202,7 +207,8 @@ def main():
 
     reset()
 
-    print("Controls: W/S=vx  A/D=vy  Left/Right=yaw  Space=zero  R=reset  Q=quit")
+    print("Controls: W/S=vx  A/D=vy  Left/Right=yaw  Space=zero  R=reset  P=pause/play  Q=quit")
+    print("[paused]")
     print(f"[cmd] {fmt(command)}")
 
     with _TerminalInput() as term:
@@ -227,6 +233,9 @@ def main():
                     elif k == "r":
                         reset()
                         print(f"[reset] {fmt(command)}")
+                    elif k == "p":
+                        paused = not paused
+                        print("[paused]" if paused else "[playing]")
                     elif k == "q":
                         quit_requested = True
 
@@ -260,6 +269,13 @@ def main():
                     time.sleep(min(0.001, next_tick - now))
                     continue
 
+                if paused:
+                    viewer.sync()
+                    next_tick += loop_dt
+                    if now - next_tick > loop_dt:
+                        next_tick = now + loop_dt
+                    continue
+
                 # Build observation
                 obs_history = build_obs(
                     data, base_body_id, command, last_action, obs_history
@@ -274,6 +290,15 @@ def main():
                     action = np.zeros(NUM_ACTUATORS, dtype=np.float32)
 
                 last_action = action.copy()
+                step_count += 1
+
+                # Diagnostics: print obs & actions every second for first 5 seconds
+                if (step_count % DIAG_INTERVAL == 0
+                        and step_count <= DIAG_SECONDS * DIAG_INTERVAL):
+                    t = step_count // DIAG_INTERVAL
+                    print(f"[diag t={t}s step={step_count}]")
+                    print(f"  obs: {np.array2string(obs_history, precision=4, separator=', ')}")
+                    print(f"  action: {np.array2string(action, precision=4, separator=', ')}")
 
                 # Set control: default pose + action * scale
                 data.ctrl[:] = DEFAULT_POSE + action * ACTION_SCALE

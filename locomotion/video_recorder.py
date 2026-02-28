@@ -126,15 +126,20 @@ def save_video_mp4(frames, output_path, fps=50):
 
 
 def save_diagnostics(diagnostics, output_path):
-    """Save rollout diagnostics to an NPZ file.
+    """Save rollout diagnostics to a human-readable text file.
 
     Args:
         diagnostics: Dict with 'observations', 'actions', 'rewards', 'dones' arrays.
-        output_path: Path to write the .npz file.
+        output_path: Path to write the .txt file.
     """
     from pathlib import Path
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-    np.savez(output_path, **diagnostics)
+    with open(output_path, 'w') as f:
+        for key in ('observations', 'actions', 'rewards', 'dones'):
+            arr = diagnostics[key]
+            f.write(f"# {key} shape={arr.shape}\n")
+            np.savetxt(f, np.atleast_2d(arr), fmt='%.6f')
+            f.write("\n")
 
 
 def record_video(env, make_policy, params, output_path,
@@ -153,11 +158,11 @@ def record_video(env, make_policy, params, output_path,
         width: Video frame width.
         height: Video frame height.
         fps: Video frames per second.
-        diagnostics_path: Where to save the diagnostics NPZ file.
-            Defaults to output_path with '_diagnostics.npz' replacing '.mp4'.
+        diagnostics_path: Where to save the diagnostics text file.
+            Defaults to output_path with '_diagnostics.txt' replacing '.mp4'.
     """
     if diagnostics_path is None:
-        diagnostics_path = output_path.replace(".mp4", "_diagnostics.npz")
+        diagnostics_path = output_path.replace(".mp4", "_diagnostics.txt")
 
     print("Recording video...")
 

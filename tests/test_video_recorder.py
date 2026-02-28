@@ -128,21 +128,23 @@ class TestSaveVideoMp4:
 # ── save_diagnostics ─────────────────────────────────────────────────
 
 class TestSaveDiagnostics:
-    def test_saves_npz_with_correct_keys(self, tmp_path):
-        """Create sample arrays, call save_diagnostics, verify NPZ contents."""
+    def test_saves_txt_with_correct_sections(self, tmp_path):
+        """Create sample arrays, call save_diagnostics, verify text file contents."""
         diagnostics = {
-            'observations': np.random.randn(5, 10).astype(np.float32),
-            'actions': np.random.randn(5, 9).astype(np.float32),
-            'rewards': np.random.randn(5).astype(np.float32),
-            'dones': np.zeros(5, dtype=np.float32),
+            'observations': np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32),
+            'actions': np.array([[0.5, 0.6], [0.7, 0.8]], dtype=np.float32),
+            'rewards': np.array([1.0, 2.0], dtype=np.float32),
+            'dones': np.zeros(2, dtype=np.float32),
         }
-        out = tmp_path / "sub" / "diag.npz"
+        out = tmp_path / "sub" / "diag.txt"
         save_diagnostics(diagnostics, str(out))
 
         assert out.exists()
-        loaded = np.load(str(out))
+        content = out.read_text()
         for key in ('observations', 'actions', 'rewards', 'dones'):
-            np.testing.assert_array_equal(loaded[key], diagnostics[key])
+            assert f"# {key}" in content
+        assert "1.000000" in content
+        assert "0.500000" in content
 
 
 # ── record_video ─────────────────────────────────────────────────────
@@ -191,5 +193,5 @@ class TestRecordVideo:
             )
             mock_save.assert_called_once_with(fake_frames, "/tmp/out.mp4", fps=10)
             mock_save_diag.assert_called_once_with(
-                fake_diagnostics, "/tmp/out_diagnostics.npz"
+                fake_diagnostics, "/tmp/out_diagnostics.txt"
             )

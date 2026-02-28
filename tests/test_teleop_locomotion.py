@@ -1,4 +1,4 @@
-"""Tests for locomotion/teleop.py (7 tests)."""
+"""Tests for locomotion/teleop.py (8 tests)."""
 
 from unittest.mock import MagicMock, patch, call
 from types import SimpleNamespace
@@ -163,8 +163,8 @@ class TestMain:
 
         with patch.object(teleop_mod.mujoco.MjModel, "from_xml_path", mock_from_xml), \
              patch.object(teleop_mod.mujoco, "MjData", return_value=mock_data), \
-             patch.object(teleop_mod.mujoco, "mj_name2id", return_value=1), \
-             patch.object(teleop_mod.mujoco, "mj_resetData"), \
+             patch.object(teleop_mod.mujoco, "mj_name2id", side_effect=[1, 0]), \
+             patch.object(teleop_mod.mujoco, "mj_resetDataKeyframe"), \
              patch.object(teleop_mod.mujoco, "mj_forward"), \
              patch.object(teleop_mod.mujoco, "viewer") as mock_viewer_mod, \
              patch.object(teleop_mod, "_TerminalInput") as mock_term_cls:
@@ -177,3 +177,126 @@ class TestMain:
             teleop_mod.main()
 
         mock_from_xml.assert_called_once_with("dummy.xml")
+
+
+class TestPause:
+    def test_pause_skips_physics(self, monkeypatch, capsys):
+        """Pressing 'p' toggles pause; physics/policy are skipped while paused."""
+        monkeypatch.setattr(sys, "argv", [
+            "teleop.py", "--no-policy", "--xml-path", "dummy.xml",
+        ])
+
+        mock_model = MagicMock()
+        mock_model.opt.timestep = 0.004
+        mock_model.dof_damping = np.zeros(15)
+        mock_data = MagicMock()
+        mock_data.qpos = np.zeros(16, dtype=np.float64)
+        mock_data.qvel = np.zeros(15, dtype=np.float64)
+        mock_data.xmat = np.tile(np.eye(3).flatten(), (5, 1))
+        mock_data.cvel = np.zeros((5, 6))
+        mock_data.ctrl = np.zeros(9)
+
+        # Run 5 iterations: all paused (default), then viewer stops
+        run_count = [0]
+        def is_running():
+            run_count[0] += 1
+            return run_count[0] <= 5
+        mock_viewer_ctx = MagicMock()
+        mock_viewer_ctx.is_running.side_effect = is_running
+
+        mock_from_xml = MagicMock(return_value=mock_model)
+        mock_term_inst = MagicMock()
+        # No keys pressed — stays paused the whole time
+        mock_term_inst.read_keys.return_value = []
+
+        fake_time = [0.0]
+        def advancing_clock():
+            fake_time[0] += 1.0
+            return fake_time[0]
+        monkeypatch.setattr(teleop_mod.time, "perf_counter", advancing_clock)
+        monkeypatch.setattr(teleop_mod.time, "sleep", lambda _: None)
+
+        with patch.object(teleop_mod.mujoco.MjModel, "from_xml_path", mock_from_xml), \
+             patch.object(teleop_mod.mujoco, "MjData", return_value=mock_data), \
+             patch.object(teleop_mod.mujoco, "mj_name2id", side_effect=[1, 0]), \
+             patch.object(teleop_mod.mujoco, "mj_resetDataKeyframe"), \
+             patch.object(teleop_mod.mujoco, "mj_forward"), \
+             patch.object(teleop_mod.mujoco, "mj_step") as mock_step, \
+             patch.object(teleop_mod.mujoco, "viewer") as mock_viewer_mod, \
+             patch.object(teleop_mod, "_TerminalInput") as mock_term_cls:
+
+            mock_viewer_mod.launch_passive.return_value.__enter__ = MagicMock(return_value=mock_viewer_ctx)
+            mock_viewer_mod.launch_passive.return_value.__exit__ = MagicMock(return_value=False)
+            mock_term_cls.return_value.__enter__ = MagicMock(return_value=mock_term_inst)
+            mock_term_cls.return_value.__exit__ = MagicMock(return_value=False)
+
+            teleop_mod.main()
+
+        # Physics should never have been stepped (simulation starts paused)
+        mock_step.assert_not_called()
+        # Viewer sync should still have been called (camera updates while paused)
+        mock_viewer_ctx.sync.assert_called()
+        # Output should show initial [paused] message
+        output = capsys.readouterr().out
+        assert "[paused]" in output
+
+
+class TestDiagnostics:
+    def test_diagnostics_printed_at_one_second(self, monkeypatch, capsys):
+        """Diagnostics line is printed after 50 steps (1 second at 50 Hz)."""
+        monkeypatch.setattr(sys, "argv", [
+            "teleop.py", "--no-policy", "--xml-path", "dummy.xml",
+        ])
+
+        mock_model = MagicMock()
+        mock_model.opt.timestep = 0.004
+        mock_model.dof_damping = np.zeros(15)
+        mock_data = MagicMock()
+        mock_data.qpos = np.zeros(16, dtype=np.float64)
+        mock_data.qvel = np.zeros(15, dtype=np.float64)
+        mock_data.xmat = np.tile(np.eye(3).flatten(), (5, 1))
+        mock_data.cvel = np.zeros((5, 6))
+        mock_data.ctrl = np.zeros(9)
+
+        # Viewer runs for 52 iterations: 1 to unpause + 51 for 50 physics steps
+        run_count = [0]
+        def is_running():
+            run_count[0] += 1
+            return run_count[0] <= 52
+        mock_viewer_ctx = MagicMock()
+        mock_viewer_ctx.is_running.side_effect = is_running
+
+        mock_from_xml = MagicMock(return_value=mock_model)
+        mock_term_inst = MagicMock()
+        # First call returns "p" to unpause, then empty
+        key_calls = iter([["p"]])
+        mock_term_inst.read_keys.side_effect = lambda: next(key_calls, [])
+
+        # Incrementing time so we never hit the sleep/continue branch
+        fake_time = [0.0]
+        def advancing_clock():
+            fake_time[0] += 1.0
+            return fake_time[0]
+        monkeypatch.setattr(teleop_mod.time, "perf_counter", advancing_clock)
+        monkeypatch.setattr(teleop_mod.time, "sleep", lambda _: None)
+
+        with patch.object(teleop_mod.mujoco.MjModel, "from_xml_path", mock_from_xml), \
+             patch.object(teleop_mod.mujoco, "MjData", return_value=mock_data), \
+             patch.object(teleop_mod.mujoco, "mj_name2id", side_effect=[1, 0]), \
+             patch.object(teleop_mod.mujoco, "mj_resetDataKeyframe"), \
+             patch.object(teleop_mod.mujoco, "mj_forward"), \
+             patch.object(teleop_mod.mujoco, "mj_step"), \
+             patch.object(teleop_mod.mujoco, "viewer") as mock_viewer_mod, \
+             patch.object(teleop_mod, "_TerminalInput") as mock_term_cls:
+
+            mock_viewer_mod.launch_passive.return_value.__enter__ = MagicMock(return_value=mock_viewer_ctx)
+            mock_viewer_mod.launch_passive.return_value.__exit__ = MagicMock(return_value=False)
+            mock_term_cls.return_value.__enter__ = MagicMock(return_value=mock_term_inst)
+            mock_term_cls.return_value.__exit__ = MagicMock(return_value=False)
+
+            teleop_mod.main()
+
+        output = capsys.readouterr().out
+        assert "[diag t=1s step=50]" in output
+        assert "obs:" in output
+        assert "action:" in output
