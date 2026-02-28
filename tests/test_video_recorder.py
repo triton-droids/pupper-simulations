@@ -14,51 +14,60 @@ import pytest
 # Add locomotion to path so imports work the same as when running from locomotion/
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "locomotion"))
 
-from video_recorder import generate_rollout, render_frames, save_video_mp4, record_video
+from video_recorder import generate_rollout, render_frames, save_video_mp4, save_diagnostics, record_video
 
 
 # ── generate_rollout ─────────────────────────────────────────────────
 
 class TestGenerateRollout:
-    def test_returns_correct_states(self):
-        """Mock env.reset/step and jax.jit to verify rollout length and state contents."""
+    def test_returns_correct_states_and_diagnostics(self):
+        """Mock env.reset/step and jax.jit to verify rollout length, state contents, and diagnostics."""
         num_steps = 5
-        nq, nqd = 7, 6
+        nq, nqd, nobs, nact = 7, 6, 10, 9
 
         def make_pipeline_state(i):
             return SimpleNamespace(q=np.ones(nq) * i, qd=np.ones(nqd) * i)
 
         # Build fake brax states: reset returns state 0, steps return 1..num_steps
         reset_state = SimpleNamespace(
-            obs=np.zeros(10),
+            obs=np.ones(nobs) * 0.0,
             pipeline_state=make_pipeline_state(0),
         )
         step_states = []
         for i in range(1, num_steps + 1):
             step_states.append(SimpleNamespace(
-                obs=np.zeros(10),
+                obs=np.ones(nobs) * i,
                 pipeline_state=make_pipeline_state(i),
+                reward=np.float32(i * 0.1),
+                done=np.float32(0.0),
             ))
 
         env = MagicMock()
         env.reset.return_value = reset_state
         env.step.side_effect = step_states
 
-        inference_fn = MagicMock(return_value=(np.zeros(9), {}))
+        fake_action = np.ones(nact) * 0.5
+        inference_fn = MagicMock(return_value=(fake_action, {}))
 
         with patch("video_recorder.jax") as mock_jax:
-            # jax.jit returns the function unchanged
             mock_jax.jit.side_effect = lambda fn: fn
             mock_jax.random.PRNGKey.return_value = np.array([0, 0])
             mock_jax.random.split.return_value = (np.array([0, 0]), np.array([1, 1]))
 
-            rollout = generate_rollout(env, inference_fn, num_steps=num_steps, seed=0)
+            rollout, diagnostics = generate_rollout(env, inference_fn, num_steps=num_steps, seed=0)
 
         assert len(rollout) == num_steps + 1
         for i, state in enumerate(rollout):
             assert hasattr(state, "q") and hasattr(state, "qd")
             assert state.q.shape[0] == nq
             assert state.qd.shape[0] == nqd
+
+        assert diagnostics['observations'].shape == (num_steps, nobs)
+        assert diagnostics['actions'].shape == (num_steps, nact)
+        assert diagnostics['rewards'].shape == (num_steps,)
+        assert diagnostics['dones'].shape == (num_steps,)
+        np.testing.assert_allclose(diagnostics['actions'], 0.5)
+        np.testing.assert_allclose(diagnostics['dones'], 0.0)
 
 
 # ── render_frames ────────────────────────────────────────────────────
@@ -116,17 +125,44 @@ class TestSaveVideoMp4:
             save_video_mp4([], str(tmp_path / "empty.mp4"))
 
 
+# ── save_diagnostics ─────────────────────────────────────────────────
+
+class TestSaveDiagnostics:
+    def test_saves_npz_with_correct_keys(self, tmp_path):
+        """Create sample arrays, call save_diagnostics, verify NPZ contents."""
+        diagnostics = {
+            'observations': np.random.randn(5, 10).astype(np.float32),
+            'actions': np.random.randn(5, 9).astype(np.float32),
+            'rewards': np.random.randn(5).astype(np.float32),
+            'dones': np.zeros(5, dtype=np.float32),
+        }
+        out = tmp_path / "sub" / "diag.npz"
+        save_diagnostics(diagnostics, str(out))
+
+        assert out.exists()
+        loaded = np.load(str(out))
+        for key in ('observations', 'actions', 'rewards', 'dones'):
+            np.testing.assert_array_equal(loaded[key], diagnostics[key])
+
+
 # ── record_video ─────────────────────────────────────────────────────
 
 class TestRecordVideo:
     def test_calls_pipeline_correctly(self):
         """Patch sub-functions and verify record_video orchestrates them."""
         fake_rollout = [SimpleNamespace(q=np.zeros(7), qd=np.zeros(6))]
+        fake_diagnostics = {
+            'observations': np.zeros((10, 10)),
+            'actions': np.zeros((10, 9)),
+            'rewards': np.zeros(10),
+            'dones': np.zeros(10),
+        }
         fake_frames = [np.zeros((48, 64, 3), dtype=np.uint8)]
 
-        with patch("video_recorder.generate_rollout", return_value=fake_rollout) as mock_gen, \
+        with patch("video_recorder.generate_rollout", return_value=(fake_rollout, fake_diagnostics)) as mock_gen, \
              patch("video_recorder.render_frames", return_value=fake_frames) as mock_render, \
-             patch("video_recorder.save_video_mp4") as mock_save:
+             patch("video_recorder.save_video_mp4") as mock_save, \
+             patch("video_recorder.save_diagnostics") as mock_save_diag:
 
             mock_env = MagicMock()
             mock_make_policy = MagicMock()
@@ -154,3 +190,6 @@ class TestRecordVideo:
                 mock_env, fake_rollout, width=64, height=48
             )
             mock_save.assert_called_once_with(fake_frames, "/tmp/out.mp4", fps=10)
+            mock_save_diag.assert_called_once_with(
+                fake_diagnostics, "/tmp/out_diagnostics.npz"
+            )

@@ -43,6 +43,7 @@ from locomotion.constants import (
 DEFAULT_POSE = np.array(_DEFAULT_POSE_LIST, dtype=np.float32)
 INIT_QPOS_BASE = np.array(_INIT_QPOS_BASE_LIST, dtype=np.float64)
 
+
 # ---------------------------------------------------------------------------
 # Terminal input (non-blocking WASD + arrows)
 # ---------------------------------------------------------------------------
@@ -118,17 +119,24 @@ def build_obs(data, base_body_id, command, last_action, obs_history):
     proj_gravity = R.T @ np.array([0.0, 0.0, -1.0])
 
     # Joint states (skip freejoint qpos/qvel)
-    joint_angles = data.qpos[Q_JOINT_START:Q_JOINT_START + NUM_ACTUATORS].astype(np.float32)
-    joint_vels = data.qvel[QD_JOINT_START:QD_JOINT_START + NUM_ACTUATORS].astype(np.float32)
+    joint_angles = data.qpos[Q_JOINT_START : Q_JOINT_START + NUM_ACTUATORS].astype(
+        np.float32
+    )
+    joint_vels = data.qvel[QD_JOINT_START : QD_JOINT_START + NUM_ACTUATORS].astype(
+        np.float32
+    )
 
-    obs = np.concatenate([
-        np.array([local_ang_vel[2]], dtype=np.float32) * 0.25,       # yaw rate (1)
-        proj_gravity.astype(np.float32),                              # projected gravity (3)
-        command * np.array([2.0, 2.0, 0.25], dtype=np.float32),      # scaled command (3)
-        (joint_angles - DEFAULT_POSE),                                # joint offsets (9)
-        joint_vels * 0.05,                                            # scaled joint vels (9)
-        last_action.astype(np.float32),                               # last action (9)
-    ])
+    obs = np.concatenate(
+        [
+            np.array([local_ang_vel[2]], dtype=np.float32) * 0.25,  # yaw rate (1)
+            proj_gravity.astype(np.float32),  # projected gravity (3)
+            command
+            * np.array([2.0, 2.0, 0.25], dtype=np.float32),  # scaled command (3)
+            (joint_angles - DEFAULT_POSE),  # joint offsets (9)
+            joint_vels * 0.05,  # scaled joint vels (9)
+            last_action.astype(np.float32),  # last action (9)
+        ]
+    )
 
     obs = np.clip(obs, -100.0, 100.0)
 
@@ -143,7 +151,7 @@ def build_obs(data, base_body_id, command, last_action, obs_history):
 # ---------------------------------------------------------------------------
 def main():
     parser = argparse.ArgumentParser(description="Bittle ONNX teleop")
-    parser.add_argument("--policy", default="locomotion/outputs/policy.onnx")
+    parser.add_argument("--policy", default="locomotion/outputs/policy_colab.onnx")
     parser.add_argument("--xml-path", default="locomotion/bittle_adapted_scene.xml")
     parser.add_argument("--key-value", type=float, default=0.25)
     parser.add_argument("--key-hold", type=float, default=0.12)
@@ -162,6 +170,7 @@ def main():
     session = None
     if not args.no_policy:
         import onnxruntime as ort
+
         if not os.path.exists(args.policy):
             print(f"Policy not found: {args.policy}")
             sys.exit(1)
@@ -181,7 +190,7 @@ def main():
         nonlocal last_action, obs_history
         mujoco.mj_resetData(model, data)
         data.qpos[:Q_JOINT_START] = INIT_QPOS_BASE
-        data.qpos[Q_JOINT_START:Q_JOINT_START + NUM_ACTUATORS] = DEFAULT_POSE
+        data.qpos[Q_JOINT_START : Q_JOINT_START + NUM_ACTUATORS] = DEFAULT_POSE
         mujoco.mj_forward(model, data)
         last_action = np.zeros(NUM_ACTUATORS, dtype=np.float32)
         obs_history = np.zeros(TOTAL_OBS, dtype=np.float32)
@@ -222,11 +231,26 @@ def main():
                         quit_requested = True
 
                 # Update command from active keys
-                new_cmd = np.array([
-                    args.key_value * (float(active_until["w"] > now) - float(active_until["s"] > now)),
-                    args.key_value * (float(active_until["a"] > now) - float(active_until["d"] > now)),
-                    args.key_value * (float(active_until["LEFT"] > now) - float(active_until["RIGHT"] > now)),
-                ], dtype=np.float32)
+                new_cmd = np.array(
+                    [
+                        args.key_value
+                        * (
+                            float(active_until["w"] > now)
+                            - float(active_until["s"] > now)
+                        ),
+                        args.key_value
+                        * (
+                            float(active_until["a"] > now)
+                            - float(active_until["d"] > now)
+                        ),
+                        args.key_value
+                        * (
+                            float(active_until["LEFT"] > now)
+                            - float(active_until["RIGHT"] > now)
+                        ),
+                    ],
+                    dtype=np.float32,
+                )
                 if not np.array_equal(new_cmd, command):
                     command[:] = new_cmd
                     print(f"[cmd] {fmt(command)}")
@@ -237,7 +261,9 @@ def main():
                     continue
 
                 # Build observation
-                obs_history = build_obs(data, base_body_id, command, last_action, obs_history)
+                obs_history = build_obs(
+                    data, base_body_id, command, last_action, obs_history
+                )
 
                 # Run policy
                 if session is not None:

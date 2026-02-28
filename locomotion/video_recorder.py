@@ -20,7 +20,9 @@ def generate_rollout(env, inference_fn, num_steps=250, seed=0):
         seed: Random seed for reproducibility.
 
     Returns:
-        List of pipeline_state objects (length num_steps + 1, including reset).
+        Tuple of (rollout, diagnostics) where:
+        - rollout: List of pipeline_state objects (length num_steps + 1, including reset).
+        - diagnostics: Dict with 'observations', 'actions', 'rewards', 'dones' arrays.
     """
     jit_reset = jax.jit(env.reset)
     jit_step = jax.jit(env.step)
@@ -29,13 +31,28 @@ def generate_rollout(env, inference_fn, num_steps=250, seed=0):
     state = jit_reset(rng)
     rollout = [state.pipeline_state]
 
+    observations = []
+    actions = []
+    rewards = []
+    dones = []
+
     for _ in range(num_steps):
         rng, key_sample = jax.random.split(rng)
         action, _ = inference_fn(state.obs, key_sample)
+        observations.append(np.array(state.obs))
+        actions.append(np.array(action))
         state = jit_step(state, action)
         rollout.append(state.pipeline_state)
+        rewards.append(np.array(state.reward))
+        dones.append(np.array(state.done))
 
-    return rollout
+    diagnostics = {
+        'observations': np.array(observations),
+        'actions': np.array(actions),
+        'rewards': np.array(rewards),
+        'dones': np.array(dones),
+    }
+    return rollout, diagnostics
 
 
 def render_frames(env, rollout, width=640, height=480):
@@ -108,8 +125,21 @@ def save_video_mp4(frames, output_path, fps=50):
     out.release()
 
 
+def save_diagnostics(diagnostics, output_path):
+    """Save rollout diagnostics to an NPZ file.
+
+    Args:
+        diagnostics: Dict with 'observations', 'actions', 'rewards', 'dones' arrays.
+        output_path: Path to write the .npz file.
+    """
+    from pathlib import Path
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    np.savez(output_path, **diagnostics)
+
+
 def record_video(env, make_policy, params, output_path,
-                 num_steps=250, seed=0, width=640, height=480, fps=50):
+                 num_steps=250, seed=0, width=640, height=480, fps=50,
+                 diagnostics_path=None):
     """High-level entry point: rollout + render + save.
 
     Args:
@@ -123,17 +153,25 @@ def record_video(env, make_policy, params, output_path,
         width: Video frame width.
         height: Video frame height.
         fps: Video frames per second.
+        diagnostics_path: Where to save the diagnostics NPZ file.
+            Defaults to output_path with '_diagnostics.npz' replacing '.mp4'.
     """
+    if diagnostics_path is None:
+        diagnostics_path = output_path.replace(".mp4", "_diagnostics.npz")
+
     print("Recording video...")
 
     inference_fn = make_policy(params, deterministic=True)
     print(f"  Generating rollout ({num_steps} steps)...")
-    rollout = generate_rollout(env, inference_fn, num_steps=num_steps, seed=seed)
+    rollout, diagnostics = generate_rollout(env, inference_fn, num_steps=num_steps, seed=seed)
 
     print(f"  Rendering {len(rollout)} frames at {width}x{height}...")
     frames = render_frames(env, rollout, width=width, height=height)
 
     print(f"  Saving video to {output_path}...")
     save_video_mp4(frames, output_path, fps=fps)
+
+    print(f"  Saving diagnostics to {diagnostics_path}...")
+    save_diagnostics(diagnostics, diagnostics_path)
 
     print(f"  Video saved ({len(frames)} frames)")
