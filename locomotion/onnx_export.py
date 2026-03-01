@@ -27,20 +27,7 @@ def export_policy_to_onnx(params, output_path: str, deterministic: bool = True):
     logger.info("Extracting policy weights from Brax params...")
 
     # Brax PPO returns params as tuple: (normalizer_params, policy_params, value_params)
-    normalizer_params, policy_params, value_params = params
-
-    # Extract observation normalizer mean and std
-    # normalizer_params is a RunningStatisticsState with mean, std, count, summed_variance
-    if normalizer_params is None:
-        raise ValueError("normalizer_params is None - observation normalization is required for ONNX export")
-
-    normalizer_mean = np.array(normalizer_params.mean, dtype=np.float32)
-    normalizer_std = np.array(normalizer_params.std, dtype=np.float32)
-    logger.info(f"Normalizer mean shape: {normalizer_mean.shape}, std shape: {normalizer_std.shape}")
-
-    # Check if normalizer was actually used (std should not be all ones)
-    if np.allclose(normalizer_std, 1.0):
-        logger.warning("Normalizer std is all ones - normalization may not have been used during training")
+    _normalizer_params, policy_params, _value_params = params
 
     # Policy params structure: {'params': {'hidden_0': {...}, 'hidden_1': {...}, ...}}
     network_params = policy_params['params']
@@ -64,24 +51,6 @@ def export_policy_to_onnx(params, output_path: str, deterministic: bool = True):
     # Input
     input_tensor = helper.make_tensor_value_info('observation', TensorProto.FLOAT, [1, 510])
 
-    # Add normalizer parameters as initializers
-    initializers.append(
-        helper.make_tensor(
-            name='normalizer_mean',
-            data_type=TensorProto.FLOAT,
-            dims=normalizer_mean.shape,
-            vals=normalizer_mean.flatten().tolist()
-        )
-    )
-    initializers.append(
-        helper.make_tensor(
-            name='normalizer_std',
-            data_type=TensorProto.FLOAT,
-            dims=normalizer_std.shape,
-            vals=normalizer_std.flatten().tolist()
-        )
-    )
-
     # Add all weights as initializers
     for layer_name, layer_weights in weights.items():
         # Weight matrix
@@ -104,20 +73,11 @@ def export_policy_to_onnx(params, output_path: str, deterministic: bool = True):
         )
 
     # Build network layers
-    # First, add normalization: normalized_obs = (observation - mean) / std
-    nodes.append(helper.make_node(
-        'Sub',
-        inputs=['observation', 'normalizer_mean'],
-        outputs=['obs_minus_mean']
-    ))
-    nodes.append(helper.make_node(
-        'Div',
-        inputs=['obs_minus_mean', 'normalizer_std'],
-        outputs=['normalized_obs']
-    ))
-
-    # Start with normalized observations
-    current_input = 'normalized_obs'
+    # Note: observation normalization is not applied. Brax PPO's
+    # normalize_observations defaults to False, so the policy network
+    # was trained on raw observations. Applying normalization here
+    # would corrupt the inputs.
+    current_input = 'observation'
 
     # Hidden layers with Swish activation
     for i, layer_name in enumerate(['hidden_0', 'hidden_1', 'hidden_2', 'hidden_3']):
@@ -225,6 +185,5 @@ def export_policy_to_onnx(params, output_path: str, deterministic: bool = True):
 
     # Log model info
     logger.info(f"ONNX export complete!")
-    logger.info(f"  Input: observation [1, 510] float32 (raw, unnormalized)")
-    logger.info(f"  Normalization: (obs - mean) / std applied internally")
+    logger.info(f"  Input: observation [1, 510] float32 (raw)")
     logger.info(f"  Output: action [1, 9] float32 in range [-1, 1]")
