@@ -10,32 +10,32 @@ numpy imports.  Each consumer converts to its preferred array type.
 # bittle_adapted_scene.xml.  Order: shrfs, shrft, shrrs, shrrt, neck,
 # shlfs, shlft, shlrs, shlrt.
 DEFAULT_POSE = [
-    -0.6908,    # shrfs
-    1.9782,     # shrft
-    0.7222,     # shrrs
-    1.9468,     # shrrt
+    -0.6908,  # shrfs
+    1.9782,  # shrft
+    0.7222,  # shrrs
+    1.9468,  # shrrt
     -0.596904,  # neck
-    -0.6908,    # shlfs
-    1.9782,     # shlft
-    0.7222,     # shlrs
-    1.9468,     # shlrt
+    -0.6908,  # shlfs
+    1.9782,  # shlft
+    0.7222,  # shlrs
+    1.9468,  # shlrt
 ]
 
 NUM_ACTUATORS = 9
-ACTION_SCALE = 0.5          # radians, ±π/2 position offset range
+ACTION_SCALE = 0.5  # radians, ±π/2 position offset range
 
-OBS_SIZE = 34               # 1 + 3 + 3 + 9 + 9 + 9
-HISTORY_LEN = 15
-TOTAL_OBS = OBS_SIZE * HISTORY_LEN  # 510
+OBS_SIZE = 34  # 1 + 3 + 3 + 9 + 9 + 9
+HISTORY_LEN = 3
+TOTAL_OBS = OBS_SIZE * HISTORY_LEN  # 102
 
 # Physics timing
-PHYSICS_TIMESTEP = 0.004    # seconds
-CONTROL_DT = 0.02           # seconds (50 Hz)
-NSUBSTEPS = 5               # PHYSICS_TIMESTEP * NSUBSTEPS = CONTROL_DT
+PHYSICS_TIMESTEP = 0.004  # seconds
+CONTROL_DT = 0.02  # seconds (50 Hz)
+NSUBSTEPS = 5  # PHYSICS_TIMESTEP * NSUBSTEPS = CONTROL_DT
 
 # Free-joint indices (freejoint = 7 qpos DOFs, 6 qvel DOFs)
-Q_JOINT_START = 7           # first actuated joint in qpos
-QD_JOINT_START = 6          # first actuated joint in qvel
+Q_JOINT_START = 7  # first actuated joint in qpos
+QD_JOINT_START = 6  # first actuated joint in qvel
 
 # Damping applied to actuated joints
 JOINT_DAMPING = 5.0
