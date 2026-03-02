@@ -50,6 +50,7 @@ def get_config():
                         # Base state regularizations
                         lin_vel_z=-2.0,
                         ang_vel_xy=-0.05,
+                        # orientation=-5.0,
                         orientation=-5.0,
                         # Joint regularizations
                         torques=-0.0002,
@@ -329,7 +330,8 @@ class BittleEnv(PipelineEnv):
         }
 
         # Sum and clip reward
-        reward = jp.clip(sum(rewards.values()) * self.dt, -10.0, 10.0)
+        # reward = jp.clip(sum(rewards.values()) * self.dt, -10.0, 10.0)
+        reward = jp.clip(sum(rewards.values()) * self.dt, 0, 10000.0)
         reward = jp.nan_to_num(reward, nan=0.0, posinf=0.0, neginf=0.0)
 
         # Update state info
