@@ -1,11 +1,38 @@
 [
   {
     "num_timesteps": 100000,
-    "num_evals": 2,
-    "episode_length": 300,
+    "num_evals": 8,
+    "episode_length": 200,
+    "num_envs": 32,
+    "batch_size": 32,
+    "unroll_length": 8,
+    "num_minibatches": 4
+  },
+  {
+    "num_timesteps": 100000,
+    "num_evals": 8,
+    "episode_length": 200,
+    "num_envs": 64,
+    "batch_size": 64,
+    "unroll_length": 8,
+    "num_minibatches": 4
+  },
+  {
+    "num_timesteps": 100000,
+    "num_evals": 8,
+    "episode_length": 200,
+    "num_envs": 64,
+    "batch_size": 128,
+    "unroll_length": 8,
+    "num_minibatches": 4
+  },
+  {
+    "num_timesteps": 100000,
+    "num_evals": 8,
+    "episode_length": 200,
     "num_envs": 128,
-    "batch_size": 160,
-    "unroll_length": 10,
+    "batch_size": 128,
+    "unroll_length": 8,
     "num_minibatches": 4
   }
 ]
