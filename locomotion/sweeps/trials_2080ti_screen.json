@@ -1,38 +1,11 @@
 [
   {
-    "num_timesteps": 300000,
-    "num_evals": 3,
-    "episode_length": 500,
+    "num_timesteps": 100000,
+    "num_evals": 2,
+    "episode_length": 300,
     "num_envs": 128,
-    "batch_size": 100,
+    "batch_size": 160,
     "unroll_length": 10,
-    "num_minibatches": 5
-  },
-  {
-    "num_timesteps": 300000,
-    "num_evals": 3,
-    "episode_length": 500,
-    "num_envs": 256,
-    "batch_size": 200,
-    "unroll_length": 10,
-    "num_minibatches": 5
-  },
-  {
-    "num_timesteps": 300000,
-    "num_evals": 3,
-    "episode_length": 500,
-    "num_envs": 256,
-    "batch_size": 400,
-    "unroll_length": 20,
-    "num_minibatches": 5
-  },
-  {
-    "num_timesteps": 300000,
-    "num_evals": 3,
-    "episode_length": 500,
-    "num_envs": 512,
-    "batch_size": 400,
-    "unroll_length": 20,
-    "num_minibatches": 5
+    "num_minibatches": 4
   }
 ]
