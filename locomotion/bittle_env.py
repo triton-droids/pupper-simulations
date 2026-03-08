@@ -78,7 +78,7 @@ def get_config():
                         energy=0.0,
                     )
                 ),
-                tracking_sigma=0.25,
+                tracking_sigma=0.05,
             )
         )
         return default_config
