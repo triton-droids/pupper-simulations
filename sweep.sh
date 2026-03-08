@@ -118,7 +118,9 @@ GITHUB_REPO_SSH="$1"; shift
 SWEEP_TRIALS_JSON="$1"; shift
 REMOTE_SWEEP_REL="$1"; shift
 
-export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
+GPU_INDEX="$(nvidia-smi --query-gpu=index,memory.used --format=csv,noheader,nounits | sort -t, -k2 -n | head -n1 | cut -d, -f1)"
+export CUDA_VISIBLE_DEVICES="$GPU_INDEX"
+echo "Using GPU $CUDA_VISIBLE_DEVICES"
 export XLA_PYTHON_CLIENT_PREALLOCATE="${XLA_PYTHON_CLIENT_PREALLOCATE:-false}"
 export XLA_PYTHON_CLIENT_MEM_FRACTION="${XLA_PYTHON_CLIENT_MEM_FRACTION:-0.70}"
 export TF_GPU_ALLOCATOR="${TF_GPU_ALLOCATOR:-cuda_malloc_async}"
