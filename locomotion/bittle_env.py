@@ -28,6 +28,7 @@ from locomotion.constants import (
     DEFAULT_POSE as _DEFAULT_POSE_LIST,
     ACTION_SCALE,
     CONTROL_DT,
+    HISTORY_LEN,
     PHYSICS_TIMESTEP,
     Q_JOINT_START,
     QD_JOINT_START,
@@ -68,7 +69,8 @@ def get_config():
                         # termination=-1.0,
                         termination=0.0,
                         # Feet rewards
-                        feet_air_time=1.0,
+                        # feet_air_time=1.0,
+                        feet_air_time=0.0,
                         # foot_slip=-0.04,
                         foot_slip=0.0,
                         # Energy efficiency
@@ -236,7 +238,7 @@ class BittleEnv(PipelineEnv):
         }
 
         obs_size = 1 + 3 + 3 + self._nu + self._nu + self._nu
-        obs_history = jp.zeros(15 * obs_size)
+        obs_history = jp.zeros(HISTORY_LEN * obs_size)
         obs = self._get_obs(pipeline_state, state_info, obs_history)
         reward, done = jp.zeros(2)
         metrics = {"total_dist": 0.0}

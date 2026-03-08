@@ -7,6 +7,8 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
+from locomotion.constants import TOTAL_OBS
+
 # Force JAX to use CPU (no GPU required for tests)
 os.environ["JAX_PLATFORM_NAME"] = "cpu"
 
@@ -30,16 +32,16 @@ for _p in (_project_root, _locomotion_dir):
 def fake_policy_params():
     """Brax PPO params tuple with correct shapes for ONNX export.
 
-    Network: 510 -> 256 -> 256 -> 256 -> 256 -> 18  (5 hidden layers)
+    Network: TOTAL_OBS -> 256 -> 256 -> 256 -> 256 -> 18  (5 hidden layers)
     Output 18 = 9 action means + 9 log_stds, sliced to first 9.
     """
     normalizer = SimpleNamespace(
-        mean=np.zeros(510, dtype=np.float32),
-        std=np.ones(510, dtype=np.float32) * 2.0,
+        mean=np.zeros(TOTAL_OBS, dtype=np.float32),
+        std=np.ones(TOTAL_OBS, dtype=np.float32) * 2.0,
     )
 
     layer_sizes = [
-        (510, 256),   # hidden_0
+        (TOTAL_OBS, 256),   # hidden_0
         (256, 256),   # hidden_1
         (256, 256),   # hidden_2
         (256, 256),   # hidden_3

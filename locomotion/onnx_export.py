@@ -9,6 +9,8 @@ import onnx
 from onnx import helper, TensorProto
 import logging
 
+from locomotion.constants import TOTAL_OBS
+
 logger = logging.getLogger(__name__)
 
 
@@ -21,7 +23,7 @@ def export_policy_to_onnx(params, output_path: str, deterministic: bool = True):
         deterministic: If True, export deterministic policy (mean actions only)
 
     The exported ONNX model accepts:
-        - Input: "observation" [1, 510] float32
+        - Input: "observation" [1, TOTAL_OBS] float32
         - Output: "action" [1, 9] float32 in range [-1, 1]
     """
     logger.info("Extracting policy weights from Brax params...")
@@ -49,7 +51,7 @@ def export_policy_to_onnx(params, output_path: str, deterministic: bool = True):
     initializers = []
 
     # Input
-    input_tensor = helper.make_tensor_value_info('observation', TensorProto.FLOAT, [1, 510])
+    input_tensor = helper.make_tensor_value_info('observation', TensorProto.FLOAT, [1, TOTAL_OBS])
 
     # Add all weights as initializers
     for layer_name, layer_weights in weights.items():
@@ -185,5 +187,5 @@ def export_policy_to_onnx(params, output_path: str, deterministic: bool = True):
 
     # Log model info
     logger.info(f"ONNX export complete!")
-    logger.info(f"  Input: observation [1, 510] float32 (raw)")
+    logger.info(f"  Input: observation [1, {TOTAL_OBS}] float32 (raw)")
     logger.info(f"  Output: action [1, 9] float32 in range [-1, 1]")

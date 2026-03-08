@@ -5,6 +5,8 @@ import onnx
 import onnxruntime as ort
 import pytest
 
+from locomotion.constants import TOTAL_OBS
+
 
 def test_export_policy_to_onnx(tmp_path, fake_policy_params):
     """Exported ONNX model is valid and produces correct-shape bounded output."""
@@ -20,7 +22,7 @@ def test_export_policy_to_onnx(tmp_path, fake_policy_params):
 
     # Inference produces [1, 9] output in [-1, 1]
     sess = ort.InferenceSession(str(out))
-    obs = np.random.randn(1, 510).astype(np.float32)
+    obs = np.random.randn(1, TOTAL_OBS).astype(np.float32)
     (action,) = sess.run(None, {"observation": obs})
     assert action.shape == (1, 9)
     assert np.all(action >= -1.0) and np.all(action <= 1.0)

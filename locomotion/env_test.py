@@ -214,6 +214,79 @@ if not passed:
 print(f"{'PASS' if passed else 'FAIL'}: Flipped Termination")
 results.append(("Flipped Termination", passed))
 
+# ── Check 6: Reset Observation Reasonableness ─────────────────────────
+print("\n" + "=" * 60)
+print("CHECK 6: Reset Observation Reasonableness")
+print("=" * 60)
+
+from locomotion.constants import OBS_SIZE, TOTAL_OBS
+
+state = jit_reset(jax.random.PRNGKey(0))
+obs = np.array(state.obs)
+
+passed = True
+
+# Shape
+if obs.shape != (TOTAL_OBS,):
+    passed = False
+    print(f"  FAIL reason: obs shape {obs.shape} != ({TOTAL_OBS},)")
+
+# No NaN / Inf
+if not np.all(np.isfinite(obs)):
+    passed = False
+    print("  FAIL reason: obs contains NaN or Inf")
+
+# All values bounded
+if not np.all(np.abs(obs) < 10):
+    passed = False
+    print(f"  FAIL reason: obs values outside [-10, 10], max abs = {np.max(np.abs(obs)):.4f}")
+
+# First frame checks
+frame = obs[:OBS_SIZE]
+print(f"  obs[0] (yaw rate):         {frame[0]:.6f}")
+print(f"  obs[1:4] (proj gravity):   [{frame[1]:.4f}, {frame[2]:.4f}, {frame[3]:.4f}]")
+
+# Projected gravity z-component (index 3) should be negative (robot upright)
+grav_z = frame[3]
+if not grav_z < -0.5:
+    passed = False
+    print(f"  FAIL reason: gravity z = {grav_z:.4f}, expected < -0.5 (robot upright)")
+
+# Joint offsets (indices 7–15) ≈ 0
+joint_offsets = frame[7:16]
+max_joint_offset = float(np.max(np.abs(joint_offsets)))
+print(f"  joint offsets max abs:     {max_joint_offset:.6f}")
+if max_joint_offset > 0.15:
+    passed = False
+    print(f"  FAIL reason: joint offset max abs {max_joint_offset:.4f} > 0.15")
+
+# Joint velocities (indices 16–24) ≈ 0
+joint_vels = frame[16:25]
+max_joint_vel = float(np.max(np.abs(joint_vels)))
+print(f"  joint vels max abs:        {max_joint_vel:.6f}")
+if max_joint_vel > 0.15:
+    passed = False
+    print(f"  FAIL reason: joint vel max abs {max_joint_vel:.4f} > 0.15")
+
+# Last action (indices 25–33) ≈ 0
+last_act = frame[25:34]
+max_last_act = float(np.max(np.abs(last_act)))
+print(f"  last_act max abs:          {max_last_act:.6f}")
+if max_last_act > 0.15:
+    passed = False
+    print(f"  FAIL reason: last_act max abs {max_last_act:.4f} > 0.15")
+
+# History frames (indices 34–101) ≈ 0
+history = obs[OBS_SIZE:]
+max_history = float(np.max(np.abs(history)))
+print(f"  history max abs:           {max_history:.6f}")
+if max_history > 0.15:
+    passed = False
+    print(f"  FAIL reason: history max abs {max_history:.4f} > 0.15")
+
+print(f"{'PASS' if passed else 'FAIL'}: Reset Observation Reasonableness")
+results.append(("Reset Observation Reasonableness", passed))
+
 # ── Summary ─────────────────────────────────────────────────────────────
 print("\n" + "=" * 60)
 n_passed = sum(1 for _, p in results if p)
