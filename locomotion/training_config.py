@@ -23,7 +23,7 @@ class TrainingConfig:
             self.num_updates_per_batch = 1
         else:
             # Full training config
-            self.num_timesteps = 100_000_000
+            self.num_timesteps = 10_000_000
             self.num_evals = 10
             self.episode_length = 1000
             self.num_envs = 8192
