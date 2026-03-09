@@ -22,15 +22,15 @@ class TrainingConfig:
             self.num_minibatches = 2
             self.num_updates_per_batch = 1
         else:
-            # Full training config (~30 min on A100)
-            self.num_timesteps = 10_000_000
+            # Full training config
+            self.num_timesteps = 100_000_000
             self.num_evals = 10
             self.episode_length = 1000
-            self.num_envs = 4096
-            self.batch_size = 512
+            self.num_envs = 8192
+            self.batch_size = 256
             self.unroll_length = 20
-            self.num_minibatches = 8
-            self.num_updates_per_batch = 1
+            self.num_minibatches = 32
+            self.num_updates_per_batch = 4
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert config to dictionary."""
