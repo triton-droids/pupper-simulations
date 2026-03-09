@@ -2,11 +2,12 @@
 Comprehensive sanity-check script for BittleEnv.
 
 Run from the locomotion/ directory:
-    python env_test.py
-
-Runs 4 checks with real physics and prints PASS/FAIL for each.
+    python env_test.py            # run all checks
+    python env_test.py 1 3 7      # run checks 1, 3, and 7
+    python env_test.py --list     # list available checks
 """
 
+import sys
 import jax
 import jax.numpy as jp
 import numpy as np
@@ -30,271 +31,393 @@ _warmup_state = jit_step(_warmup_state, jp.zeros(env.sys.nu))
 
 results = []  # list of (name, passed)
 
-# ── Check 1: Environment Build ─────────────────────────────────────────
-print("\n" + "=" * 60)
-print("CHECK 1: Environment Build")
-print("=" * 60)
 
-passed = True
-details = []
+# ── Check definitions ──────────────────────────────────────────────────
 
-nu = env.sys.nu
-nq = env.sys.nq
-nv = env.sys.nv
-n_legs = len(env._lower_leg_body_id)
 
-details.append(f"  nu={nu} (expected 9)")
-details.append(f"  nq={nq} (expected 16)")
-details.append(f"  nv={nv} (expected 15)")
-details.append(f"  lower leg bodies found: {n_legs} (expected 4)")
+def check_1_environment_build():
+    """Environment Build"""
+    print("\n" + "=" * 60)
+    print("CHECK 1: Environment Build")
+    print("=" * 60)
 
-if nu != 9:
-    passed = False
-if nq != 16:
-    passed = False
-if nv != 15:
-    passed = False
-if n_legs != 4:
-    passed = False
+    passed = True
+    details = []
 
-for d in details:
-    print(d)
-print(f"{'PASS' if passed else 'FAIL'}: Environment Build")
-results.append(("Environment Build", passed))
+    nu = env.sys.nu
+    nq = env.sys.nq
+    nv = env.sys.nv
+    n_legs = len(env._lower_leg_body_id)
 
-# ── Check 2: Standing Stability ─────────────────────────────────────────
-print("\n" + "=" * 60)
-print("CHECK 2: Standing Stability (zero action, 100 steps = 2s)")
-print("=" * 60)
+    details.append(f"  nu={nu} (expected 9)")
+    details.append(f"  nq={nq} (expected 16)")
+    details.append(f"  nv={nv} (expected 15)")
+    details.append(f"  lower leg bodies found: {n_legs} (expected 4)")
 
-state = jit_reset(jax.random.PRNGKey(0))
-zero_action = jp.zeros(env.sys.nu)
+    if nu != 9:
+        passed = False
+    if nq != 16:
+        passed = False
+    if nv != 15:
+        passed = False
+    if n_legs != 4:
+        passed = False
 
-passed = True
-for i in range(100):
-    state = jit_step(state, zero_action)
+    for d in details:
+        print(d)
+    print(f"{'PASS' if passed else 'FAIL'}: Environment Build")
+    results.append(("Environment Build", passed))
 
-# Read final values
-done_val = float(state.done)
-base_height = float(state.pipeline_state.x.pos[env._base_body_id, 2])
-up_vec = math.rotate(
-    jp.array([0.0, 0.0, 1.0]),
-    state.pipeline_state.x.rot[env._base_body_id],
-)
-up_z = float(up_vec[2])
 
-print(f"  final base height: {base_height:.4f} m")
-print(f"  up-vector z:       {up_z:.4f}")
-print(f"  done flag:         {done_val}")
+def check_2_standing_stability():
+    """Standing Stability"""
+    print("\n" + "=" * 60)
+    print("CHECK 2: Standing Stability (zero action, 100 steps = 2s)")
+    print("=" * 60)
 
-if done_val != 0.0:
-    passed = False
-    print("  FAIL reason: terminated early")
-if not (0.03 <= base_height <= 0.15):
-    passed = False
-    print(f"  FAIL reason: base height {base_height:.4f} outside [0.03, 0.15]")
-if up_z <= 0.7:
-    passed = False
-    print(f"  FAIL reason: up-vector z {up_z:.4f} <= 0.7")
+    state = jit_reset(jax.random.PRNGKey(0))
+    zero_action = jp.zeros(env.sys.nu)
 
-print(f"{'PASS' if passed else 'FAIL'}: Standing Stability")
-results.append(("Standing Stability", passed))
+    passed = True
+    for i in range(100):
+        state = jit_step(state, zero_action)
 
-# ── Check 3: Sinusoidal Action Rollout (~3s) ────────────────────────────
-print("\n" + "=" * 60)
-print("CHECK 3: Sinusoidal Action Rollout (150 steps = 3s)")
-print("=" * 60)
+    done_val = float(state.done)
+    base_height = float(state.pipeline_state.x.pos[env._base_body_id, 2])
+    up_vec = math.rotate(
+        jp.array([0.0, 0.0, 1.0]),
+        state.pipeline_state.x.rot[env._base_body_id],
+    )
+    up_z = float(up_vec[2])
 
-state = jit_reset(jax.random.PRNGKey(1))
-rollout = [state.pipeline_state]
-rewards = []
-num_steps = 150
-frequencies = np.linspace(0.5, 2.0, env.sys.nu)  # Hz per joint
-amplitude = 0.3
-dt = 0.02  # control dt
+    print(f"  final base height: {base_height:.4f} m")
+    print(f"  up-vector z:       {up_z:.4f}")
+    print(f"  done flag:         {done_val}")
 
-passed = True
-for i in range(num_steps):
-    t = i * dt
-    action = jp.array(amplitude * np.sin(2.0 * np.pi * frequencies * t))
-    state = jit_step(state, action)
-    rollout.append(state.pipeline_state)
-    rewards.append(float(state.reward))
+    if done_val != 0.0:
+        passed = False
+        print("  FAIL reason: terminated early")
+    if not (0.03 <= base_height <= 0.15):
+        passed = False
+        print(f"  FAIL reason: base height {base_height:.4f} outside [0.03, 0.15]")
+    if up_z <= 0.7:
+        passed = False
+        print(f"  FAIL reason: up-vector z {up_z:.4f} <= 0.7")
 
-done_val = float(state.done)
-base_height = float(state.pipeline_state.x.pos[env._base_body_id, 2])
-all_finite = all(np.isfinite(r) for r in rewards)
+    print(f"{'PASS' if passed else 'FAIL'}: Standing Stability")
+    results.append(("Standing Stability", passed))
 
-print(f"  final base height: {base_height:.4f} m")
-print(f"  done flag:         {done_val}")
-print(f"  all rewards finite: {all_finite}")
 
-if done_val != 0.0:
-    passed = False
-    print("  FAIL reason: terminated during rollout")
-if not all_finite:
-    passed = False
-    print("  FAIL reason: non-finite reward detected")
+def check_3_sinusoidal_rollout():
+    """Sinusoidal Action Rollout"""
+    print("\n" + "=" * 60)
+    print("CHECK 3: Sinusoidal Action Rollout (150 steps = 3s)")
+    print("=" * 60)
 
-# Video rendering (best-effort)
-video_saved = False
-try:
-    frames = render_frames(env, rollout, width=640, height=480)
-    save_video_mp4(frames, "env_test_sinusoidal.mp4", fps=50)
-    video_saved = True
-    print("  video saved: env_test_sinusoidal.mp4")
-except Exception as e:
-    print(f"  video skipped: {e}")
+    state = jit_reset(jax.random.PRNGKey(1))
+    rollout = [state.pipeline_state]
+    rewards = []
+    num_steps = 150
+    frequencies = np.linspace(0.5, 2.0, env.sys.nu)
+    amplitude = 0.3
+    dt = 0.02
 
-print(f"{'PASS' if passed else 'FAIL'}: Sinusoidal Action Rollout")
-results.append(("Sinusoidal Action Rollout", passed))
+    passed = True
+    for i in range(num_steps):
+        t = i * dt
+        action = jp.array(amplitude * np.sin(2.0 * np.pi * frequencies * t))
+        state = jit_step(state, action)
+        rollout.append(state.pipeline_state)
+        rewards.append(float(state.reward))
 
-# ── Check 4: Reset Consistency ──────────────────────────────────────────
-print("\n" + "=" * 60)
-print("CHECK 4: Reset Consistency (same seed → identical state)")
-print("=" * 60)
+    done_val = float(state.done)
+    base_height = float(state.pipeline_state.x.pos[env._base_body_id, 2])
+    all_finite = all(np.isfinite(r) for r in rewards)
 
-seed_key = jax.random.PRNGKey(42)
-state_a = jit_reset(seed_key)
-state_b = jit_reset(seed_key)
+    print(f"  final base height: {base_height:.4f} m")
+    print(f"  done flag:         {done_val}")
+    print(f"  all rewards finite: {all_finite}")
 
-qpos_match = jp.allclose(state_a.pipeline_state.q, state_b.pipeline_state.q)
-qvel_match = jp.allclose(state_a.pipeline_state.qd, state_b.pipeline_state.qd)
-reward_match = jp.allclose(state_a.reward, state_b.reward)
-done_match = jp.allclose(state_a.done, state_b.done)
+    if done_val != 0.0:
+        passed = False
+        print("  FAIL reason: terminated during rollout")
+    if not all_finite:
+        passed = False
+        print("  FAIL reason: non-finite reward detected")
 
-passed = bool(qpos_match and qvel_match and reward_match and done_match)
+    video_saved = False
+    try:
+        frames = render_frames(env, rollout, width=640, height=480)
+        save_video_mp4(frames, "env_test_sinusoidal.mp4", fps=50)
+        video_saved = True
+        print("  video saved: env_test_sinusoidal.mp4")
+    except Exception as e:
+        print(f"  video skipped: {e}")
 
-print(f"  qpos match:   {bool(qpos_match)}")
-print(f"  qvel match:   {bool(qvel_match)}")
-print(f"  reward match: {bool(reward_match)}")
-print(f"  done match:   {bool(done_match)}")
-print(f"{'PASS' if passed else 'FAIL'}: Reset Consistency")
-results.append(("Reset Consistency", passed))
+    print(f"{'PASS' if passed else 'FAIL'}: Sinusoidal Action Rollout")
+    results.append(("Sinusoidal Action Rollout", passed))
 
-# ── Check 5: Flipped Termination ────────────────────────────────────────
-print("\n" + "=" * 60)
-print("CHECK 5: Flipped Termination (robot on its back → done=1)")
-print("=" * 60)
 
-# Build a qpos with the robot flipped 180° around the x-axis.
-# Normal base quat is [1,0,0,0] (upright). Flipped: [0,1,0,0].
-from locomotion.constants import DEFAULT_POSE as _DEFAULT_POSE, INIT_QPOS_BASE as _INIT_BASE
+def check_4_reset_consistency():
+    """Reset Consistency"""
+    print("\n" + "=" * 60)
+    print("CHECK 4: Reset Consistency (same seed → identical state)")
+    print("=" * 60)
 
-flipped_qpos = jp.zeros(env.sys.nq)
-flipped_base = jp.array(_INIT_BASE).at[3:7].set(jp.array([0.0, 1.0, 0.0, 0.0]))
-# Raise z so the robot starts above ground before falling
-flipped_base = flipped_base.at[2].set(0.15)
-flipped_qpos = flipped_qpos.at[:7].set(flipped_base)
-flipped_qpos = flipped_qpos.at[env._q_joint_start:].set(jp.array(_DEFAULT_POSE))
+    seed_key = jax.random.PRNGKey(42)
+    state_a = jit_reset(seed_key)
+    state_b = jit_reset(seed_key)
 
-flipped_pipeline = env.pipeline_init(flipped_qpos, jp.zeros(env.sys.nv))
+    qpos_match = jp.allclose(state_a.pipeline_state.q, state_b.pipeline_state.q)
+    qvel_match = jp.allclose(state_a.pipeline_state.qd, state_b.pipeline_state.qd)
+    reward_match = jp.allclose(state_a.reward, state_b.reward)
+    done_match = jp.allclose(state_a.done, state_b.done)
 
-# Graft the flipped pipeline_state into a normal reset state
-state = jit_reset(jax.random.PRNGKey(7))
-state = state.replace(pipeline_state=flipped_pipeline)
+    passed = bool(qpos_match and qvel_match and reward_match and done_match)
 
-# Step once and check termination
-state = jit_step(state, jp.zeros(env.sys.nu))
+    print(f"  qpos match:   {bool(qpos_match)}")
+    print(f"  qvel match:   {bool(qvel_match)}")
+    print(f"  reward match: {bool(reward_match)}")
+    print(f"  done match:   {bool(done_match)}")
+    print(f"{'PASS' if passed else 'FAIL'}: Reset Consistency")
+    results.append(("Reset Consistency", passed))
 
-done_val = float(state.done)
-up_vec = math.rotate(
-    jp.array([0.0, 0.0, 1.0]),
-    state.pipeline_state.x.rot[env._base_body_id],
-)
-up_z = float(up_vec[2])
 
-print(f"  up-vector z: {up_z:.4f} (expected < 0.5)")
-print(f"  done flag:   {done_val} (expected 1.0)")
+def check_5_flipped_termination():
+    """Flipped Termination"""
+    print("\n" + "=" * 60)
+    print("CHECK 5: Flipped Termination (robot on its back → done=1)")
+    print("=" * 60)
 
-passed = done_val == 1.0
-if not passed:
-    print("  FAIL reason: flipped robot did not terminate")
+    from locomotion.constants import (
+        DEFAULT_POSE as _DEFAULT_POSE,
+        INIT_QPOS_BASE as _INIT_BASE,
+    )
 
-print(f"{'PASS' if passed else 'FAIL'}: Flipped Termination")
-results.append(("Flipped Termination", passed))
+    flipped_qpos = jp.zeros(env.sys.nq)
+    flipped_base = jp.array(_INIT_BASE).at[3:7].set(jp.array([0.0, 1.0, 0.0, 0.0]))
+    flipped_base = flipped_base.at[2].set(0.15)
+    flipped_qpos = flipped_qpos.at[:7].set(flipped_base)
+    flipped_qpos = flipped_qpos.at[env._q_joint_start :].set(jp.array(_DEFAULT_POSE))
 
-# ── Check 6: Reset Observation Reasonableness ─────────────────────────
-print("\n" + "=" * 60)
-print("CHECK 6: Reset Observation Reasonableness")
-print("=" * 60)
+    flipped_pipeline = env.pipeline_init(flipped_qpos, jp.zeros(env.sys.nv))
 
-from locomotion.constants import OBS_SIZE, TOTAL_OBS
+    state = jit_reset(jax.random.PRNGKey(7))
+    state = state.replace(pipeline_state=flipped_pipeline)
 
-state = jit_reset(jax.random.PRNGKey(0))
-obs = np.array(state.obs)
+    state = jit_step(state, jp.zeros(env.sys.nu))
 
-passed = True
+    done_val = float(state.done)
+    up_vec = math.rotate(
+        jp.array([0.0, 0.0, 1.0]),
+        state.pipeline_state.x.rot[env._base_body_id],
+    )
+    up_z = float(up_vec[2])
 
-# Shape
-if obs.shape != (TOTAL_OBS,):
-    passed = False
-    print(f"  FAIL reason: obs shape {obs.shape} != ({TOTAL_OBS},)")
+    print(f"  up-vector z: {up_z:.4f} (expected < 0.5)")
+    print(f"  done flag:   {done_val} (expected 1.0)")
 
-# No NaN / Inf
-if not np.all(np.isfinite(obs)):
-    passed = False
-    print("  FAIL reason: obs contains NaN or Inf")
+    passed = done_val == 1.0
+    if not passed:
+        print("  FAIL reason: flipped robot did not terminate")
 
-# All values bounded
-if not np.all(np.abs(obs) < 10):
-    passed = False
-    print(f"  FAIL reason: obs values outside [-10, 10], max abs = {np.max(np.abs(obs)):.4f}")
+    print(f"{'PASS' if passed else 'FAIL'}: Flipped Termination")
+    results.append(("Flipped Termination", passed))
 
-# First frame checks
-frame = obs[:OBS_SIZE]
-print(f"  obs[0] (yaw rate):         {frame[0]:.6f}")
-print(f"  obs[1:4] (proj gravity):   [{frame[1]:.4f}, {frame[2]:.4f}, {frame[3]:.4f}]")
 
-# Projected gravity z-component (index 3) should be negative (robot upright)
-grav_z = frame[3]
-if not grav_z < -0.5:
-    passed = False
-    print(f"  FAIL reason: gravity z = {grav_z:.4f}, expected < -0.5 (robot upright)")
+def check_6_reset_observation():
+    """Reset Observation Reasonableness"""
+    print("\n" + "=" * 60)
+    print("CHECK 6: Reset Observation Reasonableness")
+    print("=" * 60)
 
-# Joint offsets (indices 7–15) ≈ 0
-joint_offsets = frame[7:16]
-max_joint_offset = float(np.max(np.abs(joint_offsets)))
-print(f"  joint offsets max abs:     {max_joint_offset:.6f}")
-if max_joint_offset > 0.15:
-    passed = False
-    print(f"  FAIL reason: joint offset max abs {max_joint_offset:.4f} > 0.15")
+    from locomotion.constants import OBS_SIZE, TOTAL_OBS
 
-# Joint velocities (indices 16–24) ≈ 0
-joint_vels = frame[16:25]
-max_joint_vel = float(np.max(np.abs(joint_vels)))
-print(f"  joint vels max abs:        {max_joint_vel:.6f}")
-if max_joint_vel > 0.15:
-    passed = False
-    print(f"  FAIL reason: joint vel max abs {max_joint_vel:.4f} > 0.15")
+    state = jit_reset(jax.random.PRNGKey(0))
+    obs = np.array(state.obs)
 
-# Last action (indices 25–33) ≈ 0
-last_act = frame[25:34]
-max_last_act = float(np.max(np.abs(last_act)))
-print(f"  last_act max abs:          {max_last_act:.6f}")
-if max_last_act > 0.15:
-    passed = False
-    print(f"  FAIL reason: last_act max abs {max_last_act:.4f} > 0.15")
+    passed = True
 
-# History frames (indices 34–101) ≈ 0
-history = obs[OBS_SIZE:]
-max_history = float(np.max(np.abs(history)))
-print(f"  history max abs:           {max_history:.6f}")
-if max_history > 0.15:
-    passed = False
-    print(f"  FAIL reason: history max abs {max_history:.4f} > 0.15")
+    if obs.shape != (TOTAL_OBS,):
+        passed = False
+        print(f"  FAIL reason: obs shape {obs.shape} != ({TOTAL_OBS},)")
 
-print(f"{'PASS' if passed else 'FAIL'}: Reset Observation Reasonableness")
-results.append(("Reset Observation Reasonableness", passed))
+    if not np.all(np.isfinite(obs)):
+        passed = False
+        print("  FAIL reason: obs contains NaN or Inf")
 
-# ── Summary ─────────────────────────────────────────────────────────────
-print("\n" + "=" * 60)
-n_passed = sum(1 for _, p in results if p)
-n_total = len(results)
-print(f"SUMMARY: {n_passed}/{n_total} PASSED", end="")
-failed = [name for name, p in results if not p]
-if failed:
-    print(f", {len(failed)} FAILED: {', '.join(failed)}")
-else:
-    print()
-print("=" * 60)
+    if not np.all(np.abs(obs) < 10):
+        passed = False
+        print(
+            f"  FAIL reason: obs values outside [-10, 10], max abs = {np.max(np.abs(obs)):.4f}"
+        )
+
+    frame = obs[:OBS_SIZE]
+    print(f"  obs[0] (yaw rate):         {frame[0]:.6f}")
+    print(
+        f"  obs[1:4] (proj gravity):   [{frame[1]:.4f}, {frame[2]:.4f}, {frame[3]:.4f}]"
+    )
+
+    grav_z = frame[3]
+    if not grav_z < -0.5:
+        passed = False
+        print(
+            f"  FAIL reason: gravity z = {grav_z:.4f}, expected < -0.5 (robot upright)"
+        )
+
+    joint_offsets = frame[7:16]
+    max_joint_offset = float(np.max(np.abs(joint_offsets)))
+    print(f"  joint offsets max abs:     {max_joint_offset:.6f}")
+    if max_joint_offset > 0.15:
+        passed = False
+        print(f"  FAIL reason: joint offset max abs {max_joint_offset:.4f} > 0.15")
+
+    joint_vels = frame[16:25]
+    max_joint_vel = float(np.max(np.abs(joint_vels)))
+    print(f"  joint vels max abs:        {max_joint_vel:.6f}")
+    if max_joint_vel > 0.15:
+        passed = False
+        print(f"  FAIL reason: joint vel max abs {max_joint_vel:.4f} > 0.15")
+
+    last_act = frame[25:34]
+    max_last_act = float(np.max(np.abs(last_act)))
+    print(f"  last_act max abs:          {max_last_act:.6f}")
+    if max_last_act > 0.15:
+        passed = False
+        print(f"  FAIL reason: last_act max abs {max_last_act:.4f} > 0.15")
+
+    history = obs[OBS_SIZE:]
+    max_history = float(np.max(np.abs(history)))
+    print(f"  history max abs:           {max_history:.6f}")
+    if max_history > 0.15:
+        passed = False
+        print(f"  FAIL reason: history max abs {max_history:.4f} > 0.15")
+
+    print(f"{'PASS' if passed else 'FAIL'}: Reset Observation Reasonableness")
+    results.append(("Reset Observation Reasonableness", passed))
+
+
+def check_7_random_action_rollout():
+    """Random Action Rollout"""
+    print("\n" + "=" * 60)
+    print("CHECK 7: Random Action Rollout (random actions in [-π, π], up to 50 steps)")
+    print("=" * 60)
+
+    state = jit_reset(jax.random.PRNGKey(2))
+    rng = np.random.default_rng(seed=2)
+
+    passed = True
+    diag_observations = []
+    diag_actions = []
+    diag_rewards = []
+    diag_velocities = []
+    terminated_at = None
+
+    for i in range(50):
+        action = jp.array(rng.uniform(-np.pi, np.pi, size=env.sys.nu))
+        # action = jp.zeros(
+        #    env.sys.nu
+        # )  # use zero action to avoid early termination and get more steps for diagnostics
+        state = jit_step(state, action)
+
+        obs_np = np.array(state.obs)
+        act_np = np.array(action)
+        rew = float(state.reward)
+        done_val = float(state.done)
+        vel = np.array(state.pipeline_state.xd.vel[env._base_body_id])
+
+        diag_observations.append(obs_np)
+        diag_actions.append(act_np)
+        diag_rewards.append(rew)
+        diag_velocities.append(vel)
+
+        print(
+            f"  step {i:3d}: reward={rew:+.4f}  vel=[{vel[0]:+.4f}, {vel[1]:+.4f}, {vel[2]:+.4f}]  done={done_val}"
+        )
+
+        if done_val != 0.0:
+            terminated_at = i
+            print(f"  Episode terminated at step {i}")
+            break
+
+    all_finite = all(np.isfinite(r) for r in diag_rewards)
+    if not all_finite:
+        passed = False
+        print("  FAIL reason: non-finite reward detected")
+
+    with open("env_test_diagnostics.txt", "w") as f:
+        for i in range(len(diag_rewards)):
+            f.write(f"=== Step {i} ===\n")
+            f.write(
+                f"Action ({len(diag_actions[i])}): {np.array2string(diag_actions[i], precision=4, separator=', ')}\n"
+            )
+            f.write(
+                f"Observation ({len(diag_observations[i])}): {np.array2string(diag_observations[i], precision=4, separator=', ')}\n"
+            )
+            f.write(
+                f"Velocity (x, y, z): [{diag_velocities[i][0]:+.6f}, {diag_velocities[i][1]:+.6f}, {diag_velocities[i][2]:+.6f}]\n"
+            )
+            f.write(f"Reward: {diag_rewards[i]:+.6f}\n\n")
+        if terminated_at is not None:
+            f.write(f"Episode terminated at step {terminated_at}\n")
+        else:
+            f.write("Episode did not terminate within 50 steps\n")
+
+    print(
+        f"  diagnostics written to env_test_diagnostics.txt ({len(diag_rewards)} steps)"
+    )
+    print(f"{'PASS' if passed else 'FAIL'}: Random Action Rollout")
+    results.append(("Random Action Rollout", passed))
+
+
+# ── Check registry ────────────────────────────────────────────────────
+CHECKS = {
+    1: check_1_environment_build,
+    2: check_2_standing_stability,
+    3: check_3_sinusoidal_rollout,
+    4: check_4_reset_consistency,
+    5: check_5_flipped_termination,
+    6: check_6_reset_observation,
+    7: check_7_random_action_rollout,
+}
+
+
+# ── Main ───────────────────────────────────────────────────────────────
+if __name__ == "__main__":
+    args = sys.argv[1:]
+
+    if "--list" in args or "-l" in args:
+        print("Available checks:")
+        for num, fn in CHECKS.items():
+            print(f"  {num}: {fn.__doc__}")
+        sys.exit(0)
+
+    if args:
+        selected = []
+        for a in args:
+            try:
+                n = int(a)
+            except ValueError:
+                print(f"Unknown argument: {a}")
+                sys.exit(1)
+            if n not in CHECKS:
+                print(f"Unknown check: {n}. Use --list to see available checks.")
+                sys.exit(1)
+            selected.append(n)
+    else:
+        selected = list(CHECKS.keys())
+
+    for num in selected:
+        CHECKS[num]()
+
+    # ── Summary ────────────────────────────────────────────────────────
+    print("\n" + "=" * 60)
+    n_passed = sum(1 for _, p in results if p)
+    n_total = len(results)
+    print(f"SUMMARY: {n_passed}/{n_total} PASSED", end="")
+    failed = [name for name, p in results if not p]
+    if failed:
+        print(f", {len(failed)} FAILED: {', '.join(failed)}")
+    else:
+        print()
+    print("=" * 60)

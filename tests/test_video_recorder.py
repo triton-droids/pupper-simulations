@@ -21,12 +21,22 @@ from video_recorder import generate_rollout, render_frames, save_video_mp4, save
 
 class TestGenerateRollout:
     def test_returns_correct_states_and_diagnostics(self):
-        """Mock env.reset/step and jax.jit to verify rollout length, state contents, and diagnostics."""
+        """Mock env.reset/step and jax.jit to verify rollout length, state contents, and diagnostics including velocities."""
         num_steps = 5
-        nq, nqd, nobs, nact = 7, 6, 10, 9
+        nq, nqd, nobs, nact = 7, 6, 34, 9
 
         def make_pipeline_state(i):
-            return SimpleNamespace(q=np.ones(nq) * i, qd=np.ones(nqd) * i)
+            # Identity quaternion [1, 0, 0, 0] so local_vel == world_vel
+            vel_array = np.zeros((2, 3))
+            vel_array[1] = np.array([0.1 * i, 0.2 * i, 0.0])
+            rot_array = np.zeros((2, 4))
+            rot_array[1] = np.array([1.0, 0.0, 0.0, 0.0])
+            return SimpleNamespace(
+                q=np.ones(nq) * i,
+                qd=np.ones(nqd) * i,
+                xd=SimpleNamespace(vel=vel_array),
+                x=SimpleNamespace(rot=rot_array),
+            )
 
         # Build fake brax states: reset returns state 0, steps return 1..num_steps
         reset_state = SimpleNamespace(
@@ -43,16 +53,22 @@ class TestGenerateRollout:
             ))
 
         env = MagicMock()
+        env._base_body_id = 1
         env.reset.return_value = reset_state
         env.step.side_effect = step_states
 
         fake_action = np.ones(nact) * 0.5
         inference_fn = MagicMock(return_value=(fake_action, {}))
 
-        with patch("video_recorder.jax") as mock_jax:
+        with patch("video_recorder.jax") as mock_jax, \
+             patch("video_recorder.math") as mock_math:
             mock_jax.jit.side_effect = lambda fn: fn
             mock_jax.random.PRNGKey.return_value = np.array([0, 0])
             mock_jax.random.split.return_value = (np.array([0, 0]), np.array([1, 1]))
+            # quat_inv of identity = identity
+            mock_math.quat_inv.side_effect = lambda q: q
+            # rotate with identity = passthrough
+            mock_math.rotate.side_effect = lambda v, q: v
 
             rollout, diagnostics = generate_rollout(env, inference_fn, num_steps=num_steps, seed=0)
 
@@ -66,6 +82,7 @@ class TestGenerateRollout:
         assert diagnostics['actions'].shape == (num_steps, nact)
         assert diagnostics['rewards'].shape == (num_steps,)
         assert diagnostics['dones'].shape == (num_steps,)
+        assert diagnostics['velocities'].shape == (num_steps, 3)
         np.testing.assert_allclose(diagnostics['actions'], 0.5)
         np.testing.assert_allclose(diagnostics['dones'], 0.0)
 
@@ -128,23 +145,43 @@ class TestSaveVideoMp4:
 # ── save_diagnostics ─────────────────────────────────────────────────
 
 class TestSaveDiagnostics:
-    def test_saves_txt_with_correct_sections(self, tmp_path):
-        """Create sample arrays, call save_diagnostics, verify text file contents."""
+    def test_saves_labeled_sampled_output(self, tmp_path):
+        """Create sample arrays, call save_diagnostics, verify labeled format with sampling."""
+        num_steps = 50
+        obs = np.random.rand(num_steps, 34).astype(np.float32)
+        act = np.random.rand(num_steps, 9).astype(np.float32)
+        rew = np.arange(num_steps, dtype=np.float32) * 0.1
+        done = np.zeros(num_steps, dtype=np.float32)
+        vel = np.random.rand(num_steps, 3).astype(np.float32)
+
         diagnostics = {
-            'observations': np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32),
-            'actions': np.array([[0.5, 0.6], [0.7, 0.8]], dtype=np.float32),
-            'rewards': np.array([1.0, 2.0], dtype=np.float32),
-            'dones': np.zeros(2, dtype=np.float32),
+            'observations': obs,
+            'actions': act,
+            'rewards': rew,
+            'dones': done,
+            'velocities': vel,
         }
         out = tmp_path / "sub" / "diag.txt"
-        save_diagnostics(diagnostics, str(out))
+        save_diagnostics(diagnostics, str(out), sample_interval=25)
 
         assert out.exists()
         content = out.read_text()
-        for key in ('observations', 'actions', 'rewards', 'dones'):
-            assert f"# {key}" in content
-        assert "1.000000" in content
-        assert "0.500000" in content
+
+        # Should have header and two sampled blocks (step 0 and step 25)
+        assert "# Telemetry (sampled every 25 steps)" in content
+        assert "--- step 0 ---" in content
+        assert "--- step 25 ---" in content
+        # Step 1 should NOT appear (not sampled)
+        assert "--- step 1 ---" not in content
+
+        # Verify all labeled fields are present
+        for label in ('yaw_rate:', 'proj_gravity:', 'command:', 'joint_angles:',
+                       'joint_velocities:', 'last_action:', 'velocity:', 'action:',
+                       'reward:', 'done:'):
+            assert label in content
+
+        # Verify parent dir creation works
+        assert out.parent.exists()
 
 
 # ── record_video ─────────────────────────────────────────────────────
@@ -154,10 +191,11 @@ class TestRecordVideo:
         """Patch sub-functions and verify record_video orchestrates them."""
         fake_rollout = [SimpleNamespace(q=np.zeros(7), qd=np.zeros(6))]
         fake_diagnostics = {
-            'observations': np.zeros((10, 10)),
+            'observations': np.zeros((10, 34)),
             'actions': np.zeros((10, 9)),
             'rewards': np.zeros(10),
             'dones': np.zeros(10),
+            'velocities': np.zeros((10, 3)),
         }
         fake_frames = [np.zeros((48, 64, 3), dtype=np.uint8)]
 

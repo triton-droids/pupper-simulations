@@ -8,6 +8,7 @@ import numpy as np
 import jax
 import jax.numpy as jp
 import mujoco
+from brax import math
 
 
 def generate_rollout(env, inference_fn, num_steps=250, seed=0):
@@ -22,7 +23,8 @@ def generate_rollout(env, inference_fn, num_steps=250, seed=0):
     Returns:
         Tuple of (rollout, diagnostics) where:
         - rollout: List of pipeline_state objects (length num_steps + 1, including reset).
-        - diagnostics: Dict with 'observations', 'actions', 'rewards', 'dones' arrays.
+        - diagnostics: Dict with 'observations', 'actions', 'rewards', 'dones',
+          and 'velocities' (local-frame base velocity, shape (num_steps, 3)) arrays.
     """
     jit_reset = jax.jit(env.reset)
     jit_step = jax.jit(env.step)
@@ -35,6 +37,7 @@ def generate_rollout(env, inference_fn, num_steps=250, seed=0):
     actions = []
     rewards = []
     dones = []
+    velocities = []
 
     for _ in range(num_steps):
         rng, key_sample = jax.random.split(rng)
@@ -46,11 +49,18 @@ def generate_rollout(env, inference_fn, num_steps=250, seed=0):
         rewards.append(np.array(state.reward))
         dones.append(np.array(state.done))
 
+        ps = state.pipeline_state
+        world_vel = ps.xd.vel[env._base_body_id]
+        inv_rot = math.quat_inv(ps.x.rot[env._base_body_id])
+        local_vel = math.rotate(world_vel, inv_rot)
+        velocities.append(np.array(local_vel))
+
     diagnostics = {
         'observations': np.array(observations),
         'actions': np.array(actions),
         'rewards': np.array(rewards),
         'dones': np.array(dones),
+        'velocities': np.array(velocities),
     }
     return rollout, diagnostics
 
@@ -125,20 +135,47 @@ def save_video_mp4(frames, output_path, fps=50):
     out.release()
 
 
-def save_diagnostics(diagnostics, output_path):
-    """Save rollout diagnostics to a human-readable text file.
+def save_diagnostics(diagnostics, output_path, sample_interval=25):
+    """Save rollout diagnostics to a human-readable labeled text file.
+
+    Outputs one block per sampled timestep with labeled observation breakdowns
+    (yaw_rate, proj_gravity, command, joint_angles, joint_velocities, last_action),
+    plus velocity, action, reward, and done.
 
     Args:
-        diagnostics: Dict with 'observations', 'actions', 'rewards', 'dones' arrays.
+        diagnostics: Dict with 'observations', 'actions', 'rewards', 'dones',
+            and 'velocities' arrays.
         output_path: Path to write the .txt file.
+        sample_interval: Output every Nth timestep (default 25 = every 0.5s at 50Hz).
     """
     from pathlib import Path
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+
+    obs_all = diagnostics['observations']
+    act_all = diagnostics['actions']
+    rew_all = diagnostics['rewards']
+    done_all = diagnostics['dones']
+    vel_all = diagnostics['velocities']
+    num_steps = obs_all.shape[0]
+
+    def fmt_array(arr):
+        return "  ".join(f"{v:12.6f}" for v in arr)
+
     with open(output_path, 'w') as f:
-        for key in ('observations', 'actions', 'rewards', 'dones'):
-            arr = diagnostics[key]
-            f.write(f"# {key} shape={arr.shape}\n")
-            np.savetxt(f, np.atleast_2d(arr), fmt='%.6f')
+        f.write(f"# Telemetry (sampled every {sample_interval} steps)\n\n")
+        for i in range(0, num_steps, sample_interval):
+            obs = obs_all[i]
+            f.write(f"--- step {i} ---\n")
+            f.write(f"yaw_rate:           {obs[0]:12.6f}\n")
+            f.write(f"proj_gravity:       {fmt_array(obs[1:4])}\n")
+            f.write(f"command:            {fmt_array(obs[4:7])}\n")
+            f.write(f"joint_angles:       {fmt_array(obs[7:16])}\n")
+            f.write(f"joint_velocities:   {fmt_array(obs[16:25])}\n")
+            f.write(f"last_action:        {fmt_array(obs[25:34])}\n")
+            f.write(f"velocity:           {fmt_array(vel_all[i])}\n")
+            f.write(f"action:             {fmt_array(act_all[i])}\n")
+            f.write(f"reward:             {rew_all[i]:12.6f}\n")
+            f.write(f"done:               {done_all[i]:12.6f}\n")
             f.write("\n")
 
 

@@ -46,8 +46,9 @@ def get_config():
                 scales=config_dict.ConfigDict(
                     dict(
                         # Tracking rewards
-                        tracking_lin_vel=2.5,
-                        tracking_ang_vel=1.5,
+                        tracking_lin_vel=5.0,
+                        # tracking_ang_vel=1.5,
+                        tracking_ang_vel=0.0,
                         # Base state regularizations
                         # lin_vel_z=-2.0,
                         # ang_vel_xy=-0.05,
@@ -98,7 +99,7 @@ class BittleEnv(PipelineEnv):
     def __init__(
         self,
         xml_path: str,
-        obs_noise: float = 0.05,
+        obs_noise: float = 0.00,
         action_scale: float = ACTION_SCALE,
         kick_vel: float = 0.05,  # Formerly 0.05
         enable_kicks: bool = True,
@@ -196,8 +197,9 @@ class BittleEnv(PipelineEnv):
         self._foot_radius = 0.015
 
     def sample_command(self, rng: jax.Array) -> jax.Array:
-        """Sample a velocity command."""
-        lin_vel_x = [-0.3, 0.6]  # m/s
+        """Sample a velocity command. Only forward velocity is sampled."""
+        # lin_vel_x = [-0.3, 0.6]  # m/s
+        lin_vel_x = [0.0, 0.6]  # m/s
         lin_vel_y = [-0.3, 0.3]  # m/s
         ang_vel_yaw = [-0.5, 0.5]  # rad/s
 
@@ -205,13 +207,16 @@ class BittleEnv(PipelineEnv):
         lin_vel_x = jax.random.uniform(
             key1, (1,), minval=lin_vel_x[0], maxval=lin_vel_x[1]
         )
-        lin_vel_y = jax.random.uniform(
-            key2, (1,), minval=lin_vel_y[0], maxval=lin_vel_y[1]
-        )
-        ang_vel_yaw = jax.random.uniform(
-            key3, (1,), minval=ang_vel_yaw[0], maxval=ang_vel_yaw[1]
-        )
+        # lin_vel_y = jax.random.uniform(
+        #    key2, (1,), minval=lin_vel_y[0], maxval=lin_vel_y[1]
+        # )
+        lin_vel_y = [0]
+        # ang_vel_yaw = jax.random.uniform(
+        #    key3, (1,), minval=ang_vel_yaw[0], maxval=ang_vel_yaw[1]
+        # )
+        ang_vel_yaw = [0]
         new_cmd = jp.array([lin_vel_x[0], lin_vel_y[0], ang_vel_yaw[0]])
+        # return jp.array([0, 0, 0])
         return new_cmd
 
     def reset(self, rng: jax.Array) -> State:
