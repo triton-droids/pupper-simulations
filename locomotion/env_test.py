@@ -315,9 +315,9 @@ def check_7_random_action_rollout():
 
     for i in range(50):
         action = jp.array(rng.uniform(-np.pi, np.pi, size=env.sys.nu))
-        # action = jp.zeros(
-        #    env.sys.nu
-        # )  # use zero action to avoid early termination and get more steps for diagnostics
+        action = jp.zeros(
+            env.sys.nu
+        )  # use zero action to avoid early termination and get more steps for diagnostics
         state = jit_step(state, action)
 
         obs_np = np.array(state.obs)

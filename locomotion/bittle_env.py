@@ -79,7 +79,7 @@ def get_config():
                         energy=0.0,
                     )
                 ),
-                tracking_sigma=0.10,
+                tracking_sigma=0.25,
             )
         )
         return default_config
@@ -199,7 +199,7 @@ class BittleEnv(PipelineEnv):
     def sample_command(self, rng: jax.Array) -> jax.Array:
         """Sample a velocity command. Only forward velocity is sampled."""
         # lin_vel_x = [-0.3, 0.6]  # m/s
-        lin_vel_x = [0.0, 0.6]  # m/s
+        lin_vel_x = [0.3, 0.6]  # m/s
         lin_vel_y = [-0.3, 0.3]  # m/s
         ang_vel_yaw = [-0.5, 0.5]  # rad/s
 
@@ -216,7 +216,7 @@ class BittleEnv(PipelineEnv):
         # )
         ang_vel_yaw = [0]
         new_cmd = jp.array([lin_vel_x[0], lin_vel_y[0], ang_vel_yaw[0]])
-        # return jp.array([0, 0, 0])
+        # return jp.array([1.0, 0, 0])
         return new_cmd
 
     def reset(self, rng: jax.Array) -> State:
