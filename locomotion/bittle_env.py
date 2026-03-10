@@ -48,7 +48,7 @@ def get_config():
                         # Tracking rewards
                         tracking_lin_vel=5.0,
                         # tracking_ang_vel=1.5,
-                        tracking_ang_vel=0.0,
+                        tracking_ang_vel=1.5,
                         # Base state regularizations
                         # lin_vel_z=-2.0,
                         # ang_vel_xy=-0.05,

@@ -181,14 +181,15 @@ def main():
         print("Running without policy (zero actions).")
 
     # State
-    command = np.zeros(3, dtype=np.float32)
+    # command = np.zeros(3, dtype=np.float32)
+    command = np.array([0.5, 0, 0])
     last_action = np.zeros(NUM_ACTUATORS, dtype=np.float32)
     obs_history = np.zeros(TOTAL_OBS, dtype=np.float32)
 
     active_until = {"w": 0.0, "s": 0.0, "a": 0.0, "d": 0.0, "LEFT": 0.0, "RIGHT": 0.0}
-    paused = True
+    paused = False
 
-    DIAG_INTERVAL = 50   # steps per second at 50 Hz
+    DIAG_INTERVAL = 50  # steps per second at 50 Hz
     DIAG_SECONDS = 5
     step_count = 0
 
@@ -207,7 +208,9 @@ def main():
 
     reset()
 
-    print("Controls: W/S=vx  A/D=vy  Left/Right=yaw  Space=zero  R=reset  P=pause/play  Q=quit")
+    print(
+        "Controls: W/S=vx  A/D=vy  Left/Right=yaw  Space=zero  R=reset  P=pause/play  Q=quit"
+    )
     print("[paused]")
     print(f"[cmd] {fmt(command)}")
 
@@ -293,12 +296,18 @@ def main():
                 step_count += 1
 
                 # Diagnostics: print obs & actions every second for first 5 seconds
-                if (step_count % DIAG_INTERVAL == 0
-                        and step_count <= DIAG_SECONDS * DIAG_INTERVAL):
+                if (
+                    step_count % DIAG_INTERVAL == 0
+                    and step_count <= DIAG_SECONDS * DIAG_INTERVAL
+                ):
                     t = step_count // DIAG_INTERVAL
                     print(f"[diag t={t}s step={step_count}]")
-                    print(f"  obs: {np.array2string(obs_history, precision=4, separator=', ')}")
-                    print(f"  action: {np.array2string(action, precision=4, separator=', ')}")
+                    print(
+                        f"  obs: {np.array2string(obs_history, precision=4, separator=', ')}"
+                    )
+                    print(
+                        f"  action: {np.array2string(action, precision=4, separator=', ')}"
+                    )
 
                 # Set control: default pose + action * scale
                 data.ctrl[:] = DEFAULT_POSE + action * ACTION_SCALE

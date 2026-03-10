@@ -166,11 +166,11 @@ def save_diagnostics(diagnostics, output_path, sample_interval=25):
         for i in range(0, num_steps, sample_interval):
             obs = obs_all[i]
             f.write(f"--- step {i} ---\n")
-            f.write(f"yaw_rate:           {obs[0]:12.6f}\n")
+            f.write(f"yaw_rate:           {obs[0] / 0.25:12.6f}\n")
             f.write(f"proj_gravity:       {fmt_array(obs[1:4])}\n")
-            f.write(f"command:            {fmt_array(obs[4:7])}\n")
+            f.write(f"command:            {fmt_array(obs[4:7] / np.array([2.0, 2.0, 0.25]))}\n")
             f.write(f"joint_angles:       {fmt_array(obs[7:16])}\n")
-            f.write(f"joint_velocities:   {fmt_array(obs[16:25])}\n")
+            f.write(f"joint_velocities:   {fmt_array(obs[16:25] / 0.05)}\n")
             f.write(f"last_action:        {fmt_array(obs[25:34])}\n")
             f.write(f"velocity:           {fmt_array(vel_all[i])}\n")
             f.write(f"action:             {fmt_array(act_all[i])}\n")
