@@ -1,38 +1,48 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Resolve project paths relative to this script's location.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Load environment variables from repo root.
 set -a
-source "$(dirname "$0")/../.env"
+source "$REPO_ROOT/.env"
 set +a
 
+# Always run git commands from the repo root.
+cd "$REPO_ROOT"
+
 echo "Starting deployment process for SWEEP..."
+echo "Repo root: $REPO_ROOT"
 echo "Staging and committing changes"
 
 git add .
 git commit -m "Deploying latest changes for sweep" || echo "No changes to commit"
 git push -u origin "$BRANCH_NAME"
 
-# Ensure local ssh-agent has GitHub key loaded (needed for -A forwarding)
+# Ensure local ssh-agent has GitHub key loaded (needed for -A forwarding).
 if ! ssh-add -l >/dev/null 2>&1; then
   eval "$(ssh-agent -s)" >/dev/null
 fi
 ssh-add "$GITHUB_KEY_PATH" >/dev/null 2>&1 || true
 
-# Which trials file to use on the remote
+# Which trials file to use on the remote. This path is relative to remote
+# repo_root/locomotion because the remote script cd's into locomotion/.
 SWEEP_TRIALS_JSON="${SWEEP_TRIALS_JSON:-sweeps/trials_2080ti_screen.json}"
 
-# Local base output folder
-LOCAL_OUTPUT_DIR="${LOCAL_OUTPUT_DIR:-/c/Users/brand/PycharmProjects/pupper-simulations/Scripts/outputs}"
+# Local base output folder.
+# Defaults to Scripts/outputs in the current repo layout.
+LOCAL_OUTPUT_DIR="${LOCAL_OUTPUT_DIR:-$SCRIPT_DIR/outputs}"
 
-# How often to check for new artifacts (seconds)
+# How often to check for new artifacts (seconds).
 SYNC_INTERVAL="${SYNC_INTERVAL:-15}"
 
-# Run folder name
+# Run folder name.
 SWEEP_ID="$(date +%Y%m%d_%H%M%S)"
 RUN_DIR_NAME="Run_${SWEEP_ID}"
 
-# Remote and local run paths
+# Remote and local run paths.
 REMOTE_SWEEP_REL="outputs/sweeps/${RUN_DIR_NAME}"
 REMOTE_SWEEP_ABS="${SSH_DIRECTORY}/locomotion/${REMOTE_SWEEP_REL}"
 LOCAL_SWEEP_BASE="${LOCAL_OUTPUT_DIR}/sweeps/${RUN_DIR_NAME}"
@@ -46,13 +56,13 @@ echo "Trials: $SWEEP_TRIALS_JSON"
 mkdir -p "$LOCAL_SWEEP_BASE"
 
 sync_artifacts() {
-    local REMOTE_SWEEP_ABS="$1"
-    local LOCAL_SWEEP_BASE="$2"
+    local remote_sweep_abs="$1"
+    local local_sweep_base="$2"
 
-    mkdir -p "$LOCAL_SWEEP_BASE"
+    mkdir -p "$local_sweep_base"
 
     ssh -p "$SSH_PORT" -i "$SSH_KEY_PATH" "$DROIDS_IP_ADDRESS" \
-    "test -d '$REMOTE_SWEEP_ABS' && find '$REMOTE_SWEEP_ABS' -type f \
+    "test -d '$remote_sweep_abs' && find '$remote_sweep_abs' -type f \
     \( -name '*.mp4' \
     -o -name 'latest_metrics.json' \
     -o -name 'metrics_step_*.json' \
@@ -66,8 +76,11 @@ sync_artifacts() {
     while read -r remote_file; do
         [ -n "$remote_file" ] || continue
 
-        rel_path="${remote_file#"$REMOTE_SWEEP_ABS"/}"
-        local_file="$LOCAL_SWEEP_BASE/$rel_path"
+        local rel_path="${remote_file#"$remote_sweep_abs"/}"
+        local local_file="$local_sweep_base/$rel_path"
+        local local_dir
+        local base_name
+
         local_dir="$(dirname "$local_file")"
         base_name="$(basename "$remote_file")"
 
@@ -87,12 +100,12 @@ sync_artifacts() {
         esac
     done
 
-    date +"Last sync: %Y-%m-%d %H:%M:%S" > "$LOCAL_SWEEP_BASE/.last_sync.txt"
+    date +"Last sync: %Y-%m-%d %H:%M:%S" > "$local_sweep_base/.last_sync.txt"
 }
 
 echo "Connecting to remote server at $DROIDS_IP_ADDRESS"
 
-# Start background sync loop
+# Start background sync loop.
 (
   while true; do
     sync_artifacts "$REMOTE_SWEEP_ABS" "$LOCAL_SWEEP_BASE"
@@ -145,7 +158,7 @@ echo "Sweep output dir: $REMOTE_SWEEP_REL"
 uv run sweeps/hparam_sweep.py --trials_json "$SWEEP_TRIALS_JSON" --base_output_dir "$REMOTE_SWEEP_REL" "$@"
 REMOTE
 
-# Final sync to catch artifacts produced near the end
+# Final sync to catch artifacts produced near the end.
 sync_artifacts "$REMOTE_SWEEP_ABS" "$LOCAL_SWEEP_BASE"
 
 echo ""

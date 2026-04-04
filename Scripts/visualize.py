@@ -1,413 +1,358 @@
 #!/usr/bin/env python3
 """
-Bittle Policy Visualization Script
+Bittle policy visualization script.
 
-Loads a trained policy from ONNX format and visualizes it in the Bittle simulation
-environment. Outputs both MP4 and GIF videos.
+Loads a trained ONNX policy, runs it in the Bittle Brax environment,
+and writes MP4 and GIF videos to the project outputs folder.
 
 Usage:
-    python visualize.py
+    python Scripts/visualize.py
+    python Scripts/visualize.py /path/to/policy.onnx
 """
 
 import os
 import sys
-from pathlib import Path
-from typing import List, Tuple, Any
 import platform
+from pathlib import Path
+from typing import Any, List, Optional, Tuple
 
-# Set MuJoCo backend BEFORE importing MuJoCo/Brax
-# Try different backends based on platform and what's available
+
+# ---------------------------------------------------------------------------
+# Project paths
+# ---------------------------------------------------------------------------
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+REPO_ROOT = SCRIPT_DIR.parent
+
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+
+# ---------------------------------------------------------------------------
+# MuJoCo backend setup
+# ---------------------------------------------------------------------------
+
+
 def setup_mujoco_backend():
-    """Setup MuJoCo rendering backend based on platform."""
-    # Clear any existing value
+    """Set up a MuJoCo rendering backend based on the current platform."""
     if "MUJOCO_GL" in os.environ:
         del os.environ["MUJOCO_GL"]
 
     system = platform.system()
-
-    # Try different backends in order of preference
-    backends_to_try = []
-    if system == "Darwin":  # macOS
-        backends_to_try = ["glfw"]  # macOS typically only supports glfw
+    if system == "Darwin":
+        backends_to_try = ["glfw"]
     elif system == "Linux":
-        backends_to_try = ["egl", "glfw"]  # Try headless first, then GUI
-    else:  # Windows
+        backends_to_try = ["egl", "glfw"]
+    else:
         backends_to_try = ["glfw"]
 
-    # Try each backend
+    last_error: Optional[Exception] = None
     for backend in backends_to_try:
         os.environ["MUJOCO_GL"] = backend
         try:
             import mujoco
             print(f"Successfully initialized MuJoCo with {backend} backend")
             return mujoco
-        except RuntimeError as e:
-            if "invalid value" in str(e):
+        except RuntimeError as exc:
+            last_error = exc
+            if "invalid value" in str(exc):
                 continue
-            else:
-                raise
+            raise
 
-    # If all failed, raise error
     raise RuntimeError(
-        f"Could not initialize MuJoCo with any backend. Tried: {backends_to_try}\n"
-        f"Platform: {system}"
+        f"Could not initialize MuJoCo with any backend. Tried: {backends_to_try}. "
+        f"Platform: {system}. Last error: {last_error}"
     )
 
-# Setup MuJoCo backend before other imports
+
 mujoco = setup_mujoco_backend()
 
-import jax
-import jax.numpy as jp
-import numpy as np
 import cv2
-from PIL import Image
+import jax
+import numpy as np
+import onnx
 import onnxruntime as ort
-
+from PIL import Image
 from brax import envs
 
-# Add locomotion directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent / "locomotion"))
 from locomotion.bittle_env import BittleEnv
 
-# ============================================================================
+
+# ---------------------------------------------------------------------------
 # Configuration
-# ============================================================================
+# ---------------------------------------------------------------------------
 
-POLICY_PATH = "locomotion/sim-outputs/policies/policy.onnx"
-SCENE_PATH = "../assets/descriptions/bittle/mjcf/bittle_adapted_scene.xml"
-OUTPUT_DIR = "outputs"
+DEFAULT_POLICY_CANDIDATES = [
+    REPO_ROOT / "outputs" / "bittle_train_latest" / "policy.onnx",
+    REPO_ROOT / "outputs" / "bittle_test_latest" / "policy.onnx",
+    REPO_ROOT / "locomotion" / "sim-outputs" / "policies" / "policy.onnx",  # legacy fallback
+]
 
-DURATION = 5.0  # seconds
+DEFAULT_SCENE_PATH = (
+    REPO_ROOT / "assets" / "descriptions" / "bittle" / "mjcf" / "bittle_adapted_scene.xml"
+)
+DEFAULT_OUTPUT_DIR = REPO_ROOT / "outputs" / "visualize"
+
+DURATION = 5.0
 FPS = 50
-NUM_STEPS = 250  # 5 seconds at 50Hz
+NUM_STEPS = int(DURATION * FPS)
 
 RENDER_WIDTH = 640
 RENDER_HEIGHT = 480
 
 
-# ============================================================================
-# Helper Functions
-# ============================================================================
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
-def setup_environment(scene_path: str) -> Any:
-    """
-    Register and create the Bittle environment.
 
-    Args:
-        scene_path: Path to the scene XML file
+def resolve_policy_path(cli_policy_path: Optional[str] = None) -> Path:
+    """Resolve the ONNX policy path from CLI input or known default locations."""
+    if cli_policy_path:
+        candidate = Path(cli_policy_path).expanduser()
+        if not candidate.is_absolute():
+            candidate = (Path.cwd() / candidate).resolve()
+        return candidate
 
-    Returns:
-        Configured Brax environment
-    """
+    for candidate in DEFAULT_POLICY_CANDIDATES:
+        if candidate.exists():
+            return candidate
+
+    return DEFAULT_POLICY_CANDIDATES[0]
+
+
+
+def setup_environment(scene_path: Path) -> Any:
+    """Register and create the Bittle environment."""
     print("      Registering environment...")
     envs.register_environment("bittle", BittleEnv)
 
     print("      Creating environment instance...")
-    env = envs.get_environment("bittle", xml_path=scene_path)
-
+    env = envs.get_environment("bittle", xml_path=str(scene_path))
     return env
 
 
-def load_onnx_policy(policy_path: str) -> Tuple[ort.InferenceSession, str, str]:
-    """
-    Load ONNX policy model, converting IR version if needed.
 
-    Args:
-        policy_path: Path to ONNX policy file
+def convert_model_ir_version(
+    input_path: Path,
+    output_path: Path,
+    target_ir_version: int = 9,
+) -> Path:
+    """Create a lower-IR-version ONNX copy for older ONNX Runtime builds."""
+    print(f"      Converting ONNX IR version for compatibility: {input_path}")
 
-    Returns:
-        Tuple of (session, input_name, output_name)
-    """
+    model = onnx.load(str(input_path))
+    print(f"      Original IR version: {model.ir_version}")
+
+    model.ir_version = target_ir_version
+    print(f"      Updated IR version:  {model.ir_version}")
+
+    try:
+        onnx.checker.check_model(model)
+        print("      Converted model validation successful")
+    except Exception as exc:
+        print(f"      Warning: converted model validation failed: {exc}")
+        print("      Proceeding anyway...")
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    onnx.save(model, str(output_path))
+    print(f"      Saved converted model to {output_path}")
+    return output_path
+
+
+
+def load_onnx_policy(policy_path: Path) -> Tuple[ort.InferenceSession, str, str]:
+    """Load an ONNX policy and fall back to IR conversion if needed."""
     print(f"      Loading ONNX model from {policy_path}...")
 
     try:
-        # Try loading directly first
         session = ort.InferenceSession(
-            policy_path,
-            providers=['CPUExecutionProvider']
+            str(policy_path),
+            providers=["CPUExecutionProvider"],
         )
-    except Exception as e:
-        if "Unsupported model IR version" in str(e):
-            print(f"      Model IR version incompatible, converting...")
-
-            # Import onnx for conversion
-            try:
-                import onnx
-                from onnx import version_converter
-            except ImportError:
-                raise RuntimeError(
-                    "ONNX package required for version conversion. "
-                    "Install with: pip install onnx"
-                )
-
-            # Load and convert to compatible IR version
-            model = onnx.load(policy_path)
-            print(f"      Original IR version: {model.ir_version}")
-
-            # Convert to IR version 9 (widely supported)
-            converted_model = version_converter.convert_version(model, 9)
-            print(f"      Converted to IR version: {converted_model.ir_version}")
-
-            # Save converted model to temporary location
-            temp_path = str(Path(policy_path).parent / "policy_converted.onnx")
-            onnx.save(converted_model, temp_path)
-            print(f"      Saved converted model to {temp_path}")
-
-            # Load converted model
-            session = ort.InferenceSession(
-                temp_path,
-                providers=['CPUExecutionProvider']
-            )
-        else:
+    except Exception as exc:
+        if "Unsupported model IR version" not in str(exc):
             raise
 
-    # Get input/output names
+        converted_path = policy_path.with_name(f"{policy_path.stem}_ir9{policy_path.suffix}")
+        converted_path = convert_model_ir_version(policy_path, converted_path, target_ir_version=9)
+        session = ort.InferenceSession(
+            str(converted_path),
+            providers=["CPUExecutionProvider"],
+        )
+
     input_name = session.get_inputs()[0].name
     output_name = session.get_outputs()[0].name
 
     print(f"      Model loaded (input: {input_name}, output: {output_name})")
-
     return session, input_name, output_name
 
 
-def create_inference_fn(session: ort.InferenceSession,
-                       input_name: str,
-                       output_name: str):
-    """
-    Create inference function from ONNX session.
 
-    Args:
-        session: ONNX inference session
-        input_name: Name of input tensor
-        output_name: Name of output tensor
+def create_inference_fn(
+    session: ort.InferenceSession,
+    input_name: str,
+    output_name: str,
+):
+    """Wrap an ONNX Runtime session in a Brax-style inference function."""
 
-    Returns:
-        Inference function compatible with Brax
-    """
     def inference_fn(obs, rng_key):
-        """Run inference using ONNX model."""
-        # Convert JAX array to numpy and reshape for batch dimension
-        obs_np = np.array(obs).reshape(1, -1).astype(np.float32)
-
-        # Run ONNX inference
+        del rng_key
+        obs_np = np.asarray(obs, dtype=np.float32).reshape(1, -1)
         action = session.run([output_name], {input_name: obs_np})[0]
-
-        # Return action and empty dict (matching Brax interface)
         return action.flatten(), {}
 
     return inference_fn
 
 
-def generate_rollout(env: Any,
-                    inference_fn: Any,
-                    num_steps: int = 250) -> List[Any]:
-    """
-    Generate a rollout by running the policy in the environment.
 
-    Args:
-        env: Brax environment
-        inference_fn: Policy inference function
-        num_steps: Number of steps to simulate
-
-    Returns:
-        List of pipeline states
-    """
+def generate_rollout(env: Any, inference_fn: Any, num_steps: int = NUM_STEPS) -> List[Any]:
+    """Generate a rollout by running the policy in the environment."""
     print(f"      Running {num_steps} steps...")
 
-    # JIT compile for performance
     jit_reset = jax.jit(env.reset)
     jit_step = jax.jit(env.step)
 
-    # Reset environment
     rng = jax.random.PRNGKey(0)
     state = jit_reset(rng)
     rollout = [state.pipeline_state]
 
-    # Run episode
     for _ in range(num_steps):
         rng, key_sample = jax.random.split(rng)
-        obs = state.obs
-        action, _ = inference_fn(obs, key_sample)
+        action, _ = inference_fn(state.obs, key_sample)
         state = jit_step(state, action)
         rollout.append(state.pipeline_state)
 
     print(f"      Collected {len(rollout)} states")
-
     return rollout
 
 
-def render_frames(env: Any,
-                 rollout: List[Any],
-                 width: int = 640,
-                 height: int = 480) -> List[np.ndarray]:
-    """
-    Render frames from pipeline states.
 
-    Args:
-        env: Brax environment
-        rollout: List of pipeline states
-        width: Frame width
-        height: Frame height
-
-    Returns:
-        List of RGB frames as numpy arrays
-    """
+def render_frames(
+    env: Any,
+    rollout: List[Any],
+    width: int = RENDER_WIDTH,
+    height: int = RENDER_HEIGHT,
+) -> List[np.ndarray]:
+    """Render frames from the rollout pipeline states."""
     print(f"      Rendering {len(rollout)} frames at {width}x{height}...")
 
-    # Get MuJoCo model from Brax environment
     mj_model = env.sys.mj_model
-
-    # Create renderer (uses backend set via environment variable)
     renderer = mujoco.Renderer(mj_model, height=height, width=width)
 
-    frames = []
+    frames: List[np.ndarray] = []
     for i, pipeline_state in enumerate(rollout):
-        # Create MuJoCo data and set state
         mj_data = mujoco.MjData(mj_model)
-        mj_data.qpos[:] = np.array(pipeline_state.q)
-        mj_data.qvel[:] = np.array(pipeline_state.qd)
+        mj_data.qpos[:] = np.asarray(pipeline_state.q)
+        mj_data.qvel[:] = np.asarray(pipeline_state.qd)
 
-        # Forward kinematics
         mujoco.mj_forward(mj_model, mj_data)
-
-        # Render frame
         renderer.update_scene(mj_data)
-        pixels = renderer.render()  # Returns RGB numpy array
-        frames.append(pixels)
+        frames.append(renderer.render())
 
-        # Progress indicator every 50 frames
         if (i + 1) % 50 == 0:
             print(f"      Progress: {i + 1}/{len(rollout)} frames")
 
     renderer.close()
-
     return frames
 
 
-def save_video_mp4(frames: List[np.ndarray],
-                  output_path: Path,
-                  fps: int = 50) -> None:
-    """
-    Save frames as MP4 video using OpenCV.
 
-    Args:
-        frames: List of RGB frames
-        output_path: Path to save MP4
-        fps: Frames per second
-    """
+def save_video_mp4(frames: List[np.ndarray], output_path: Path, fps: int = FPS) -> None:
+    """Save frames as MP4 using OpenCV."""
     if not frames:
         raise ValueError("No frames to write")
 
     height, width, _ = frames[0].shape
-
-    # Create VideoWriter with mp4v codec
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     out = cv2.VideoWriter(str(output_path), fourcc, fps, (width, height))
 
     if not out.isOpened():
         raise RuntimeError(f"Failed to open video writer for {output_path}")
 
-    # Write frames (convert RGB to BGR for OpenCV)
     for frame in frames:
-        frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-        out.write(frame_bgr)
+        out.write(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
 
     out.release()
 
 
-def save_video_gif(frames: List[np.ndarray],
-                  output_path: Path,
-                  fps: int = 50) -> None:
-    """
-    Save frames as animated GIF using Pillow.
 
-    Args:
-        frames: List of RGB frames
-        output_path: Path to save GIF
-        fps: Frames per second
-    """
+def save_video_gif(frames: List[np.ndarray], output_path: Path, fps: int = FPS) -> None:
+    """Save frames as an animated GIF using Pillow."""
     if not frames:
         raise ValueError("No frames to write")
 
-    # Convert numpy arrays to PIL Images
     pil_frames = [Image.fromarray(frame) for frame in frames]
-
-    # Calculate duration per frame in milliseconds
     duration_ms = int(1000 / fps)
 
-    # Save as animated GIF
     pil_frames[0].save(
         output_path,
         save_all=True,
         append_images=pil_frames[1:],
         duration=duration_ms,
-        loop=0  # Loop forever
+        loop=0,
     )
 
 
-# ============================================================================
-# Main Execution
-# ============================================================================
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
 
-def main():
-    """Main execution function."""
+
+def main() -> int:
     try:
+        cli_policy_path = sys.argv[1] if len(sys.argv) > 1 else None
+        policy_path = resolve_policy_path(cli_policy_path)
+        scene_path = DEFAULT_SCENE_PATH
+        output_dir = DEFAULT_OUTPUT_DIR
+
         print("=" * 60)
         print("BITTLE POLICY VISUALIZATION")
         print("=" * 60)
 
-        # Setup paths
-        policy_path = Path(POLICY_PATH)
-        scene_path = Path(SCENE_PATH)
-        output_dir = Path(OUTPUT_DIR)
-
-        # Validate inputs
         print("\nValidating inputs...")
         if not policy_path.exists():
             print(f"Error: Policy file not found: {policy_path}")
-            print("Please train and export a policy first by running: python locomotion/train.py")
+            print("Checked these default locations:")
+            for candidate in DEFAULT_POLICY_CANDIDATES:
+                print(f"  {candidate}")
+            print("\nTrain first with something like: python locomotion/train.py --test")
             return 1
 
         if not scene_path.exists():
             print(f"Error: Scene file not found: {scene_path}")
             return 1
 
-        # Create output directory
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        print(f"\nConfiguration:")
-        print(f"  Policy:    {policy_path}")
-        print(f"  Scene:     {scene_path}")
-        print(f"  Output:    {output_dir}/")
-        print(f"  Duration:  {DURATION}s @ {FPS} FPS ({NUM_STEPS} steps)")
-        print(f"  Rendering: {RENDER_WIDTH}x{RENDER_HEIGHT}")
-        print(f"  Backend:   {os.environ.get('MUJOCO_GL', 'auto-detected')}")
+        print("\nConfiguration:")
+        print(f"  Repo root:  {REPO_ROOT}")
+        print(f"  Policy:     {policy_path}")
+        print(f"  Scene:      {scene_path}")
+        print(f"  Output:     {output_dir}")
+        print(f"  Duration:   {DURATION}s @ {FPS} FPS ({NUM_STEPS} steps)")
+        print(f"  Rendering:  {RENDER_WIDTH}x{RENDER_HEIGHT}")
+        print(f"  Backend:    {os.environ.get('MUJOCO_GL', 'auto-detected')}")
 
-        # Step 1: Setup environment
         print("\n[1/6] Setting up environment...")
-        env = setup_environment(str(scene_path))
+        env = setup_environment(scene_path)
         print(f"      Environment created (obs={env.observation_size}, act={env.action_size})")
 
-        # Step 2: Load policy
         print("[2/6] Loading policy...")
-        session, input_name, output_name = load_onnx_policy(str(policy_path))
+        session, input_name, output_name = load_onnx_policy(policy_path)
         print("      Policy loaded successfully")
 
-        # Step 3: Create inference function
         print("[3/6] Creating inference function...")
         inference_fn = create_inference_fn(session, input_name, output_name)
         print("      Inference function ready")
 
-        # Step 4: Generate rollout
         print("[4/6] Generating rollout...")
         rollout = generate_rollout(env, inference_fn, NUM_STEPS)
 
-        # Step 5: Render frames
         print("[5/6] Rendering frames...")
         frames = render_frames(env, rollout, RENDER_WIDTH, RENDER_HEIGHT)
         print(f"      Rendered {len(frames)} frames successfully")
 
-        # Step 6: Save videos
         print("[6/6] Saving videos...")
         mp4_path = output_dir / "video.mp4"
         gif_path = output_dir / "video.gif"
@@ -423,14 +368,13 @@ def main():
         print("\n" + "=" * 60)
         print("VISUALIZATION COMPLETE")
         print("=" * 60)
-        print(f"\nOutputs:")
+        print("\nOutputs:")
         print(f"  {mp4_path}")
         print(f"  {gif_path}")
-
         return 0
 
-    except Exception as e:
-        print(f"\nError: {e}", file=sys.stderr)
+    except Exception as exc:
+        print(f"\nError: {exc}", file=sys.stderr)
         import traceback
         traceback.print_exc()
         return 1

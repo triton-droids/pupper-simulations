@@ -3,7 +3,7 @@ import xml.etree.ElementTree as ET
 from xacrodoc import XacroDoc
 
 
-from init import logger
+from logging_utils import logger
 import os
 import constants
 

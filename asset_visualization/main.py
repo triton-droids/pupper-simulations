@@ -4,7 +4,7 @@ import mujoco.viewer
 import os
 
 from model_converter import convert_to_MJCF
-from init import logger
+from logging_utils import logger
 import constants
 
 
