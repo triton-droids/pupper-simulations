@@ -4,7 +4,6 @@
 
   <!-- [ADDED] PID tuning -->
   <default>
-    <!-- <joint damping="15.0" frictionloss="1.0"/> -->
     <joint damping="2.0" frictionloss="1.0"/>
     <!-- Leg contact params -->
     <geom solref="0.005 1.5" solimp="0.95 0.97 0.001" 
