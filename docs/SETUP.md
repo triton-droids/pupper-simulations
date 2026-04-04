@@ -176,7 +176,7 @@ pkill -f 'ssh.*8000:localhost:8000'  # Replace 8000 with your SSH_PORT
 For inspecting robot models and MJCF/URDF files before training, use the visualization tool:
 
 ```bash
-python asset-visualization/main.py
+python asset_visualization/main.py
 ```
 
 This opens an interactive 3D viewer where you can load and inspect the Bittle robot model. Useful for debugging model configurations and understanding joint movements.

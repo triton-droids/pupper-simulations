@@ -2,8 +2,8 @@
 renderingEnv/
 .DS_Store
 
-outputs/*
-!outputs/.gitkeep
+Scripts/outputs/*
+!Scripts/outputs/.gitkeep
 locomotion/sim-outputs/media/*
 !locomotion/sim-outputs/media/.gitkeep
 locomotion/sim-outputs/policies/*

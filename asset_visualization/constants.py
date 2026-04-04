@@ -10,8 +10,8 @@ BITTLE_ENVIRONMENT_PATH = "../assets/descriptions/bittleEnvironment.xml"
 
 BITTLE_XACRO_PATH = "../assets/descriptions/bittle/xacro/bittle.xacro"
 
-BITTLE_ADAPTED_PATH = "../locomotion/bittle_adapted.xml"
-BITTLE_ADAPTED_SCENE_PATH = "../locomotion/bittle_adapted_scene.xml"
+BITTLE_ADAPTED_PATH = "../assets/descriptions/bittle/mjcf/bittle_adapted.xml"
+BITTLE_ADAPTED_SCENE_PATH = "../assets/descriptions/bittle/mjcf/bittle_adapted_scene.xml"
 
 
 #Whether to load environment or just the robot MJCF

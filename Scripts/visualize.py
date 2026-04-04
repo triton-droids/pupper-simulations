@@ -74,7 +74,7 @@ from locomotion.bittle_env import BittleEnv
 # ============================================================================
 
 POLICY_PATH = "locomotion/sim-outputs/policies/policy.onnx"
-SCENE_PATH = "locomotion/bittle_adapted_scene.xml"
+SCENE_PATH = "../assets/descriptions/bittle/mjcf/bittle_adapted_scene.xml"
 OUTPUT_DIR = "outputs"
 
 DURATION = 5.0  # seconds

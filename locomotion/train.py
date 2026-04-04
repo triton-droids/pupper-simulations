@@ -25,11 +25,10 @@ import os
 os.environ["MUJOCO_GL"] = "egl"
 
 import sys
-import argparse
 import logging
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Dict, Any
 import json
 import warnings
 
@@ -37,15 +36,10 @@ import warnings
 warnings.filterwarnings("ignore", message="overflow encountered in cast")
 
 import jax
-import jax.numpy as jp
-import numpy as np
-from matplotlib import pyplot as plt
 
 from brax import envs
 from brax.training.agents.ppo import train as ppo
-from brax.io import model, html
-from flax.training import orbax_utils
-from orbax import checkpoint as ocp
+from brax.io import model
 
 # Import custom environment
 from bittle_env import BittleEnv

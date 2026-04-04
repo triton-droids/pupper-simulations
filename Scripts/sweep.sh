@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 set -a
-source "$SCRIPT_DIR/.env"
+source "$(dirname "$0")/../.env"
 set +a
 
 echo "Starting deployment process for SWEEP..."
@@ -23,7 +23,7 @@ ssh-add "$GITHUB_KEY_PATH" >/dev/null 2>&1 || true
 SWEEP_TRIALS_JSON="${SWEEP_TRIALS_JSON:-sweeps/trials_2080ti_screen.json}"
 
 # Local base output folder
-LOCAL_OUTPUT_DIR="${LOCAL_OUTPUT_DIR:-/c/Users/brand/PycharmProjects/pupper-simulations/outputs}"
+LOCAL_OUTPUT_DIR="${LOCAL_OUTPUT_DIR:-/c/Users/brand/PycharmProjects/pupper-simulations/Scripts/outputs}"
 
 # How often to check for new artifacts (seconds)
 SYNC_INTERVAL="${SYNC_INTERVAL:-15}"
