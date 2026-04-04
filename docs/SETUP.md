@@ -164,13 +164,13 @@ mjpython locomotion/teleop.py --policy locomotion/outputs/policy.onnx
 To inspect the robot model without a trained policy:
 
 ```bash
-mjpython locomotion/teleop.py --no-policy --xml-path locomotion/bittle_scene.xml
+mjpython locomotion/teleop.py --no-policy --xml-path assets/descriptions/bittle/mjcf/bittle_scene.xml
 ```
 
 Or use the built-in MuJoCo viewer:
 
 ```bash
-python -m mujoco.viewer --mjcf locomotion/bittle_scene.xml
+python -m mujoco.viewer --mjcf assets/descriptions/bittle/mjcf/bittle_scene.xml
 ```
 
 ### Typical Iteration Process

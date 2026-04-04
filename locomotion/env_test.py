@@ -19,7 +19,7 @@ from video_recorder import render_frames, save_video_mp4
 # ── Setup ───────────────────────────────────────────────────────────────
 envs.register_environment("bittle", BittleEnv)
 
-xml_path = "bittle_scene.xml"
+xml_path = "../assets/descriptions/bittle/mjcf/bittle_scene.xml"
 env = envs.get_environment("bittle", xml_path=xml_path, enable_kicks=False)
 
 jit_reset = jax.jit(env.reset)
