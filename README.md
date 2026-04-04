@@ -33,8 +33,8 @@ pupper-simulations/
 │   ├── onnx_export.py             # Export trained policy to ONNX
 │   ├── domain_randomization.py    # Domain randomization (not yet integrated)
 │   ├── env_test.py                # Quick env build test
-│   ├── bittle_adapted.xml         # MuJoCo robot model
-│   ├── bittle_adapted_scene.xml   # Scene with floor, lighting, keyframe
+│   ├── bittle.xml                 # MuJoCo robot model
+│   ├── bittle_scene.xml           # Scene with floor, lighting, keyframe
 │   └── outputs/                   # Training outputs (gitignored)
 │
 ├── assets/                        # Robot meshes and description files
@@ -90,13 +90,13 @@ Training outputs a policy to `locomotion/outputs/policy.onnx`.
 To view the robot model without a policy:
 
 ```bash
-mjpython locomotion/teleop.py --no-policy --xml-path locomotion/bittle_adapted_scene.xml
+mjpython locomotion/teleop.py --no-policy --xml-path locomotion/bittle_scene.xml
 ```
 
 Or use the built-in MuJoCo viewer:
 
 ```bash
-python -m mujoco.viewer --mjcf locomotion/bittle_adapted_scene.xml
+python -m mujoco.viewer --mjcf locomotion/bittle_scene.xml
 ```
 
 ## Configuration

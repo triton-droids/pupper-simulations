@@ -1,5 +1,5 @@
 <mujoco model="bittle_scene">
-  <include file="bittle_adapted.xml"/>
+  <include file="bittle.xml"/>
   
   <statistic center="0 0 0.08" extent="0.6"/>
   

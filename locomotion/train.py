@@ -16,7 +16,7 @@ from video_recorder import record_video
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--test", action="store_true")
-    parser.add_argument("--xml-path", default="bittle_adapted_scene.xml")
+    parser.add_argument("--xml-path", default="bittle_scene.xml")
     parser.add_argument("--output", default="outputs/policy.onnx")
     parser.add_argument("--no-video", action="store_true", help="Skip video recording after training")
     parser.add_argument("--video-output", default="outputs/videos/latest_video.mp4",

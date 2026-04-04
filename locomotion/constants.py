@@ -7,7 +7,7 @@ numpy imports.  Each consumer converts to its preferred array type.
 """
 
 # Default standing pose (radians) — matches the "home" keyframe in
-# bittle_adapted_scene.xml.  Order: shrfs, shrft, shrrs, shrrt, neck,
+# bittle_scene.xml.  Order: shrfs, shrft, shrrs, shrrt, neck,
 # shlfs, shlft, shlrs, shlrt.
 DEFAULT_POSE = [
     -0.6908,  # shrfs

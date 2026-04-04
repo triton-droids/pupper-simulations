@@ -151,7 +151,7 @@ def build_obs(data, base_body_id, command, last_action, obs_history):
 def main():
     parser = argparse.ArgumentParser(description="Bittle ONNX teleop")
     parser.add_argument("--policy", default="locomotion/outputs/policy_colab.onnx")
-    parser.add_argument("--xml-path", default="locomotion/bittle_adapted_scene.xml")
+    parser.add_argument("--xml-path", default="locomotion/bittle_scene.xml")
     parser.add_argument("--key-value", type=float, default=0.25)
     parser.add_argument("--key-hold", type=float, default=0.12)
     parser.add_argument("--no-policy", action="store_true")
