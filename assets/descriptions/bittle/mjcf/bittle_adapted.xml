@@ -1,5 +1,5 @@
 <mujoco model="bittle">
-  <compiler angle="radian" meshdir="../assets/descriptions/bittle/meshes/stl/"/>
+  <compiler angle="radian" meshdir="../meshes/stl/"/>
   
 
   <!-- [ADDED] PID tuning -->
