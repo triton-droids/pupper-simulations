@@ -273,7 +273,7 @@ def run_one_trial_main(args: argparse.Namespace) -> int:
 
 def build_argparser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--xml_path", type=str, default="bittle_adapted_scene.xml")
+    ap.add_argument("--xml_path", type=str, default="../assets/descriptions/bittle/mjcf/bittle_adapted_scene.xml")
     ap.add_argument("--trials_json", type=str, help="Path to JSON list of hyperparameter override dicts.")
     ap.add_argument("--base_output_dir", type=str, default=None)
     ap.add_argument("--metric", type=str, default="best_reward", choices=["best_reward", "final_reward", "mean_reward"])

@@ -117,7 +117,7 @@ Examples:
     parser.add_argument(
         '--xml_path',
         type=str,
-        default='bittle_adapted_scene.xml',
+        default="../assets/descriptions/bittle/mjcf/bittle_adapted_scene.xml",
         help='Path to MuJoCo XML scene file (default: bittle_adapted_scene.xml)'
     )
     
