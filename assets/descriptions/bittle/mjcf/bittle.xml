@@ -108,7 +108,7 @@
     <body name="base" pos="0 0 0.1">
     <freejoint/>
       <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="base_link"/>
-      <!-- CONVEX COLLISION MESH - ENABLED -->
+      <!-- CONVEX COLLISION MESH - DISABLED -->
       <geom type="mesh" contype="0" conaffinity="0" rgba="0.7 0.7 0.7 1" mesh="base_link"/>
       <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="front__1"/>
       <geom type="mesh" contype="0" conaffinity="0" rgba="0.7 0.7 0.7 1" mesh="front__1"/>
@@ -205,8 +205,8 @@
           <geom pos="-0.008067 0.04708 -0.010094" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="servos_rf_1"/>
           <geom pos="-0.008067 0.04708 -0.010094" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" rgba="0.7 0.7 0.7 1" mesh="servos_rf_1"/>
           <geom pos="-0.008067 0.04708 -0.010094" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="shank_rf_1"/>
-          <!-- CONVEX COLLISION MESH - ENABLED -->
-          <geom pos="-0.008067 0.04708 -0.010094" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="shank_rf_1_collision"/>
+          <!-- SPHERE COLLISION MESH - ENABLED -->
+          <geom pos="0.0475 0.013 -0.004" type="sphere" size="0.006" rgba="1 0 0 0.5" solimp="0.015 1 0.031" friction="0.8 0.02 0.01"/>
           <geom pos="-0.008067 0.04708 -0.010094" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_9_1"/>
           <geom pos="-0.008067 0.04708 -0.010094" type="mesh" contype="0" conaffinity="0" rgba="0.7 0.7 0.7 1" mesh="screw_9_1"/>
           <geom pos="-0.008067 0.04708 -0.010094" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_8_1"/>
@@ -234,8 +234,8 @@
           <geom pos="0.096933 0.04708 -0.010094" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="servos_rr_1"/>
           <geom pos="0.096933 0.04708 -0.010094" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" rgba="0.7 0.7 0.7 1" mesh="servos_rr_1"/>
           <geom pos="0.096933 0.04708 -0.010094" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="shank_rr_1"/>
-          <!-- CONVEX COLLISION MESH - ENABLED -->
-          <geom pos="0.096933 0.04708 -0.010094" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="shank_rr_1_collision"/>
+          <!-- SPHERE COLLISION MESH - ENABLED -->
+          <geom pos="0.0475 0.013 -0.004" type="sphere" size="0.006" rgba="1 0 0 0.5" solimp="0.015 1 0.031" friction="0.8 0.02 0.01"/>
           <geom pos="0.096933 0.04708 -0.010094" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_19_1"/>
           <geom pos="0.096933 0.04708 -0.010094" type="mesh" contype="0" conaffinity="0" rgba="0.7 0.7 0.7 1" mesh="screw_19_1"/>
           <geom pos="0.096933 0.04708 -0.010094" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_11_1"/>
@@ -243,7 +243,7 @@
         </body>
       </body>
       <body name="servo_neck__1" pos="0.047554 0 0.035941">
-        <joint name="neck_joint" range="-3.14 3.14" pos="0 0 0" axis="-5.0 0 -0.866025" limited="true" armature="0.001"/>
+        <joint name="neck_joint" range="-3.14 3.14" pos="0 0 0" axis="-0.5 0 -0.866025" limited="true" armature="0.001"/>
         <geom pos="-0.047554 0 -0.035941" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="servo_neck__1"/>
         <geom pos="-0.047554 0 -0.035941" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" rgba="0.7 0.7 0.7 1" mesh="servo_neck__1"/>
         <geom pos="-0.047554 0 -0.035941" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="jaw_1"/>
@@ -276,8 +276,8 @@
           <geom pos="-0.008067 -0.04708 -0.010094" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="servos_lf_1"/>
           <geom pos="-0.008067 -0.04708 -0.010094" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" rgba="0.7 0.7 0.7 1" mesh="servos_lf_1"/>
           <geom pos="-0.008067 -0.04708 -0.010094" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="shank_lf_1"/>
-          <!-- CONVEX COLLISION MESH - ENABLED -->
-          <geom pos="-0.008067 -0.04708 -0.010094" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="shank_lf_1_collision"/>
+          <!-- SPHERE COLLISION MESH - ENABLED -->
+          <geom pos="0.0475 -0.013 -0.004" type="sphere" size="0.006" rgba="1 0 0 0.5" solimp="0.015 1 0.031" friction="0.8 0.02 0.01"/>
           <geom pos="-0.008067 -0.04708 -0.010094" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_2_1"/>
           <geom pos="-0.008067 -0.04708 -0.010094" type="mesh" contype="0" conaffinity="0" rgba="0.7 0.7 0.7 1" mesh="screw_2_1"/>
           <geom pos="-0.008067 -0.04708 -0.010094" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_20_1"/>
@@ -305,8 +305,8 @@
           <geom pos="0.096933 -0.047082 -0.010094" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="servos_lr_1"/>
           <geom pos="0.096933 -0.047082 -0.010094" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" rgba="0.7 0.7 0.7 1" mesh="servos_lr_1"/>
           <geom pos="0.096933 -0.047082 -0.010094" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="shank_lr_1"/>
-          <!-- CONVEX COLLISION MESH - ENABLED -->
-          <geom pos="0.096933 -0.047082 -0.010094" quat="1 0 0 0" type="mesh" rgba="0.7 0.7 0.7 1" mesh="shank_lr_1_collision"/>
+          <!-- SPHERE COLLISION MESH - ENABLED -->
+          <geom pos="0.0475 -0.013 -0.004" type="sphere" size="0.006" rgba="1 0 0 0.5" solimp="0.015 1 0.031" friction="0.8 0.02 0.01"/>
           <geom pos="0.096933 -0.047082 -0.010094" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_3_1"/>
           <geom pos="0.096933 -0.047082 -0.010094" type="mesh" contype="0" conaffinity="0" rgba="0.7 0.7 0.7 1" mesh="screw_3_1"/>
           <geom pos="0.096933 -0.047082 -0.010094" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="screw_12_1"/>
