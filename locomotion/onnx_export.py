@@ -1,185 +1,222 @@
-"""ONNX export utility for Brax/JAX policies.
-
-Exports trained Brax PPO policies to ONNX format for cross-platform inference
-without requiring JAX runtime.
 """
+Export a trained Brax PPO policy to ONNX.
+
+The exported model is intentionally small and deterministic. It contains only
+the policy MLP needed for inference and emits the mean action vector passed
+through ``tanh``.
+"""
+
+from __future__ import annotations
+
+import logging
+from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 import onnx
-from onnx import helper, TensorProto
-import logging
+from onnx import TensorProto, helper
+
 
 logger = logging.getLogger(__name__)
 
+POLICY_LAYER_NAMES = ["hidden_0", "hidden_1", "hidden_2", "hidden_3", "hidden_4"]
+OBSERVATION_SIZE = 510
+ACTION_SIZE = 9
+LOGIT_SIZE = ACTION_SIZE * 2
+ONNX_OPSET = 11
+ONNX_IR_VERSION = 9
 
-def export_policy_to_onnx(params, output_path: str, deterministic: bool = True):
-    """Export Brax policy to ONNX format.
 
-    Args:
-        params: Brax PPO network parameters (nested PyTree)
-        output_path: Path to save .onnx file
-        deterministic: If True, export deterministic policy (mean actions only)
+@dataclass(slots=True)
+class LayerWeights:
+    """Dense-layer parameters extracted from the Brax policy network."""
 
-    The exported ONNX model accepts:
-        - Input: "observation" [1, 510] float32
-        - Output: "action" [1, 9] float32 in range [-1, 1]
+    kernel: np.ndarray
+    bias: np.ndarray
+
+
+def _extract_policy_weights(params: Any) -> dict[str, LayerWeights]:
     """
-    logger.info("Extracting policy weights from Brax params...")
+    Extract dense-layer weights from the Brax PPO parameter pytree.
 
-    # Brax PPO returns params as tuple: (normalizer_params, policy_params, value_params)
-    normalizer_params, policy_params, value_params = params
+    Brax PPO currently returns parameters as:
 
-    # Policy params structure: {'params': {'hidden_0': {...}, 'hidden_1': {...}, ...}}
-    network_params = policy_params['params']
+    ``(normalizer_params, policy_params, value_params)``
 
-    # Convert JAX arrays to numpy and extract weights
-    # Note: output layer is 'hidden_4', not 'output'
-    weights = {}
-    for layer_name in ['hidden_0', 'hidden_1', 'hidden_2', 'hidden_3', 'hidden_4']:
+    Only the policy MLP is needed for inference export.
+    """
+    _normalizer_params, policy_params, _value_params = params
+    network_params = policy_params["params"]
+
+    weights: dict[str, LayerWeights] = {}
+    for layer_name in POLICY_LAYER_NAMES:
         layer_params = network_params[layer_name]
-        kernel = np.array(layer_params['kernel'], dtype=np.float32)
-        bias = np.array(layer_params['bias'], dtype=np.float32)
-        weights[layer_name] = {'kernel': kernel, 'bias': bias}
-        logger.info(f"  {layer_name}: kernel {kernel.shape}, bias {bias.shape}")
+        weights[layer_name] = LayerWeights(
+            kernel=np.asarray(layer_params["kernel"], dtype=np.float32),
+            bias=np.asarray(layer_params["bias"], dtype=np.float32),
+        )
+        logger.info(
+            "  %s: kernel %s, bias %s",
+            layer_name,
+            weights[layer_name].kernel.shape,
+            weights[layer_name].bias.shape,
+        )
+    return weights
 
-    logger.info("Building ONNX graph...")
 
-    # Create ONNX graph nodes
-    nodes = []
-    initializers = []
+def _make_weight_initializers(weights: dict[str, LayerWeights]) -> list[onnx.TensorProto]:
+    """Convert layer weights into ONNX graph initializers."""
+    initializers: list[onnx.TensorProto] = []
 
-    # Input
-    input_tensor = helper.make_tensor_value_info('observation', TensorProto.FLOAT, [1, 510])
-
-    # Add all weights as initializers
     for layer_name, layer_weights in weights.items():
-        # Weight matrix
         initializers.append(
             helper.make_tensor(
-                name=f'{layer_name}_weight',
+                name=f"{layer_name}_weight",
                 data_type=TensorProto.FLOAT,
-                dims=layer_weights['kernel'].shape,
-                vals=layer_weights['kernel'].flatten().tolist()
+                dims=layer_weights.kernel.shape,
+                vals=layer_weights.kernel.flatten().tolist(),
             )
         )
-        # Bias vector
         initializers.append(
             helper.make_tensor(
-                name=f'{layer_name}_bias',
+                name=f"{layer_name}_bias",
                 data_type=TensorProto.FLOAT,
-                dims=layer_weights['bias'].shape,
-                vals=layer_weights['bias'].flatten().tolist()
+                dims=layer_weights.bias.shape,
+                vals=layer_weights.bias.flatten().tolist(),
             )
         )
 
-    # Build network layers
-    current_input = 'observation'
+    initializers.extend(
+        [
+            helper.make_tensor("slice_starts", TensorProto.INT64, [1], [0]),
+            helper.make_tensor("slice_ends", TensorProto.INT64, [1], [ACTION_SIZE]),
+            helper.make_tensor("slice_axes", TensorProto.INT64, [1], [1]),
+        ]
+    )
+    return initializers
 
-    # Hidden layers with Swish activation
-    for i, layer_name in enumerate(['hidden_0', 'hidden_1', 'hidden_2', 'hidden_3']):
-        # MatMul: x @ W
-        matmul_out = f'{layer_name}_matmul'
-        nodes.append(helper.make_node(
-            'MatMul',
-            inputs=[current_input, f'{layer_name}_weight'],
-            outputs=[matmul_out]
-        ))
 
-        # Add: (x @ W) + b
-        add_out = f'{layer_name}_add'
-        nodes.append(helper.make_node(
-            'Add',
-            inputs=[matmul_out, f'{layer_name}_bias'],
-            outputs=[add_out]
-        ))
+def _build_policy_nodes() -> list[onnx.NodeProto]:
+    """Create the ONNX node list for the policy MLP."""
+    nodes: list[onnx.NodeProto] = []
+    current_input = "observation"
 
-        # Swish activation: x * sigmoid(x)
-        sigmoid_out = f'{layer_name}_sigmoid'
-        nodes.append(helper.make_node(
-            'Sigmoid',
-            inputs=[add_out],
-            outputs=[sigmoid_out]
-        ))
+    for layer_name in POLICY_LAYER_NAMES[:-1]:
+        matmul_out = f"{layer_name}_matmul"
+        add_out = f"{layer_name}_add"
+        sigmoid_out = f"{layer_name}_sigmoid"
+        swish_out = f"{layer_name}_swish"
 
-        swish_out = f'{layer_name}_swish'
-        nodes.append(helper.make_node(
-            'Mul',
-            inputs=[add_out, sigmoid_out],
-            outputs=[swish_out]
-        ))
-
+        nodes.extend(
+            [
+                helper.make_node(
+                    "MatMul",
+                    inputs=[current_input, f"{layer_name}_weight"],
+                    outputs=[matmul_out],
+                ),
+                helper.make_node(
+                    "Add",
+                    inputs=[matmul_out, f"{layer_name}_bias"],
+                    outputs=[add_out],
+                ),
+                helper.make_node(
+                    "Sigmoid",
+                    inputs=[add_out],
+                    outputs=[sigmoid_out],
+                ),
+                helper.make_node(
+                    "Mul",
+                    inputs=[add_out, sigmoid_out],
+                    outputs=[swish_out],
+                ),
+            ]
+        )
         current_input = swish_out
 
-    # Output layer (hidden_4, no activation yet)
-    # MatMul
-    nodes.append(helper.make_node(
-        'MatMul',
-        inputs=[current_input, 'hidden_4_weight'],
-        outputs=['hidden_4_matmul']
-    ))
+    nodes.extend(
+        [
+            helper.make_node(
+                "MatMul",
+                inputs=[current_input, "hidden_4_weight"],
+                outputs=["hidden_4_matmul"],
+            ),
+            helper.make_node(
+                "Add",
+                inputs=["hidden_4_matmul", "hidden_4_bias"],
+                outputs=["logits"],
+            ),
+            helper.make_node(
+                "Slice",
+                inputs=["logits", "slice_starts", "slice_ends", "slice_axes"],
+                outputs=["action_mean"],
+            ),
+            helper.make_node(
+                "Tanh",
+                inputs=["action_mean"],
+                outputs=["action"],
+            ),
+        ]
+    )
+    return nodes
 
-    # Add bias
-    nodes.append(helper.make_node(
-        'Add',
-        inputs=['hidden_4_matmul', 'hidden_4_bias'],
-        outputs=['logits']
-    ))
 
-    # Slice to extract mean actions (first 9 elements)
-    # logits shape: [1, 18] -> action_mean shape: [1, 9]
-    nodes.append(helper.make_node(
-        'Slice',
-        inputs=['logits', 'slice_starts', 'slice_ends', 'slice_axes'],
-        outputs=['action_mean']
-    ))
+def export_policy_to_onnx(
+    params: Any,
+    output_path: str,
+    deterministic: bool = True,
+) -> None:
+    """
+    Export a trained Brax PPO policy to a deterministic ONNX graph.
 
-    # Add slice parameters as initializers
-    initializers.extend([
-        helper.make_tensor('slice_starts', TensorProto.INT64, [1], [0]),
-        helper.make_tensor('slice_ends', TensorProto.INT64, [1], [9]),
-        helper.make_tensor('slice_axes', TensorProto.INT64, [1], [1]),
-    ])
+    Args:
+        params: Brax PPO parameter pytree.
+        output_path: Destination ``.onnx`` file path.
+        deterministic: Kept for API compatibility. Only deterministic export is
+            implemented; the ONNX graph emits mean actions only.
+    """
+    if not deterministic:
+        logger.warning(
+            "Stochastic ONNX export is not implemented; exporting deterministic "
+            "mean-action policy instead."
+        )
 
-    # Tanh activation to get actions in [-1, 1]
-    nodes.append(helper.make_node(
-        'Tanh',
-        inputs=['action_mean'],
-        outputs=['action']
-    ))
+    logger.info("Extracting policy weights from Brax params...")
+    weights = _extract_policy_weights(params)
 
-    # Output
-    output_tensor = helper.make_tensor_value_info('action', TensorProto.FLOAT, [1, 9])
+    logger.info("Building ONNX graph...")
+    input_tensor = helper.make_tensor_value_info(
+        "observation",
+        TensorProto.FLOAT,
+        [1, OBSERVATION_SIZE],
+    )
+    output_tensor = helper.make_tensor_value_info(
+        "action",
+        TensorProto.FLOAT,
+        [1, ACTION_SIZE],
+    )
 
-    # Create graph
     graph_def = helper.make_graph(
-        nodes=nodes,
-        name='BraxPPOPolicy',
+        nodes=_build_policy_nodes(),
+        name="BraxPPOPolicy",
         inputs=[input_tensor],
         outputs=[output_tensor],
-        initializer=initializers
+        initializer=_make_weight_initializers(weights),
     )
 
-    # Create model
     model_def = helper.make_model(
         graph_def,
-        producer_name='brax-onnx-exporter',
-        opset_imports=[helper.make_opsetid('', 11)]
+        producer_name="brax-onnx-exporter",
+        opset_imports=[helper.make_opsetid("", ONNX_OPSET)],
     )
+    model_def.ir_version = ONNX_IR_VERSION
+    logger.info("Set model IR version to %s", model_def.ir_version)
 
-    # Set IR version to 9 for maximum compatibility with older ONNX Runtime versions
-    # IR version 9 is widely supported and compatible with opset 11
-    model_def.ir_version = 9
-    logger.info(f"Set model IR version to {model_def.ir_version}")
-
-    # Check model validity
     logger.info("Validating ONNX model...")
     onnx.checker.check_model(model_def)
 
-    # Save model
-    logger.info(f"Saving ONNX model to {output_path}...")
+    logger.info("Saving ONNX model to %s...", output_path)
     onnx.save(model_def, output_path)
 
-    # Log model info
-    logger.info(f"ONNX export complete!")
-    logger.info(f"  Input: observation [1, 510] float32")
-    logger.info(f"  Output: action [1, 9] float32 in range [-1, 1]")
+    logger.info("ONNX export complete")
+    logger.info("  Input:  observation [1, %s] float32", OBSERVATION_SIZE)
+    logger.info("  Output: action [1, %s] float32 in range [-1, 1]", ACTION_SIZE)
