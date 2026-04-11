@@ -1,19 +1,35 @@
-'''
-Helper script to test whether the environment builds or not
-'''
+"""Smoke-test that the Bittle environment can be constructed from repo root."""
 
-from locomotion.bittle_env import BittleEnv
+from __future__ import annotations
+
+import sys
+from pathlib import Path
 
 from brax import envs
 
-envs.register_environment('bittle', BittleEnv)
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
-env_name = 'bittle'
-xml_path = '../assets/descriptions/bittle/mjcf/bittle_adapted_scene.xml'
+from locomotion.bittle_env import BittleEnv
+from locomotion.paths import DEFAULT_SCENE_PATH
 
-try:
-    env = envs.get_environment(env_name, xml_path = xml_path)
-    print(f"Successfully built environment {env_name} from {xml_path}")
-except Exception as e:
-    print(f"Failed to build environment {env_name} from {xml_path}")
-    print(e)
+
+def main() -> int:
+    env_name = "bittle"
+    xml_path = str(DEFAULT_SCENE_PATH)
+
+    envs.register_environment(env_name, BittleEnv)
+
+    try:
+        envs.get_environment(env_name, xml_path=xml_path)
+        print(f"Successfully built environment {env_name} from {xml_path}")
+        return 0
+    except Exception as exc:
+        print(f"Failed to build environment {env_name} from {xml_path}")
+        print(exc)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import platform
 import shutil
 import subprocess
 import sys
@@ -26,8 +27,11 @@ from typing import Any, Dict, List, Tuple
 _THIS_FILE = Path(__file__).resolve()
 SWEEPS_DIR = _THIS_FILE.parent                 # locomotion/sweeps
 LOCOMOTION_DIR = SWEEPS_DIR.parent             # locomotion
-if str(LOCOMOTION_DIR) not in sys.path:
-    sys.path.insert(0, str(LOCOMOTION_DIR))
+REPO_ROOT = LOCOMOTION_DIR.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from locomotion.paths import DEFAULT_SCENE_PATH
 
 
 def _resolve_from_locomotion(p: str) -> Path:
@@ -218,7 +222,12 @@ def run_one_trial_main(args: argparse.Namespace) -> int:
     """
     Child-process entrypoint: runs a single training job with overrides and writes trial_result.json.
     """
-    os.environ.setdefault("MUJOCO_GL", "egl")
+    if "MUJOCO_GL" not in os.environ:
+        system = platform.system()
+        if system == "Linux":
+            os.environ["MUJOCO_GL"] = "egl"
+        elif system == "Darwin":
+            os.environ["MUJOCO_GL"] = "glfw"
 
     # Ensure parent locomotion/ imports work in the child process too
     if str(LOCOMOTION_DIR) not in sys.path:
@@ -231,9 +240,9 @@ def run_one_trial_main(args: argparse.Namespace) -> int:
     if not isinstance(overrides, dict):
         raise ValueError("overrides_json_inline must decode to a dict")
 
-    from training_config import TrainingConfig
-    from training_helpers import setup_logging
-    from train import train_bittle
+    from locomotion.train import train_bittle
+    from locomotion.training_config import TrainingConfig
+    from locomotion.training_helpers import setup_logging
 
     logger = setup_logging(trial_dir, level=getattr(__import__("logging"), "INFO"))
 
@@ -273,7 +282,7 @@ def run_one_trial_main(args: argparse.Namespace) -> int:
 
 def build_argparser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--xml_path", type=str, default="../assets/descriptions/bittle/mjcf/bittle_adapted_scene.xml")
+    ap.add_argument("--xml_path", type=str, default=str(DEFAULT_SCENE_PATH))
     ap.add_argument("--trials_json", type=str, help="Path to JSON list of hyperparameter override dicts.")
     ap.add_argument("--base_output_dir", type=str, default=None)
     ap.add_argument("--metric", type=str, default="best_reward", choices=["best_reward", "final_reward", "mean_reward"])

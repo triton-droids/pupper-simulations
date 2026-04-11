@@ -146,8 +146,15 @@ if [ ! -d .git ]; then
 fi
 
 git fetch origin
-git checkout "$BRANCH_NAME" || git checkout -b "$BRANCH_NAME" "origin/$BRANCH_NAME"
+
+# Discard any leftover tracked-file edits from previous runs on the remote box.
+git reset --hard
+git clean -fd
+
+# Force the working tree onto the requested branch and exact remote commit.
+git checkout -B "$BRANCH_NAME" "origin/$BRANCH_NAME"
 git reset --hard "origin/$BRANCH_NAME"
+git clean -fd
 
 cd locomotion
 

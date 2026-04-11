@@ -8,6 +8,8 @@ from typing import Any
 from flax.training import orbax_utils
 from orbax import checkpoint as ocp
 
+from locomotion.paths import DEFAULT_SCENE_PATH
+
 # ============================================================================
 # Logging Setup
 # ============================================================================
@@ -30,6 +32,11 @@ def setup_logging(output_dir: Path, level: int = logging.INFO) -> logging.Logger
     # Create logger
     logger = logging.getLogger('bittle_training')
     logger.setLevel(level)
+    logger.propagate = False
+
+    for handler in list(logger.handlers):
+        logger.removeHandler(handler)
+        handler.close()
     
     # Console handler with formatting
     console_handler = logging.StreamHandler(sys.stdout)
@@ -71,6 +78,7 @@ def policy_params_callback(output_dir: Path, logger: logging.Logger, monitor=Non
     """
     ckpt_path = (output_dir / 'checkpoints').resolve()
     ckpt_path.mkdir(parents=True, exist_ok=True)
+    orbax_checkpointer = ocp.PyTreeCheckpointer()
 
     def callback(current_step: int, make_policy: Any, params: Any) -> None:
         """Save checkpoint at current step."""
@@ -78,7 +86,6 @@ def policy_params_callback(output_dir: Path, logger: logging.Logger, monitor=Non
         if monitor is not None and monitor.make_inference_fn_cached is None:
             monitor.make_inference_fn_cached = make_policy(params)
 
-        orbax_checkpointer = ocp.PyTreeCheckpointer()
         save_args = orbax_utils.save_args_from_target(params)
         path = ckpt_path / f'step_{current_step:08d}'
         orbax_checkpointer.save(path, params, force=True, save_args=save_args)
@@ -98,13 +105,13 @@ def parse_args():
         epilog="""
 Examples:
   # Quick test run
-  python train_bittle.py --test
+  python locomotion/train.py --test
   
   # Full training run
-  python train_bittle.py
+  python locomotion/train.py
   
   # Custom output directory
-  python train_bittle.py --output_dir ./experiments/run_001
+  python locomotion/train.py --output_dir ./experiments/run_001
         """
     )
     
@@ -117,8 +124,8 @@ Examples:
     parser.add_argument(
         '--xml_path',
         type=str,
-        default="../assets/descriptions/bittle/mjcf/bittle_adapted_scene.xml",
-        help='Path to MuJoCo XML scene file (default: bittle_adapted_scene.xml)'
+        default=str(DEFAULT_SCENE_PATH),
+        help='Path to MuJoCo XML scene file (default: repository Bittle scene file)'
     )
     
     parser.add_argument(
