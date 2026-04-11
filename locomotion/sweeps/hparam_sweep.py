@@ -1,12 +1,22 @@
 #!/usr/bin/env python3
 """
-Hyperparameter sweep runner for Bittle PPO training.
+Coordinate hyperparameter sweeps for Bittle PPO training.
 
-Put this file at: locomotion/sweeps/hparam_sweep.py
+This script has two modes:
 
-Run (recommended from locomotion/):
-  cd locomotion
-  uv run sweeps/hparam_sweep.py --trials_json sweeps/trials_2080ti_screen.json
+1. Sweep mode:
+   The parent process reads a JSON list of config overrides, creates one output
+   directory per trial, launches each trial as a child Python process, and
+   ranks the successful runs by a chosen metric.
+
+2. Child-trial mode:
+   The spawned child process applies one set of overrides to ``TrainingConfig``,
+   runs training once, and writes ``trial_result.json`` back into its trial
+   directory.
+
+The separation keeps each training run isolated. A failed trial can exit
+cleanly without leaving the parent process in a partially initialized JAX or
+MuJoCo state.
 """
 
 from __future__ import annotations
@@ -18,81 +28,126 @@ import platform
 import shutil
 import subprocess
 import sys
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 
-# Ensure parent "locomotion/" is importable even when running from sweeps/
-_THIS_FILE = Path(__file__).resolve()
-SWEEPS_DIR = _THIS_FILE.parent                 # locomotion/sweeps
-LOCOMOTION_DIR = SWEEPS_DIR.parent             # locomotion
+# Resolve repository-relative paths once at import time so the script behaves
+# the same whether it is launched from the repo root or from locomotion/.
+THIS_FILE = Path(__file__).resolve()
+SWEEPS_DIR = THIS_FILE.parent
+LOCOMOTION_DIR = SWEEPS_DIR.parent
 REPO_ROOT = LOCOMOTION_DIR.parent
+
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from locomotion.paths import DEFAULT_SCENE_PATH
 
 
-def _resolve_from_locomotion(p: str) -> Path:
-    """Resolve a path relative to locomotion/ unless it is already absolute."""
-    pp = Path(p)
-    return pp if pp.is_absolute() else (LOCOMOTION_DIR / pp).resolve()
+RESULT_FILENAME = "trial_result.json"
+RESULTS_JSONL_FILENAME = "results.jsonl"
+LEADERBOARD_FILENAME = "leaderboard.json"
+BEST_TRIAL_FILENAME = "best_trial.json"
 
 
-def _load_trials(trials_json: Path) -> List[Dict[str, Any]]:
+@dataclass(slots=True)
+class TrialRecord:
+    """Serializable summary of one trial within a sweep."""
+
+    trial_id: int
+    trial_dir: str
+    overrides: dict[str, Any]
+    success: bool
+    exit_code: int
+    metric: str
+    score: float | None
+    summary: dict[str, Any]
+    error: str | None
+
+
+def _resolve_from_locomotion(path_str: str | os.PathLike[str]) -> Path:
+    """Resolve a path relative to ``locomotion/`` unless it is absolute."""
+    path = Path(path_str)
+    return path if path.is_absolute() else (LOCOMOTION_DIR / path).resolve()
+
+
+def _load_trials(trials_json: Path) -> list[dict[str, Any]]:
+    """Load and validate the sweep override list."""
     data = json.loads(trials_json.read_text(encoding="utf-8"))
-    if not isinstance(data, list) or not all(isinstance(x, dict) for x in data):
-        raise ValueError("Trials JSON must be a list of objects, like: [{...}, {...}]")
+    if not isinstance(data, list) or not all(isinstance(item, dict) for item in data):
+        raise ValueError(
+            "Trials JSON must be a list of override objects, for example: "
+            '[{"batch_size": 256}, {"batch_size": 512}]'
+        )
     return data
 
 
-def _safe_name(s: str) -> str:
-    return (
-        s.replace(" ", "")
-        .replace("/", "_")
-        .replace("\\", "_")
-        .replace(":", "_")
-        .replace("|", "_")
-        .replace('"', "")
-        .replace("'", "")
+def _safe_name(value: str) -> str:
+    """Convert a human-readable override string into a filesystem-safe token."""
+    translation_table = str.maketrans(
+        {
+            " ": "",
+            "/": "_",
+            "\\": "_",
+            ":": "_",
+            "|": "_",
+            '"': "",
+            "'": "",
+        }
     )
+    return value.translate(translation_table)
 
 
-def _trial_tag(overrides: Dict[str, Any]) -> str:
-    parts = []
-    for k in sorted(overrides.keys()):
-        parts.append(f"{k}={overrides[k]}")
-    return _safe_name("__".join(parts))
+def _trial_tag(overrides: dict[str, Any]) -> str:
+    """Build a stable directory suffix from sorted override key/value pairs."""
+    override_pairs = [f"{key}={overrides[key]}" for key in sorted(overrides)]
+    return _safe_name("__".join(override_pairs))
 
 
-def _read_trial_result(trial_dir: Path) -> Dict[str, Any]:
-    p = trial_dir / "trial_result.json"
-    if not p.exists():
-        return {"success": False, "error": "trial_result.json missing", "summary": {}}
-    return json.loads(p.read_text(encoding="utf-8"))
+def _read_trial_result(trial_dir: Path) -> dict[str, Any]:
+    """Read the trial result written by the child process, if present."""
+    result_path = trial_dir / RESULT_FILENAME
+    if not result_path.exists():
+        return {"success": False, "error": f"{RESULT_FILENAME} missing", "summary": {}}
+    return json.loads(result_path.read_text(encoding="utf-8"))
 
 
-def _write_json(path: Path, obj: Any) -> None:
+def _write_json(path: Path, payload: Any) -> None:
+    """Write JSON with parent directories created automatically."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(obj, indent=2), encoding="utf-8")
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
-def _run_child_trial(
-    python_exe: str,
-    this_file: Path,
+def _append_jsonl(path: Path, payload: Any) -> None:
+    """Append one JSON object per line for easy streaming and inspection."""
+    with path.open("a", encoding="utf-8") as file_handle:
+        file_handle.write(json.dumps(payload) + "\n")
+
+
+def _build_sweep_output_dir(args: argparse.Namespace) -> Path:
+    """Choose the sweep output directory from CLI input or a timestamp."""
+    if args.base_output_dir:
+        return _resolve_from_locomotion(args.base_output_dir)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return (LOCOMOTION_DIR / "outputs" / "sweeps" / f"sweep_{timestamp}").resolve()
+
+
+def _spawn_trial_process(
+    *,
     trial_id: int,
     xml_path: str,
     trial_dir: Path,
     test_mode: bool,
-    overrides: Dict[str, Any],
+    overrides: dict[str, Any],
 ) -> int:
-    """
-    Spawns a child process to run exactly one trial.
-    """
-    cmd = [
-        python_exe,
-        str(this_file),
+    """Launch a child process that runs exactly one training trial."""
+    command = [
+        sys.executable,
+        str(THIS_FILE),
         "--_run_one_trial",
         "--trial_id",
         str(trial_id),
@@ -104,12 +159,72 @@ def _run_child_trial(
         json.dumps(overrides),
     ]
     if test_mode:
-        cmd.append("--test")
+        command.append("--test")
 
-    return subprocess.call(cmd)
+    return subprocess.run(command, check=False).returncode
+
+
+def _rank_successful_trials(
+    rows: list[TrialRecord],
+) -> list[TrialRecord]:
+    """Return successful trials sorted by descending score."""
+    scored_rows = [
+        row
+        for row in rows
+        if row.success and isinstance(row.score, (int, float))
+    ]
+    return sorted(scored_rows, key=lambda row: float(row.score), reverse=True)
+
+
+def _print_sweep_header(
+    *,
+    trials_path: Path,
+    output_dir: Path,
+    metric: str,
+    test_mode: bool,
+    num_trials: int,
+) -> None:
+    """Print a compact summary of the sweep about to run."""
+    print(f"Sweep starting. Trials: {num_trials}")
+    print(f"Trials file: {trials_path}")
+    print(f"Output dir:  {output_dir}")
+    print(f"Metric:      {metric}")
+    print(f"Mode:        {'TEST' if test_mode else 'FULL'}")
+    print("")
+
+
+def _make_trial_record(
+    *,
+    trial_id: int,
+    trial_dir: Path,
+    overrides: dict[str, Any],
+    metric: str,
+    exit_code: int,
+    result: dict[str, Any],
+) -> TrialRecord:
+    """Normalize one child's result into a typed sweep record."""
+    summary = result.get("summary", {}) or {}
+    success = bool(result.get("success", False))
+    score = summary.get(metric)
+
+    if not isinstance(score, (int, float)):
+        score = None
+
+    return TrialRecord(
+        trial_id=trial_id,
+        trial_dir=str(trial_dir),
+        overrides=overrides,
+        success=success,
+        exit_code=exit_code,
+        metric=metric,
+        score=float(score) if score is not None else None,
+        summary=summary,
+        error=result.get("error"),
+    )
 
 
 def sweep_main(args: argparse.Namespace) -> int:
+    """Run all requested trials and build the final leaderboard."""
     trials_path = _resolve_from_locomotion(args.trials_json)
     if not trials_path.exists():
         print(f"ERROR: trials_json not found: {trials_path}")
@@ -119,34 +234,26 @@ def sweep_main(args: argparse.Namespace) -> int:
     if args.max_trials is not None:
         trials = trials[: args.max_trials]
 
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir = _build_sweep_output_dir(args)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    if args.base_output_dir:
-        base_out = _resolve_from_locomotion(args.base_output_dir)
-    else:
-        base_out = (LOCOMOTION_DIR / "outputs" / "sweeps" / f"sweep_{ts}").resolve()
+    results_jsonl = output_dir / RESULTS_JSONL_FILENAME
+    leaderboard_json = output_dir / LEADERBOARD_FILENAME
+    best_json = output_dir / BEST_TRIAL_FILENAME
 
-    base_out.mkdir(parents=True, exist_ok=True)
+    _print_sweep_header(
+        trials_path=trials_path,
+        output_dir=output_dir,
+        metric=args.metric,
+        test_mode=args.test,
+        num_trials=len(trials),
+    )
 
-    results_jsonl = base_out / "results.jsonl"
-    leaderboard_json = base_out / "leaderboard.json"
-    best_json = base_out / "best_trial.json"
+    all_rows: list[TrialRecord] = []
 
-    print(f"Sweep starting. Trials: {len(trials)}")
-    print(f"Trials file: {trials_path}")
-    print(f"Output dir:  {base_out}")
-    print(f"Metric:      {args.metric}")
-    print(f"Mode:        {'TEST' if args.test else 'FULL'}")
-    print("")
-
-    all_rows: List[Dict[str, Any]] = []
-
-    this_file = Path(__file__).resolve()
-    python_exe = sys.executable
-
-    for i, overrides in enumerate(trials, start=1):
+    for trial_id, overrides in enumerate(trials, start=1):
         tag = _trial_tag(overrides)
-        trial_dir = base_out / f"trial_{i:03d}__{tag}"
+        trial_dir = output_dir / f"trial_{trial_id:03d}__{tag}"
 
         if trial_dir.exists() and args.overwrite:
             shutil.rmtree(trial_dir)
@@ -154,11 +261,9 @@ def sweep_main(args: argparse.Namespace) -> int:
         trial_dir.mkdir(parents=True, exist_ok=True)
         _write_json(trial_dir / "overrides.json", overrides)
 
-        print(f"[{i}/{len(trials)}] Running trial: {trial_dir.name}")
-        exit_code = _run_child_trial(
-            python_exe=python_exe,
-            this_file=this_file,
-            trial_id=i,
+        print(f"[{trial_id}/{len(trials)}] Running trial: {trial_dir.name}")
+        exit_code = _spawn_trial_process(
+            trial_id=trial_id,
             xml_path=args.xml_path,
             trial_dir=trial_dir,
             test_mode=args.test,
@@ -166,79 +271,94 @@ def sweep_main(args: argparse.Namespace) -> int:
         )
 
         result = _read_trial_result(trial_dir)
-        summary = result.get("summary", {}) or {}
-        success = bool(result.get("success", False))
-        score = summary.get(args.metric, None)
-
-        row = {
-            "trial_id": i,
-            "trial_dir": str(trial_dir),
-            "overrides": overrides,
-            "success": success,
-            "exit_code": exit_code,
-            "metric": args.metric,
-            "score": score,
-            "summary": summary,
-            "error": result.get("error"),
-        }
+        row = _make_trial_record(
+            trial_id=trial_id,
+            trial_dir=trial_dir,
+            overrides=overrides,
+            metric=args.metric,
+            exit_code=exit_code,
+            result=result,
+        )
         all_rows.append(row)
+        _append_jsonl(results_jsonl, asdict(row))
 
-        with results_jsonl.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(row) + "\n")
-
-        if success:
-            print(f"  done: score={score}")
+        if row.success:
+            print(f"  done: score={row.score}")
         else:
-            print(f"  failed: {row.get('error')}")
+            print(f"  failed: {row.error}")
         print("")
 
-    scored: List[Tuple[float, Dict[str, Any]]] = []
-    for r in all_rows:
-        if not r["success"]:
-            continue
-        s = r.get("score")
-        if isinstance(s, (int, float)):
-            scored.append((float(s), r))
+    leaderboard = _rank_successful_trials(all_rows)
+    _write_json(leaderboard_json, [asdict(row) for row in leaderboard])
 
-    scored.sort(key=lambda x: x[0], reverse=True)
-    leaderboard = [r for _, r in scored]
-    _write_json(leaderboard_json, leaderboard)
+    if not leaderboard:
+        print("No successful trials to rank.")
+        return 1
 
-    if leaderboard:
-        best = leaderboard[0]
-        _write_json(best_json, best)
-        print("Best trial:")
-        print(f"  trial_id: {best['trial_id']}")
-        print(f"  score:    {best['score']}")
-        print(f"  dir:      {best['trial_dir']}")
-        print(f"  overrides:{best['overrides']}")
-        return 0
+    best = leaderboard[0]
+    _write_json(best_json, asdict(best))
 
-    print("No successful trials to rank.")
-    return 1
+    print("Best trial:")
+    print(f"  trial_id: {best.trial_id}")
+    print(f"  score:    {best.score}")
+    print(f"  dir:      {best.trial_dir}")
+    print(f"  overrides:{best.overrides}")
+    return 0
+
+
+def _configure_child_mujoco_backend() -> None:
+    """Apply a platform-appropriate default MuJoCo backend for child trials."""
+    if "MUJOCO_GL" in os.environ:
+        return
+
+    system = platform.system()
+    if system == "Linux":
+        os.environ["MUJOCO_GL"] = "egl"
+    elif system == "Darwin":
+        os.environ["MUJOCO_GL"] = "glfw"
+
+
+def _load_inline_overrides(payload: str) -> dict[str, Any]:
+    """Decode the inline JSON blob passed from the parent process."""
+    overrides = json.loads(payload)
+    if not isinstance(overrides, dict):
+        raise ValueError("overrides_json_inline must decode to a dict")
+    return overrides
+
+
+def _apply_overrides(config: Any, overrides: dict[str, Any]) -> None:
+    """Apply sweep overrides to ``TrainingConfig`` with strict field checking."""
+    for key, value in overrides.items():
+        if not hasattr(config, key):
+            raise ValueError(f"Override '{key}' is not a field on TrainingConfig")
+        setattr(config, key, value)
+
+
+def _warn_on_awkward_batch_shapes(config: Any, logger: Any) -> None:
+    """Warn about common batch-size relationships that tend to cause issues."""
+    if config.batch_size % config.num_minibatches != 0:
+        logger.warning(
+            "batch_size is not divisible by num_minibatches. "
+            "This may error or reduce efficiency."
+        )
+    if config.batch_size % config.unroll_length != 0:
+        logger.warning(
+            "batch_size is not divisible by unroll_length. "
+            "This may error or reduce efficiency."
+        )
 
 
 def run_one_trial_main(args: argparse.Namespace) -> int:
-    """
-    Child-process entrypoint: runs a single training job with overrides and writes trial_result.json.
-    """
-    if "MUJOCO_GL" not in os.environ:
-        system = platform.system()
-        if system == "Linux":
-            os.environ["MUJOCO_GL"] = "egl"
-        elif system == "Darwin":
-            os.environ["MUJOCO_GL"] = "glfw"
+    """Run one child training job and write ``trial_result.json``."""
+    _configure_child_mujoco_backend()
 
-    # Ensure parent locomotion/ imports work in the child process too
-    if str(LOCOMOTION_DIR) not in sys.path:
-        sys.path.insert(0, str(LOCOMOTION_DIR))
+    if str(REPO_ROOT) not in sys.path:
+        sys.path.insert(0, str(REPO_ROOT))
 
     trial_dir = Path(args.trial_dir).resolve()
     trial_dir.mkdir(parents=True, exist_ok=True)
 
-    overrides = json.loads(args.overrides_json_inline)
-    if not isinstance(overrides, dict):
-        raise ValueError("overrides_json_inline must decode to a dict")
+    overrides = _load_inline_overrides(args.overrides_json_inline)
 
     from locomotion.train import train_bittle
     from locomotion.training_config import TrainingConfig
@@ -246,60 +366,95 @@ def run_one_trial_main(args: argparse.Namespace) -> int:
 
     logger = setup_logging(trial_dir, level=getattr(__import__("logging"), "INFO"))
 
-    cfg = TrainingConfig(test_mode=args.test)
+    config = TrainingConfig(test_mode=args.test)
+    _apply_overrides(config, overrides)
+    _warn_on_awkward_batch_shapes(config, logger)
 
-    for k, v in overrides.items():
-        if not hasattr(cfg, k):
-            raise ValueError(f"Override '{k}' is not a field on TrainingConfig")
-        setattr(cfg, k, v)
-
-    try:
-        if cfg.batch_size % cfg.num_minibatches != 0:
-            logger.warning("batch_size not divisible by num_minibatches. This may error or reduce efficiency.")
-        if cfg.batch_size % cfg.unroll_length != 0:
-            logger.warning("batch_size not divisible by unroll_length. This may error or reduce efficiency.")
-    except Exception:
-        pass
-
-    out = train_bittle(
-        config=cfg,
+    outcome = train_bittle(
+        config=config,
         xml_path=args.xml_path,
         output_dir=trial_dir,
         logger=logger,
     )
 
     result = {
-        "success": bool(out.get("success", False)),
+        "success": bool(outcome.get("success", False)),
         "overrides": overrides,
         "trial_dir": str(trial_dir),
-        "summary": out.get("summary", {}) if out.get("success") else {},
-        "error": out.get("error"),
+        "summary": outcome.get("summary", {}) if outcome.get("success") else {},
+        "error": outcome.get("error"),
     }
-    _write_json(trial_dir / "trial_result.json", result)
-
+    _write_json(trial_dir / RESULT_FILENAME, result)
     return 0 if result["success"] else 1
 
 
 def build_argparser() -> argparse.ArgumentParser:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--xml_path", type=str, default=str(DEFAULT_SCENE_PATH))
-    ap.add_argument("--trials_json", type=str, help="Path to JSON list of hyperparameter override dicts.")
-    ap.add_argument("--base_output_dir", type=str, default=None)
-    ap.add_argument("--metric", type=str, default="best_reward", choices=["best_reward", "final_reward", "mean_reward"])
-    ap.add_argument("--test", action="store_true")
-    ap.add_argument("--max_trials", type=int, default=None)
-    ap.add_argument("--overwrite", action="store_true")
+    """Build the CLI shared by both the parent and child modes."""
+    parser = argparse.ArgumentParser(
+        description=(
+            "Run a Bittle PPO hyperparameter sweep or, internally, a single "
+            "child trial spawned by the sweep coordinator."
+        ),
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument(
+        "--xml_path",
+        type=str,
+        default=str(DEFAULT_SCENE_PATH),
+        help="Path to the MuJoCo scene XML used for training.",
+    )
+    parser.add_argument(
+        "--trials_json",
+        type=str,
+        help="Path to a JSON list of override dictionaries.",
+    )
+    parser.add_argument(
+        "--base_output_dir",
+        type=str,
+        default=None,
+        help="Sweep output directory, relative to locomotion/ when not absolute.",
+    )
+    parser.add_argument(
+        "--metric",
+        type=str,
+        default="best_reward",
+        choices=["best_reward", "final_reward", "mean_reward"],
+        help="Summary metric used to rank successful trials.",
+    )
+    parser.add_argument(
+        "--test",
+        action="store_true",
+        help="Run each trial in test mode instead of full training mode.",
+    )
+    parser.add_argument(
+        "--max_trials",
+        type=int,
+        default=None,
+        help="Limit the number of trials read from the input JSON.",
+    )
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Delete an existing trial directory before rerunning that trial.",
+    )
 
-    ap.add_argument("--_run_one_trial", action="store_true")
-    ap.add_argument("--trial_id", type=int, default=0)
-    ap.add_argument("--trial_dir", type=str, default="")
-    ap.add_argument("--overrides_json_inline", type=str, default="{}")
-    return ap
+    # Internal child-process arguments. These are intentionally hidden from the
+    # main sweep workflow but remain stable so the parent can spawn children.
+    parser.add_argument("--_run_one_trial", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--trial_id", type=int, default=0, help=argparse.SUPPRESS)
+    parser.add_argument("--trial_dir", type=str, default="", help=argparse.SUPPRESS)
+    parser.add_argument(
+        "--overrides_json_inline",
+        type=str,
+        default="{}",
+        help=argparse.SUPPRESS,
+    )
+    return parser
 
 
 def main() -> int:
-    ap = build_argparser()
-    args = ap.parse_args()
+    """Parse CLI arguments and dispatch to parent or child mode."""
+    args = build_argparser().parse_args()
 
     if args._run_one_trial:
         return run_one_trial_main(args)

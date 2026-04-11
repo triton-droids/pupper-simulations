@@ -1,25 +1,39 @@
 #!/usr/bin/env python3
 """
-Bittle policy visualization script.
+Visualize a trained Bittle ONNX policy.
 
-Loads a trained ONNX policy, runs it in the Bittle Brax environment,
-and writes MP4 and GIF videos to the project outputs folder.
+High-level workflow
+-------------------
+This script takes a trained ONNX policy, runs it inside the Brax Bittle
+environment, renders the resulting MuJoCo rollout, and saves both MP4 and GIF
+outputs.
 
-Usage:
-    python Scripts/visualize.py
-    python Scripts/visualize.py /path/to/policy.onnx
+The flow is intentionally split into small steps:
+
+1. Resolve CLI inputs and choose sensible defaults.
+2. Validate that the policy and scene files exist.
+3. Initialize MuJoCo with a backend that works on the current platform.
+4. Build the Brax environment and load the ONNX model.
+5. Roll out the policy for a fixed number of steps.
+6. Render frames and save them to disk.
+
+Keeping those responsibilities separate makes the script easier to debug and
+much easier to read than one long monolithic ``main()`` function.
 """
 
+from __future__ import annotations
+
+import argparse
 import os
-import sys
 import platform
+import sys
+import traceback
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, List, Optional, Tuple
+from typing import Any
 
+import numpy as np
 
-# ---------------------------------------------------------------------------
-# Project paths
-# ---------------------------------------------------------------------------
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parent
@@ -27,31 +41,169 @@ REPO_ROOT = SCRIPT_DIR.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-
-# ---------------------------------------------------------------------------
-# MuJoCo backend setup
-# ---------------------------------------------------------------------------
+from locomotion.paths import DEFAULT_SCENE_PATH
 
 
-def setup_mujoco_backend():
-    """Set up a MuJoCo rendering backend based on the current platform."""
-    if "MUJOCO_GL" in os.environ:
-        del os.environ["MUJOCO_GL"]
+DEFAULT_POLICY_CANDIDATES = [
+    REPO_ROOT / "outputs" / "bittle_train_latest" / "policy.onnx",
+    REPO_ROOT / "outputs" / "bittle_test_latest" / "policy.onnx",
+    REPO_ROOT / "locomotion" / "sim-outputs" / "policies" / "policy.onnx",
+]
+DEFAULT_OUTPUT_DIR = REPO_ROOT / "outputs" / "visualize"
 
+
+@dataclass(slots=True, frozen=True)
+class VisualizationConfig:
+    """Resolved runtime configuration for one visualization run."""
+
+    policy_path: Path
+    scene_path: Path
+    output_dir: Path
+    duration_seconds: float
+    fps: int
+    width: int
+    height: int
+
+    @property
+    def num_steps(self) -> int:
+        """Return the number of environment steps to simulate."""
+        return int(self.duration_seconds * self.fps)
+
+
+@dataclass(slots=True, frozen=True)
+class LoadedPolicy:
+    """Bundle the ONNX Runtime session with its I/O tensor names."""
+
+    session: Any
+    input_name: str
+    output_name: str
+
+
+def build_argparser() -> argparse.ArgumentParser:
+    """Build the CLI for the visualization script."""
+    parser = argparse.ArgumentParser(
+        description="Render a rollout video for a trained Bittle ONNX policy.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument(
+        "policy_path",
+        nargs="?",
+        default=None,
+        help="Optional path to a specific ONNX policy file.",
+    )
+    parser.add_argument(
+        "--scene-path",
+        type=Path,
+        default=DEFAULT_SCENE_PATH,
+        help="MuJoCo scene XML to load for visualization.",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=DEFAULT_OUTPUT_DIR,
+        help="Directory where MP4 and GIF outputs will be written.",
+    )
+    parser.add_argument(
+        "--duration",
+        type=float,
+        default=5.0,
+        help="Length of the rollout to render, in seconds.",
+    )
+    parser.add_argument(
+        "--fps",
+        type=int,
+        default=50,
+        help="Video frame rate and rollout control frequency.",
+    )
+    parser.add_argument(
+        "--width",
+        type=int,
+        default=640,
+        help="Rendered frame width in pixels.",
+    )
+    parser.add_argument(
+        "--height",
+        type=int,
+        default=480,
+        help="Rendered frame height in pixels.",
+    )
+    return parser
+
+
+def resolve_policy_path(cli_policy_path: str | None) -> Path:
+    """Resolve the explicit policy path or fall back to known default locations."""
+    if cli_policy_path:
+        candidate = Path(cli_policy_path).expanduser()
+        return candidate.resolve() if not candidate.is_absolute() else candidate
+
+    for candidate in DEFAULT_POLICY_CANDIDATES:
+        if candidate.exists():
+            return candidate
+
+    # Returning the first candidate keeps the eventual error message concrete.
+    return DEFAULT_POLICY_CANDIDATES[0]
+
+
+def build_config(args: argparse.Namespace) -> VisualizationConfig:
+    """Convert raw CLI arguments into a fully resolved config object."""
+    policy_path = resolve_policy_path(args.policy_path)
+    scene_path = args.scene_path.expanduser()
+    output_dir = args.output_dir.expanduser()
+    return VisualizationConfig(
+        policy_path=policy_path,
+        scene_path=scene_path,
+        output_dir=output_dir,
+        duration_seconds=args.duration,
+        fps=args.fps,
+        width=args.width,
+        height=args.height,
+    )
+
+
+def validate_inputs(config: VisualizationConfig) -> None:
+    """Raise a clear error if the expected input files do not exist."""
+    if not config.policy_path.exists():
+        checked_locations = "\n".join(f"  {candidate}" for candidate in DEFAULT_POLICY_CANDIDATES)
+        raise FileNotFoundError(
+            f"Policy file not found: {config.policy_path}\n"
+            f"Checked these default locations:\n{checked_locations}\n\n"
+            "Train first with something like: python locomotion/train.py --test"
+        )
+
+    if not config.scene_path.exists():
+        raise FileNotFoundError(f"Scene file not found: {config.scene_path}")
+
+
+def choose_backend_candidates() -> list[str]:
+    """Return MuJoCo backends to try in order of preference."""
+    preferred = os.environ.get("MUJOCO_GL")
     system = platform.system()
-    if system == "Darwin":
-        backends_to_try = ["glfw"]
-    elif system == "Linux":
-        backends_to_try = ["egl", "glfw"]
-    else:
-        backends_to_try = ["glfw"]
 
-    last_error: Optional[Exception] = None
-    for backend in backends_to_try:
+    if system == "Darwin":
+        defaults = ["glfw"]
+    elif system == "Linux":
+        defaults = ["egl", "glfw"]
+    else:
+        defaults = ["glfw"]
+
+    if preferred and preferred not in defaults:
+        return [preferred, *defaults]
+    if preferred:
+        return [preferred, *[backend for backend in defaults if backend != preferred]]
+    return defaults
+
+
+def initialize_mujoco_module():
+    """Import MuJoCo using the first backend that initializes successfully."""
+    candidates = choose_backend_candidates()
+    last_error: Exception | None = None
+
+    for backend in candidates:
         os.environ["MUJOCO_GL"] = backend
         try:
-            import mujoco
-            print(f"Successfully initialized MuJoCo with {backend} backend")
+            import mujoco  # Imported lazily so ``--help`` stays lightweight.
+
+            print(f"Initialized MuJoCo with {backend} backend")
             return mujoco
         except RuntimeError as exc:
             last_error = exc
@@ -60,77 +212,22 @@ def setup_mujoco_backend():
             raise
 
     raise RuntimeError(
-        f"Could not initialize MuJoCo with any backend. Tried: {backends_to_try}. "
-        f"Platform: {system}. Last error: {last_error}"
+        f"Could not initialize MuJoCo with any backend. Tried: {candidates}. "
+        f"Platform: {platform.system()}. Last error: {last_error}"
     )
 
 
-mujoco = setup_mujoco_backend()
-
-import cv2
-import jax
-import numpy as np
-import onnx
-import onnxruntime as ort
-from PIL import Image
-from brax import envs
-
-from locomotion.bittle_env import BittleEnv
-
-
-# ---------------------------------------------------------------------------
-# Configuration
-# ---------------------------------------------------------------------------
-
-DEFAULT_POLICY_CANDIDATES = [
-    REPO_ROOT / "outputs" / "bittle_train_latest" / "policy.onnx",
-    REPO_ROOT / "outputs" / "bittle_test_latest" / "policy.onnx",
-    REPO_ROOT / "locomotion" / "sim-outputs" / "policies" / "policy.onnx",  # legacy fallback
-]
-
-DEFAULT_SCENE_PATH = (
-    REPO_ROOT / "assets" / "descriptions" / "bittle" / "mjcf" / "bittle_adapted_scene.xml"
-)
-DEFAULT_OUTPUT_DIR = REPO_ROOT / "outputs" / "visualize"
-
-DURATION = 5.0
-FPS = 50
-NUM_STEPS = int(DURATION * FPS)
-
-RENDER_WIDTH = 640
-RENDER_HEIGHT = 480
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def resolve_policy_path(cli_policy_path: Optional[str] = None) -> Path:
-    """Resolve the ONNX policy path from CLI input or known default locations."""
-    if cli_policy_path:
-        candidate = Path(cli_policy_path).expanduser()
-        if not candidate.is_absolute():
-            candidate = (Path.cwd() / candidate).resolve()
-        return candidate
-
-    for candidate in DEFAULT_POLICY_CANDIDATES:
-        if candidate.exists():
-            return candidate
-
-    return DEFAULT_POLICY_CANDIDATES[0]
-
-
-
 def setup_environment(scene_path: Path) -> Any:
-    """Register and create the Bittle environment."""
+    """Register and instantiate the Bittle Brax environment."""
+    from brax import envs
+
+    from locomotion.bittle_env import BittleEnv
+
     print("      Registering environment...")
     envs.register_environment("bittle", BittleEnv)
 
     print("      Creating environment instance...")
-    env = envs.get_environment("bittle", xml_path=str(scene_path))
-    return env
-
+    return envs.get_environment("bittle", xml_path=str(scene_path))
 
 
 def convert_model_ir_version(
@@ -138,9 +235,16 @@ def convert_model_ir_version(
     output_path: Path,
     target_ir_version: int = 9,
 ) -> Path:
-    """Create a lower-IR-version ONNX copy for older ONNX Runtime builds."""
-    print(f"      Converting ONNX IR version for compatibility: {input_path}")
+    """
+    Create a lower-IR-version ONNX copy for older ONNX Runtime builds.
 
+    Some ONNX Runtime environments lag behind newer ONNX IR versions. Rather
+    than failing outright, we create a compatibility copy alongside the
+    original model and retry loading from that copy.
+    """
+    import onnx
+
+    print(f"      Converting ONNX IR version for compatibility: {input_path}")
     model = onnx.load(str(input_path))
     print(f"      Original IR version: {model.ir_version}")
 
@@ -160,9 +264,10 @@ def convert_model_ir_version(
     return output_path
 
 
+def load_onnx_policy(policy_path: Path) -> LoadedPolicy:
+    """Load an ONNX policy and fall back to an IR-version conversion if needed."""
+    import onnxruntime as ort
 
-def load_onnx_policy(policy_path: Path) -> Tuple[ort.InferenceSession, str, str]:
-    """Load an ONNX policy and fall back to IR conversion if needed."""
     print(f"      Loading ONNX model from {policy_path}...")
 
     try:
@@ -175,7 +280,11 @@ def load_onnx_policy(policy_path: Path) -> Tuple[ort.InferenceSession, str, str]
             raise
 
         converted_path = policy_path.with_name(f"{policy_path.stem}_ir9{policy_path.suffix}")
-        converted_path = convert_model_ir_version(policy_path, converted_path, target_ir_version=9)
+        converted_path = convert_model_ir_version(
+            policy_path,
+            converted_path,
+            target_ir_version=9,
+        )
         session = ort.InferenceSession(
             str(converted_path),
             providers=["CPUExecutionProvider"],
@@ -183,31 +292,29 @@ def load_onnx_policy(policy_path: Path) -> Tuple[ort.InferenceSession, str, str]
 
     input_name = session.get_inputs()[0].name
     output_name = session.get_outputs()[0].name
-
     print(f"      Model loaded (input: {input_name}, output: {output_name})")
-    return session, input_name, output_name
+    return LoadedPolicy(session=session, input_name=input_name, output_name=output_name)
 
 
+def create_inference_fn(loaded_policy: LoadedPolicy):
+    """Wrap ONNX Runtime in the callable shape expected by the rollout code."""
 
-def create_inference_fn(
-    session: ort.InferenceSession,
-    input_name: str,
-    output_name: str,
-):
-    """Wrap an ONNX Runtime session in a Brax-style inference function."""
-
-    def inference_fn(obs, rng_key):
+    def inference_fn(obs: Any, rng_key: Any):
         del rng_key
         obs_np = np.asarray(obs, dtype=np.float32).reshape(1, -1)
-        action = session.run([output_name], {input_name: obs_np})[0]
+        action = loaded_policy.session.run(
+            [loaded_policy.output_name],
+            {loaded_policy.input_name: obs_np},
+        )[0]
         return action.flatten(), {}
 
     return inference_fn
 
 
+def generate_rollout(env: Any, inference_fn: Any, num_steps: int) -> list[Any]:
+    """Run the policy in the environment and collect pipeline states."""
+    import jax
 
-def generate_rollout(env: Any, inference_fn: Any, num_steps: int = NUM_STEPS) -> List[Any]:
-    """Generate a rollout by running the policy in the environment."""
     print(f"      Running {num_steps} steps...")
 
     jit_reset = jax.jit(env.reset)
@@ -227,39 +334,41 @@ def generate_rollout(env: Any, inference_fn: Any, num_steps: int = NUM_STEPS) ->
     return rollout
 
 
-
 def render_frames(
+    *,
+    mujoco_module: Any,
     env: Any,
-    rollout: List[Any],
-    width: int = RENDER_WIDTH,
-    height: int = RENDER_HEIGHT,
-) -> List[np.ndarray]:
-    """Render frames from the rollout pipeline states."""
+    rollout: list[Any],
+    width: int,
+    height: int,
+) -> list[np.ndarray]:
+    """Render MuJoCo frames from the collected rollout states."""
     print(f"      Rendering {len(rollout)} frames at {width}x{height}...")
 
     mj_model = env.sys.mj_model
-    renderer = mujoco.Renderer(mj_model, height=height, width=width)
+    renderer = mujoco_module.Renderer(mj_model, height=height, width=width)
 
-    frames: List[np.ndarray] = []
-    for i, pipeline_state in enumerate(rollout):
-        mj_data = mujoco.MjData(mj_model)
+    frames: list[np.ndarray] = []
+    for index, pipeline_state in enumerate(rollout, start=1):
+        mj_data = mujoco_module.MjData(mj_model)
         mj_data.qpos[:] = np.asarray(pipeline_state.q)
         mj_data.qvel[:] = np.asarray(pipeline_state.qd)
 
-        mujoco.mj_forward(mj_model, mj_data)
+        mujoco_module.mj_forward(mj_model, mj_data)
         renderer.update_scene(mj_data)
         frames.append(renderer.render())
 
-        if (i + 1) % 50 == 0:
-            print(f"      Progress: {i + 1}/{len(rollout)} frames")
+        if index % 50 == 0:
+            print(f"      Progress: {index}/{len(rollout)} frames")
 
     renderer.close()
     return frames
 
 
+def save_video_mp4(frames: list[np.ndarray], output_path: Path, fps: int) -> None:
+    """Save rendered frames as an MP4 using OpenCV."""
+    import cv2
 
-def save_video_mp4(frames: List[np.ndarray], output_path: Path, fps: int = FPS) -> None:
-    """Save frames as MP4 using OpenCV."""
     if not frames:
         raise ValueError("No frames to write")
 
@@ -276,98 +385,96 @@ def save_video_mp4(frames: List[np.ndarray], output_path: Path, fps: int = FPS) 
     out.release()
 
 
+def save_video_gif(frames: list[np.ndarray], output_path: Path, fps: int) -> None:
+    """Save rendered frames as an animated GIF using Pillow."""
+    from PIL import Image
 
-def save_video_gif(frames: List[np.ndarray], output_path: Path, fps: int = FPS) -> None:
-    """Save frames as an animated GIF using Pillow."""
     if not frames:
         raise ValueError("No frames to write")
 
     pil_frames = [Image.fromarray(frame) for frame in frames]
-    duration_ms = int(1000 / fps)
-
     pil_frames[0].save(
         output_path,
         save_all=True,
         append_images=pil_frames[1:],
-        duration=duration_ms,
+        duration=int(1000 / fps),
         loop=0,
     )
 
 
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
+def print_banner(title: str) -> None:
+    """Print a section banner for the CLI output."""
+    print("=" * 60)
+    print(title)
+    print("=" * 60)
+
+
+def print_configuration(config: VisualizationConfig) -> None:
+    """Print the resolved runtime configuration."""
+    print("\nConfiguration:")
+    print(f"  Repo root:  {REPO_ROOT}")
+    print(f"  Policy:     {config.policy_path}")
+    print(f"  Scene:      {config.scene_path}")
+    print(f"  Output:     {config.output_dir}")
+    print(f"  Duration:   {config.duration_seconds}s @ {config.fps} FPS ({config.num_steps} steps)")
+    print(f"  Rendering:  {config.width}x{config.height}")
+    print(f"  Backend:    {os.environ.get('MUJOCO_GL', 'auto-detected')}")
 
 
 def main() -> int:
-    try:
-        cli_policy_path = sys.argv[1] if len(sys.argv) > 1 else None
-        policy_path = resolve_policy_path(cli_policy_path)
-        scene_path = DEFAULT_SCENE_PATH
-        output_dir = DEFAULT_OUTPUT_DIR
+    """Run the end-to-end policy visualization workflow."""
+    args = build_argparser().parse_args()
+    config = build_config(args)
 
-        print("=" * 60)
-        print("BITTLE POLICY VISUALIZATION")
-        print("=" * 60)
+    try:
+        print_banner("BITTLE POLICY VISUALIZATION")
 
         print("\nValidating inputs...")
-        if not policy_path.exists():
-            print(f"Error: Policy file not found: {policy_path}")
-            print("Checked these default locations:")
-            for candidate in DEFAULT_POLICY_CANDIDATES:
-                print(f"  {candidate}")
-            print("\nTrain first with something like: python locomotion/train.py --test")
-            return 1
+        validate_inputs(config)
+        config.output_dir.mkdir(parents=True, exist_ok=True)
 
-        if not scene_path.exists():
-            print(f"Error: Scene file not found: {scene_path}")
-            return 1
-
-        output_dir.mkdir(parents=True, exist_ok=True)
-
-        print("\nConfiguration:")
-        print(f"  Repo root:  {REPO_ROOT}")
-        print(f"  Policy:     {policy_path}")
-        print(f"  Scene:      {scene_path}")
-        print(f"  Output:     {output_dir}")
-        print(f"  Duration:   {DURATION}s @ {FPS} FPS ({NUM_STEPS} steps)")
-        print(f"  Rendering:  {RENDER_WIDTH}x{RENDER_HEIGHT}")
-        print(f"  Backend:    {os.environ.get('MUJOCO_GL', 'auto-detected')}")
+        mujoco_module = initialize_mujoco_module()
+        print_configuration(config)
 
         print("\n[1/6] Setting up environment...")
-        env = setup_environment(scene_path)
+        env = setup_environment(config.scene_path)
         print(f"      Environment created (obs={env.observation_size}, act={env.action_size})")
 
         print("[2/6] Loading policy...")
-        session, input_name, output_name = load_onnx_policy(policy_path)
+        loaded_policy = load_onnx_policy(config.policy_path)
         print("      Policy loaded successfully")
 
         print("[3/6] Creating inference function...")
-        inference_fn = create_inference_fn(session, input_name, output_name)
+        inference_fn = create_inference_fn(loaded_policy)
         print("      Inference function ready")
 
         print("[4/6] Generating rollout...")
-        rollout = generate_rollout(env, inference_fn, NUM_STEPS)
+        rollout = generate_rollout(env, inference_fn, config.num_steps)
 
         print("[5/6] Rendering frames...")
-        frames = render_frames(env, rollout, RENDER_WIDTH, RENDER_HEIGHT)
+        frames = render_frames(
+            mujoco_module=mujoco_module,
+            env=env,
+            rollout=rollout,
+            width=config.width,
+            height=config.height,
+        )
         print(f"      Rendered {len(frames)} frames successfully")
 
         print("[6/6] Saving videos...")
-        mp4_path = output_dir / "video.mp4"
-        gif_path = output_dir / "video.gif"
+        mp4_path = config.output_dir / "video.mp4"
+        gif_path = config.output_dir / "video.gif"
 
         print("      Writing MP4...")
-        save_video_mp4(frames, mp4_path, FPS)
+        save_video_mp4(frames, mp4_path, config.fps)
         print(f"      MP4: {mp4_path}")
 
         print("      Writing GIF...")
-        save_video_gif(frames, gif_path, FPS)
+        save_video_gif(frames, gif_path, config.fps)
         print(f"      GIF: {gif_path}")
 
-        print("\n" + "=" * 60)
-        print("VISUALIZATION COMPLETE")
-        print("=" * 60)
+        print("")
+        print_banner("VISUALIZATION COMPLETE")
         print("\nOutputs:")
         print(f"  {mp4_path}")
         print(f"  {gif_path}")
@@ -375,10 +482,9 @@ def main() -> int:
 
     except Exception as exc:
         print(f"\nError: {exc}", file=sys.stderr)
-        import traceback
         traceback.print_exc()
         return 1
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())
