@@ -1,0 +1,48 @@
+2026-04-11 22:04:36 | INFO     | bittle_training | ================================================================================
+2026-04-11 22:04:36 | INFO     | bittle_training | BITTLE DANCE TRAINING
+2026-04-11 22:04:36 | INFO     | bittle_training | ================================================================================
+2026-04-11 22:04:36 | INFO     | bittle_training | Mode: TEST
+2026-04-11 22:04:36 | INFO     | bittle_training | Task: dance
+2026-04-11 22:04:36 | INFO     | bittle_training | Output directory: C:\Users\brand\PycharmProjects\Pupper New\outputs\_dance_smoke
+2026-04-11 22:04:36 | INFO     | bittle_training | XML path: C:\Users\brand\PycharmProjects\Pupper New\assets\descriptions\bittle\mjcf\bittle_adapted_scene.xml
+2026-04-11 22:04:36 | INFO     | bittle_training | 
+2026-04-11 22:04:36 | INFO     | bittle_training | Task:
+2026-04-11 22:04:36 | INFO     | bittle_training |   name                          : dance
+2026-04-11 22:04:36 | INFO     | bittle_training |   description                   : phase-conditioned rhythmic dance
+2026-04-11 22:04:36 | INFO     | bittle_training | 
+2026-04-11 22:04:36 | INFO     | bittle_training | Training Configuration:
+2026-04-11 22:04:36 | INFO     | bittle_training |   test_mode                     : True
+2026-04-11 22:04:36 | INFO     | bittle_training |   num_timesteps                 : 0
+2026-04-11 22:04:36 | INFO     | bittle_training |   num_evals                     : 2
+2026-04-11 22:04:36 | INFO     | bittle_training |   episode_length                : 100
+2026-04-11 22:04:36 | INFO     | bittle_training |   num_envs                      : 10
+2026-04-11 22:04:36 | INFO     | bittle_training |   batch_size                    : 100
+2026-04-11 22:04:36 | INFO     | bittle_training |   unroll_length                 : 5
+2026-04-11 22:04:36 | INFO     | bittle_training |   num_minibatches               : 2
+2026-04-11 22:04:36 | INFO     | bittle_training |   num_updates_per_batch         : 1
+2026-04-11 22:04:36 | INFO     | bittle_training | 
+2026-04-11 22:04:36 | INFO     | bittle_training | JAX devices available: 1
+2026-04-11 22:04:36 | INFO     | bittle_training |   Device 0: TFRT_CPU_0
+2026-04-11 22:04:36 | INFO     | bittle_training | 
+2026-04-11 22:04:36 | INFO     | bittle_training | Registered bittle_dance environment
+2026-04-11 22:04:36 | INFO     | bittle_training | Creating environment...
+2026-04-11 22:04:39 | INFO     | bittle_training | Environment created successfully
+2026-04-11 22:05:41 | INFO     | bittle_training | Environment sizes: obs=510 act=9
+2026-04-11 22:05:41 | INFO     | bittle_training | 
+2026-04-11 22:05:41 | INFO     | bittle_training | Starting training...
+2026-04-11 22:06:00 | INFO     | bittle_training | 
+2026-04-11 22:06:00 | INFO     | bittle_training | ================================================================================
+2026-04-11 22:06:00 | INFO     | bittle_training | TRAINING COMPLETED
+2026-04-11 22:06:00 | INFO     | bittle_training | ================================================================================
+2026-04-11 22:06:00 | INFO     | bittle_training | Total time: 19.32s (0.32 min)
+2026-04-11 22:06:00 | INFO     | bittle_training | 
+2026-04-11 22:06:00 | WARNING  | bittle_training | Training finished without evaluation metrics to summarize
+2026-04-11 22:06:00 | INFO     | bittle_training | 
+2026-04-11 22:06:00 | INFO     | bittle_training | Saving final model to C:\Users\brand\PycharmProjects\Pupper New\outputs\_dance_smoke\models\final_policy...
+2026-04-11 22:06:00 | INFO     | bittle_training | Model saved successfully
+2026-04-11 22:06:00 | INFO     | bittle_training | Exporting policy to C:\Users\brand\PycharmProjects\Pupper New\outputs\_dance_smoke\policy.pt...
+2026-04-11 22:06:00 | INFO     | bittle_training | Policy exported successfully
+2026-04-11 22:06:00 | INFO     | bittle_training | Exporting policy to ONNX format at C:\Users\brand\PycharmProjects\Pupper New\outputs\_dance_smoke\policy.onnx...
+2026-04-11 22:06:00 | INFO     | bittle_training | ONNX export successful
+2026-04-11 22:06:00 | INFO     | bittle_training | Saved training summary to C:\Users\brand\PycharmProjects\Pupper New\outputs\_dance_smoke\training_summary.json
+2026-04-11 22:06:00 | INFO     | bittle_training | ================================================================================

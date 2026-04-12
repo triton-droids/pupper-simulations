@@ -1,0 +1,17 @@
+{
+  "task": "dance",
+  "config": {
+    "test_mode": true,
+    "num_timesteps": 0,
+    "num_evals": 2,
+    "episode_length": 100,
+    "num_envs": 10,
+    "batch_size": 100,
+    "unroll_length": 5,
+    "num_minibatches": 2,
+    "num_updates_per_batch": 1
+  },
+  "training_time": 19.316968,
+  "start_time": "2026-04-11T22:05:41.112213",
+  "end_time": "2026-04-11T22:06:00.429181"
+}

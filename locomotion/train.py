@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Train a PPO locomotion policy for the Bittle quadruped.
+Train a PPO policy for the Bittle quadruped.
 
 High-level workflow
 -------------------
 ``train.py`` is the orchestration layer for the locomotion package. It ties
 together:
 
-- the Brax environment from ``bittle_env.py``
+- the Brax task environment from ``bittle_env.py`` or ``bittle_dance_env.py``
 - training presets from ``training_config.py``
 - checkpointing and CLI helpers from ``training_helpers.py``
 - plots and rollout videos from ``training_monitor.py``
@@ -26,6 +26,7 @@ import platform
 import shutil
 import sys
 import warnings
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -56,6 +57,7 @@ if __package__ in (None, ""):
     if str(repo_root) not in sys.path:
         sys.path.insert(0, str(repo_root))
 
+    from locomotion.bittle_dance_env import BittleDanceEnv
     from locomotion.bittle_env import BittleEnv
     from locomotion.paths import OUTPUTS_ROOT
     from locomotion.training_config import TrainingConfig
@@ -66,6 +68,7 @@ if __package__ in (None, ""):
     )
     from locomotion.training_monitor import TrainingMonitor
 else:
+    from .bittle_dance_env import BittleDanceEnv
     from .bittle_env import BittleEnv
     from .paths import OUTPUTS_ROOT
     from .training_config import TrainingConfig
@@ -79,6 +82,44 @@ import jax
 from brax import envs
 from brax.io import model
 from brax.training.agents.ppo import train as ppo
+
+
+@dataclass(frozen=True, slots=True)
+class TaskSpec:
+    """Describe one trainable Bittle task exposed by the CLI."""
+
+    env_name: str
+    env_class: type[Any]
+    banner_title: str
+    output_prefix: str
+    description: str
+
+
+TASK_SPECS = {
+    "locomotion": TaskSpec(
+        env_name="bittle",
+        env_class=BittleEnv,
+        banner_title="BITTLE LOCOMOTION TRAINING",
+        output_prefix="bittle",
+        description="walking velocity tracking",
+    ),
+    "dance": TaskSpec(
+        env_name="bittle_dance",
+        env_class=BittleDanceEnv,
+        banner_title="BITTLE DANCE TRAINING",
+        output_prefix="bittle_dance",
+        description="phase-conditioned rhythmic dance",
+    ),
+}
+
+
+def _get_task_spec(task_name: str) -> TaskSpec:
+    """Look up the task metadata used by training and visualization entrypoints."""
+    try:
+        return TASK_SPECS[task_name]
+    except KeyError as exc:
+        valid = ", ".join(sorted(TASK_SPECS))
+        raise ValueError(f"Unknown task '{task_name}'. Expected one of: {valid}") from exc
 
 
 def _import_onnx_exporter():
@@ -95,9 +136,12 @@ def _build_summary_payload(
     config: TrainingConfig,
     start_time: datetime,
     end_time: datetime,
+    *,
+    task_name: str,
 ) -> dict[str, Any]:
     """Add metadata to the monitor summary before writing it to disk."""
     payload = dict(summary)
+    payload["task"] = task_name
     payload["config"] = config.to_dict()
     payload["training_time"] = (end_time - start_time).total_seconds()
     payload["start_time"] = start_time.isoformat()
@@ -105,8 +149,17 @@ def _build_summary_payload(
     return payload
 
 
-def _log_training_config(config: TrainingConfig, logger: logging.Logger) -> None:
+def _log_training_config(
+    config: TrainingConfig,
+    logger: logging.Logger,
+    *,
+    task_name: str,
+) -> None:
     """Log the training configuration in a compact aligned block."""
+    logger.info("Task:")
+    logger.info("  %-30s: %s", "name", task_name)
+    logger.info("  %-30s: %s", "description", _get_task_spec(task_name).description)
+    logger.info("")
     logger.info("Training Configuration:")
     for key, value in config.to_dict().items():
         logger.info("  %-30s: %s", key, value)
@@ -143,13 +196,18 @@ def _log_training_summary(summary: dict[str, Any], logger: logging.Logger) -> No
     logger.info("")
 
 
-def _resolve_output_dir(output_dir_arg: str | None, *, test_mode: bool) -> Path:
+def _resolve_output_dir(
+    output_dir_arg: str | None,
+    *,
+    test_mode: bool,
+    task_name: str,
+) -> Path:
     """Resolve the output directory from CLI input or package defaults."""
     if output_dir_arg is not None:
         return Path(output_dir_arg).expanduser()
 
     mode = "test" if test_mode else "train"
-    return OUTPUTS_ROOT / f"bittle_{mode}_latest"
+    return OUTPUTS_ROOT / f"{_get_task_spec(task_name).output_prefix}_{mode}_latest"
 
 
 def _prepare_output_dir(output_dir: Path) -> None:
@@ -164,30 +222,34 @@ def train_bittle(
     xml_path: str,
     output_dir: Path,
     logger: logging.Logger,
+    task_name: str = "locomotion",
 ) -> dict[str, Any]:
     """
-    Train a Bittle locomotion policy and write all run artifacts to ``output_dir``.
+    Train a Bittle policy for the selected task and write artifacts to ``output_dir``.
 
     Returns:
         A small result dictionary so sweep runners can inspect success status,
         summary metrics, and the final policy objects.
     """
+    task_spec = _get_task_spec(task_name)
+
     logger.info("=" * 80)
-    logger.info("BITTLE LOCOMOTION TRAINING")
+    logger.info(task_spec.banner_title)
     logger.info("=" * 80)
     logger.info("Mode: %s", "TEST" if config.test_mode else "FULL TRAINING")
+    logger.info("Task: %s", task_name)
     logger.info("Output directory: %s", output_dir)
     logger.info("XML path: %s", xml_path)
     logger.info("")
 
-    _log_training_config(config, logger)
+    _log_training_config(config, logger, task_name=task_name)
     _log_jax_devices(logger)
 
-    envs.register_environment("bittle", BittleEnv)
-    logger.info("Registered Bittle environment")
+    envs.register_environment(task_spec.env_name, task_spec.env_class)
+    logger.info("Registered %s environment", task_spec.env_name)
 
     logger.info("Creating environment...")
-    env = envs.get_environment("bittle", xml_path=xml_path)
+    env = envs.get_environment(task_spec.env_name, xml_path=xml_path)
     logger.info("Environment created successfully")
     logger.info("Environment sizes: obs=%s act=%s", env.observation_size, env.action_size)
     logger.info("")
@@ -261,7 +323,13 @@ def train_bittle(
     export_policy_to_onnx(params, str(onnx_export_path), deterministic=True)
     logger.info("ONNX export successful")
 
-    summary_payload = _build_summary_payload(summary, config, start_time, end_time)
+    summary_payload = _build_summary_payload(
+        summary,
+        config,
+        start_time,
+        end_time,
+        task_name=task_name,
+    )
     summary_path = output_dir / "training_summary.json"
     with open(summary_path, "w", encoding="utf-8") as file_handle:
         json.dump(summary_payload, file_handle, indent=2)
@@ -279,7 +347,11 @@ def train_bittle(
 def main() -> None:
     """Parse the CLI and launch one training run."""
     args = parse_args()
-    output_dir = _resolve_output_dir(args.output_dir, test_mode=args.test)
+    output_dir = _resolve_output_dir(
+        args.output_dir,
+        test_mode=args.test,
+        task_name=args.task,
+    )
     _prepare_output_dir(output_dir)
 
     logger = setup_logging(output_dir, level=getattr(logging, args.log_level.upper()))
@@ -290,6 +362,7 @@ def main() -> None:
         xml_path=args.xml_path,
         output_dir=output_dir,
         logger=logger,
+        task_name=args.task,
     )
     sys.exit(0 if results["success"] else 1)
 

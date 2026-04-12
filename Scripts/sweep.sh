@@ -38,6 +38,23 @@ LOCAL_OUTPUT_DIR="${LOCAL_OUTPUT_DIR:-$SCRIPT_DIR/outputs}"
 # How often to check for new artifacts (seconds).
 SYNC_INTERVAL="${SYNC_INTERVAL:-15}"
 
+# Remote execution mode:
+#   single_gpu      - one GPU visible, trials run sequentially
+#   multi_gpu       - one trial at a time, but each trial can use several GPUs
+#   parallel_trials - one GPU per child trial, several trials run concurrently
+SWEEP_REMOTE_MODE="${SWEEP_REMOTE_MODE:-single_gpu}"
+
+# Optional explicit GPU ids, for example "0,1,2,3". When unset, the remote
+# host picks the least-used GPUs automatically.
+SWEEP_GPU_IDS="${SWEEP_GPU_IDS:-}"
+
+# Number of GPUs to reserve when selecting automatically.
+SWEEP_GPU_COUNT="${SWEEP_GPU_COUNT:-1}"
+
+# Only used in parallel_trials mode. Defaults to one concurrent trial per
+# selected GPU.
+SWEEP_PARALLEL_TRIALS="${SWEEP_PARALLEL_TRIALS:-$SWEEP_GPU_COUNT}"
+
 # Run folder name.
 SWEEP_ID="$(date +%Y%m%d_%H%M%S)"
 RUN_DIR_NAME="Run_${SWEEP_ID}"
@@ -52,6 +69,10 @@ echo "Run folder: $RUN_DIR_NAME"
 echo "Remote sweep dir: $REMOTE_SWEEP_ABS"
 echo "Local sweep dir: $LOCAL_SWEEP_BASE"
 echo "Trials: $SWEEP_TRIALS_JSON"
+echo "Remote mode: $SWEEP_REMOTE_MODE"
+echo "GPU ids: ${SWEEP_GPU_IDS:-auto}"
+echo "GPU count: $SWEEP_GPU_COUNT"
+echo "Parallel trials: $SWEEP_PARALLEL_TRIALS"
 
 mkdir -p "$LOCAL_SWEEP_BASE"
 
@@ -122,7 +143,8 @@ cleanup() {
 trap cleanup EXIT
 
 ssh -A -p "$SSH_PORT" -i "$SSH_KEY_PATH" "$DROIDS_IP_ADDRESS" bash -s -- \
-  "$BRANCH_NAME" "$SSH_DIRECTORY" "$GITHUB_REPO_SSH" "$SWEEP_TRIALS_JSON" "$REMOTE_SWEEP_REL" "$@" <<'REMOTE'
+  "$BRANCH_NAME" "$SSH_DIRECTORY" "$GITHUB_REPO_SSH" "$SWEEP_TRIALS_JSON" "$REMOTE_SWEEP_REL" \
+  "$SWEEP_REMOTE_MODE" "$SWEEP_GPU_IDS" "$SWEEP_GPU_COUNT" "$SWEEP_PARALLEL_TRIALS" "$@" <<'REMOTE'
 set -euo pipefail
 
 BRANCH_NAME="$1"; shift
@@ -130,10 +152,29 @@ SSH_DIRECTORY="$1"; shift
 GITHUB_REPO_SSH="$1"; shift
 SWEEP_TRIALS_JSON="$1"; shift
 REMOTE_SWEEP_REL="$1"; shift
+SWEEP_REMOTE_MODE="$1"; shift
+SWEEP_GPU_IDS="$1"; shift
+SWEEP_GPU_COUNT="$1"; shift
+SWEEP_PARALLEL_TRIALS="$1"; shift
 
-GPU_INDEX="$(nvidia-smi --query-gpu=index,memory.used --format=csv,noheader,nounits | sort -t, -k2 -n | head -n1 | cut -d, -f1)"
-export CUDA_VISIBLE_DEVICES="$GPU_INDEX"
-echo "Using GPU $CUDA_VISIBLE_DEVICES"
+pick_gpu_ids() {
+  local requested_count="$1"
+
+  if [ -n "$SWEEP_GPU_IDS" ]; then
+    echo "$SWEEP_GPU_IDS"
+    return
+  fi
+
+  nvidia-smi --query-gpu=index,memory.used --format=csv,noheader,nounits |
+    sort -t, -k2 -n |
+    head -n "$requested_count" |
+    cut -d, -f1 |
+    tr -d ' ' |
+    paste -sd, -
+}
+
+GPU_IDS="$(pick_gpu_ids "$SWEEP_GPU_COUNT")"
+echo "Selected GPU ids: ${GPU_IDS:-<none>}"
 export XLA_PYTHON_CLIENT_PREALLOCATE="${XLA_PYTHON_CLIENT_PREALLOCATE:-false}"
 export XLA_PYTHON_CLIENT_MEM_FRACTION="${XLA_PYTHON_CLIENT_MEM_FRACTION:-0.70}"
 export TF_GPU_ALLOCATOR="${TF_GPU_ALLOCATOR:-cuda_malloc_async}"
@@ -161,9 +202,43 @@ cd locomotion
 echo "Running hyperparameter sweep..."
 echo "Trials: $SWEEP_TRIALS_JSON"
 echo "Sweep output dir: $REMOTE_SWEEP_REL"
+echo "Remote mode: $SWEEP_REMOTE_MODE"
 
-# Change Task Here
-uv run sweeps/hparam_sweep.py --trials_json "$SWEEP_TRIALS_JSON" --base_output_dir "$REMOTE_SWEEP_REL" --task dance "$@"
+case "$SWEEP_REMOTE_MODE" in
+  single_gpu)
+    export CUDA_VISIBLE_DEVICES="${GPU_IDS%%,*}"
+    echo "Using single GPU: $CUDA_VISIBLE_DEVICES"
+    uv run sweeps/hparam_sweep.py \
+      --trials_json "$SWEEP_TRIALS_JSON" \
+      --base_output_dir "$REMOTE_SWEEP_REL" \
+      --task dance \
+      "$@"
+    ;;
+  multi_gpu)
+    export CUDA_VISIBLE_DEVICES="$GPU_IDS"
+    echo "Using multi-GPU run with CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES"
+    uv run sweeps/hparam_sweep.py \
+      --trials_json "$SWEEP_TRIALS_JSON" \
+      --base_output_dir "$REMOTE_SWEEP_REL" \
+      --task dance \
+      "$@"
+    ;;
+  parallel_trials)
+    echo "Running concurrent trials across GPUs: $GPU_IDS"
+    uv run sweeps/hparam_sweep.py \
+      --trials_json "$SWEEP_TRIALS_JSON" \
+      --base_output_dir "$REMOTE_SWEEP_REL" \
+      --task dance \
+      --max_concurrent_trials "$SWEEP_PARALLEL_TRIALS" \
+      --available_gpus "$GPU_IDS" \
+      "$@"
+    ;;
+  *)
+    echo "ERROR: unknown SWEEP_REMOTE_MODE '$SWEEP_REMOTE_MODE'"
+    echo "Expected one of: single_gpu, multi_gpu, parallel_trials"
+    exit 2
+    ;;
+esac
 REMOTE
 
 # Final sync to catch artifacts produced near the end.

@@ -7,6 +7,10 @@ callers:
 - logger setup
 - checkpoint callback construction
 - command-line argument parsing for ``train.py``
+
+The parser intentionally stays lightweight: it only exposes the task selector
+and runtime paths, while the actual environment class lookup happens inside
+``train.py``.
 """
 
 from __future__ import annotations
@@ -25,6 +29,7 @@ from locomotion.paths import DEFAULT_SCENE_PATH
 
 
 LOGGER_NAME = "bittle_training"
+TASK_CHOICES = ("locomotion", "dance")
 
 
 def setup_logging(output_dir: Path, level: int = logging.INFO) -> logging.Logger:
@@ -103,7 +108,7 @@ def policy_params_callback(
 def build_arg_parser() -> argparse.ArgumentParser:
     """Build the CLI parser shared by training entry points."""
     parser = argparse.ArgumentParser(
-        description="Train a Bittle quadruped locomotion policy.",
+        description="Train a Bittle quadruped locomotion or dance policy.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -113,11 +118,21 @@ Examples:
   # Full training run
   python locomotion/train.py
 
+  # Train the dance task instead of locomotion
+  python locomotion/train.py --task dance
+
   # Custom output directory
   python locomotion/train.py --output_dir ./experiments/run_001
         """,
     )
 
+    parser.add_argument(
+        "--task",
+        type=str,
+        default="locomotion",
+        choices=TASK_CHOICES,
+        help="Training task/environment to run.",
+    )
     parser.add_argument(
         "--test",
         action="store_true",
@@ -133,7 +148,7 @@ Examples:
         "--output_dir",
         type=str,
         default=None,
-        help="Directory for checkpoints, plots, videos, and logs.",
+        help="Directory for checkpoints, plots, videos, and logs. Defaults are task-aware.",
     )
     parser.add_argument(
         "--log_level",

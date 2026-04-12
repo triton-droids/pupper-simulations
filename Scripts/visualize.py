@@ -4,9 +4,9 @@ Visualize a trained Bittle ONNX policy.
 
 High-level workflow
 -------------------
-This script takes a trained ONNX policy, runs it inside the Brax Bittle
-environment, renders the resulting MuJoCo rollout, and saves both MP4 and GIF
-outputs.
+This script takes a trained ONNX policy, runs it inside the matching Brax
+Bittle environment, renders the resulting MuJoCo rollout, and saves both MP4
+and GIF outputs.
 
 The flow is intentionally split into small steps:
 
@@ -44,18 +44,26 @@ if str(REPO_ROOT) not in sys.path:
 from locomotion.paths import DEFAULT_SCENE_PATH
 
 
-DEFAULT_POLICY_CANDIDATES = [
-    REPO_ROOT / "outputs" / "bittle_train_latest" / "policy.onnx",
-    REPO_ROOT / "outputs" / "bittle_test_latest" / "policy.onnx",
-    REPO_ROOT / "locomotion" / "sim-outputs" / "policies" / "policy.onnx",
-]
-DEFAULT_OUTPUT_DIR = REPO_ROOT / "outputs" / "visualize"
+TASK_CHOICES = ("locomotion", "dance")
+DEFAULT_POLICY_CANDIDATES_BY_TASK = {
+    "locomotion": [
+        REPO_ROOT / "outputs" / "bittle_train_latest" / "policy.onnx",
+        REPO_ROOT / "outputs" / "bittle_test_latest" / "policy.onnx",
+        REPO_ROOT / "locomotion" / "sim-outputs" / "policies" / "policy.onnx",
+    ],
+    "dance": [
+        REPO_ROOT / "outputs" / "bittle_dance_train_latest" / "policy.onnx",
+        REPO_ROOT / "outputs" / "bittle_dance_test_latest" / "policy.onnx",
+    ],
+}
+DEFAULT_OUTPUT_ROOT = REPO_ROOT / "outputs" / "visualize"
 
 
 @dataclass(slots=True, frozen=True)
 class VisualizationConfig:
     """Resolved runtime configuration for one visualization run."""
 
+    task: str
     policy_path: Path
     scene_path: Path
     output_dir: Path
@@ -82,8 +90,15 @@ class LoadedPolicy:
 def build_argparser() -> argparse.ArgumentParser:
     """Build the CLI for the visualization script."""
     parser = argparse.ArgumentParser(
-        description="Render a rollout video for a trained Bittle ONNX policy.",
+        description="Render a rollout video for a trained Bittle locomotion or dance ONNX policy.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument(
+        "--task",
+        type=str,
+        choices=TASK_CHOICES,
+        default="locomotion",
+        help="Environment/task that matches the exported policy.",
     )
     parser.add_argument(
         "policy_path",
@@ -100,7 +115,7 @@ def build_argparser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=DEFAULT_OUTPUT_DIR,
+        default=None,
         help="Directory where MP4 and GIF outputs will be written.",
     )
     parser.add_argument(
@@ -130,26 +145,28 @@ def build_argparser() -> argparse.ArgumentParser:
     return parser
 
 
-def resolve_policy_path(cli_policy_path: str | None) -> Path:
+def resolve_policy_path(cli_policy_path: str | None, task: str) -> Path:
     """Resolve the explicit policy path or fall back to known default locations."""
     if cli_policy_path:
         candidate = Path(cli_policy_path).expanduser()
         return candidate.resolve() if not candidate.is_absolute() else candidate
 
-    for candidate in DEFAULT_POLICY_CANDIDATES:
+    task_candidates = DEFAULT_POLICY_CANDIDATES_BY_TASK[task]
+    for candidate in task_candidates:
         if candidate.exists():
             return candidate
 
     # Returning the first candidate keeps the eventual error message concrete.
-    return DEFAULT_POLICY_CANDIDATES[0]
+    return task_candidates[0]
 
 
 def build_config(args: argparse.Namespace) -> VisualizationConfig:
     """Convert raw CLI arguments into a fully resolved config object."""
-    policy_path = resolve_policy_path(args.policy_path)
+    policy_path = resolve_policy_path(args.policy_path, args.task)
     scene_path = args.scene_path.expanduser()
-    output_dir = args.output_dir.expanduser()
+    output_dir = args.output_dir.expanduser() if args.output_dir else DEFAULT_OUTPUT_ROOT / args.task
     return VisualizationConfig(
+        task=args.task,
         policy_path=policy_path,
         scene_path=scene_path,
         output_dir=output_dir,
@@ -163,11 +180,14 @@ def build_config(args: argparse.Namespace) -> VisualizationConfig:
 def validate_inputs(config: VisualizationConfig) -> None:
     """Raise a clear error if the expected input files do not exist."""
     if not config.policy_path.exists():
-        checked_locations = "\n".join(f"  {candidate}" for candidate in DEFAULT_POLICY_CANDIDATES)
+        checked_locations = "\n".join(
+            f"  {candidate}" for candidate in DEFAULT_POLICY_CANDIDATES_BY_TASK[config.task]
+        )
         raise FileNotFoundError(
             f"Policy file not found: {config.policy_path}\n"
             f"Checked these default locations:\n{checked_locations}\n\n"
-            "Train first with something like: python locomotion/train.py --test"
+            "Train first with something like: "
+            f"python locomotion/train.py --task {config.task} --test"
         )
 
     if not config.scene_path.exists():
@@ -217,17 +237,26 @@ def initialize_mujoco_module():
     )
 
 
-def setup_environment(scene_path: Path) -> Any:
-    """Register and instantiate the Bittle Brax environment."""
+def setup_environment(scene_path: Path, task: str) -> Any:
+    """Register and instantiate the Bittle Brax environment for one task."""
     from brax import envs
 
-    from locomotion.bittle_env import BittleEnv
+    if task == "dance":
+        from locomotion.bittle_dance_env import BittleDanceEnv
+
+        env_name = "bittle_dance"
+        env_class = BittleDanceEnv
+    else:
+        from locomotion.bittle_env import BittleEnv
+
+        env_name = "bittle"
+        env_class = BittleEnv
 
     print("      Registering environment...")
-    envs.register_environment("bittle", BittleEnv)
+    envs.register_environment(env_name, env_class)
 
     print("      Creating environment instance...")
-    return envs.get_environment("bittle", xml_path=str(scene_path))
+    return envs.get_environment(env_name, xml_path=str(scene_path))
 
 
 def convert_model_ir_version(
@@ -413,6 +442,7 @@ def print_configuration(config: VisualizationConfig) -> None:
     """Print the resolved runtime configuration."""
     print("\nConfiguration:")
     print(f"  Repo root:  {REPO_ROOT}")
+    print(f"  Task:       {config.task}")
     print(f"  Policy:     {config.policy_path}")
     print(f"  Scene:      {config.scene_path}")
     print(f"  Output:     {config.output_dir}")
@@ -427,7 +457,7 @@ def main() -> int:
     config = build_config(args)
 
     try:
-        print_banner("BITTLE POLICY VISUALIZATION")
+        print_banner(f"BITTLE {config.task.upper()} POLICY VISUALIZATION")
 
         print("\nValidating inputs...")
         validate_inputs(config)
@@ -437,7 +467,7 @@ def main() -> int:
         print_configuration(config)
 
         print("\n[1/6] Setting up environment...")
-        env = setup_environment(config.scene_path)
+        env = setup_environment(config.scene_path, config.task)
         print(f"      Environment created (obs={env.observation_size}, act={env.action_size})")
 
         print("[2/6] Loading policy...")
