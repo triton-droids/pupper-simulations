@@ -162,7 +162,8 @@ echo "Running hyperparameter sweep..."
 echo "Trials: $SWEEP_TRIALS_JSON"
 echo "Sweep output dir: $REMOTE_SWEEP_REL"
 
-uv run sweeps/hparam_sweep.py --trials_json "$SWEEP_TRIALS_JSON" --base_output_dir "$REMOTE_SWEEP_REL" "$@"
+# Change Task Here
+uv run sweeps/hparam_sweep.py --trials_json "$SWEEP_TRIALS_JSON" --base_output_dir "$REMOTE_SWEEP_REL" --task dance "$@"
 REMOTE
 
 # Final sync to catch artifacts produced near the end.
