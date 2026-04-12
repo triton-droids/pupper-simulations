@@ -41,7 +41,7 @@ REPO_ROOT = SCRIPT_DIR.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from locomotion.paths import DEFAULT_SCENE_PATH
+from locomotion.paths import DEFAULT_SCENE_PATH, resolve_output_path
 
 
 TASK_CHOICES = ("locomotion", "dance")
@@ -116,7 +116,10 @@ def build_argparser() -> argparse.ArgumentParser:
         "--output-dir",
         type=Path,
         default=None,
-        help="Directory where MP4 and GIF outputs will be written.",
+        help=(
+            "Directory where MP4 and GIF outputs will be written. Relative paths "
+            "are placed under the repo outputs/ folder."
+        ),
     )
     parser.add_argument(
         "--duration",
@@ -164,7 +167,10 @@ def build_config(args: argparse.Namespace) -> VisualizationConfig:
     """Convert raw CLI arguments into a fully resolved config object."""
     policy_path = resolve_policy_path(args.policy_path, args.task)
     scene_path = args.scene_path.expanduser()
-    output_dir = args.output_dir.expanduser() if args.output_dir else DEFAULT_OUTPUT_ROOT / args.task
+    if args.output_dir:
+        output_dir = resolve_output_path(args.output_dir)
+    else:
+        output_dir = DEFAULT_OUTPUT_ROOT / args.task
     return VisualizationConfig(
         task=args.task,
         policy_path=policy_path,

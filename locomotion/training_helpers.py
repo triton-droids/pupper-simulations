@@ -25,7 +25,7 @@ from typing import Any, Sequence
 from flax.training import orbax_utils
 from orbax import checkpoint as ocp
 
-from locomotion.paths import DEFAULT_SCENE_PATH
+from locomotion.paths import DEFAULT_SCENE_PATH, resolve_output_path
 
 
 LOGGER_NAME = "bittle_training"
@@ -40,6 +40,7 @@ def setup_logging(output_dir: Path, level: int = logging.INFO) -> logging.Logger
     sweeps and repeated local experiments where ``setup_logging`` may be called
     more than once in the same Python process.
     """
+    output_dir = resolve_output_path(output_dir)
     log_dir = output_dir / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
 
@@ -88,6 +89,7 @@ def policy_params_callback(
     1. cache an inference function in ``TrainingMonitor`` for video generation
     2. write the latest policy parameters to an Orbax checkpoint directory
     """
+    output_dir = resolve_output_path(output_dir)
     checkpoint_dir = (output_dir / "checkpoints").resolve()
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
     checkpointer = ocp.PyTreeCheckpointer()
@@ -148,7 +150,10 @@ Examples:
         "--output_dir",
         type=str,
         default=None,
-        help="Directory for checkpoints, plots, videos, and logs. Defaults are task-aware.",
+        help=(
+            "Directory for checkpoints, plots, videos, and logs. Relative paths "
+            "are placed under the repo outputs/ folder."
+        ),
     )
     parser.add_argument(
         "--log_level",

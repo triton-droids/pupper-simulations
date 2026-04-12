@@ -59,7 +59,7 @@ if __package__ in (None, ""):
 
     from locomotion.bittle_dance_env import BittleDanceEnv
     from locomotion.bittle_env import BittleEnv
-    from locomotion.paths import OUTPUTS_ROOT
+    from locomotion.paths import OUTPUTS_ROOT, resolve_output_path
     from locomotion.training_config import TrainingConfig
     from locomotion.training_helpers import (
         parse_args,
@@ -70,7 +70,7 @@ if __package__ in (None, ""):
 else:
     from .bittle_dance_env import BittleDanceEnv
     from .bittle_env import BittleEnv
-    from .paths import OUTPUTS_ROOT
+    from .paths import OUTPUTS_ROOT, resolve_output_path
     from .training_config import TrainingConfig
     from .training_helpers import parse_args, policy_params_callback, setup_logging
     from .training_monitor import TrainingMonitor
@@ -204,7 +204,7 @@ def _resolve_output_dir(
 ) -> Path:
     """Resolve the output directory from CLI input or package defaults."""
     if output_dir_arg is not None:
-        return Path(output_dir_arg).expanduser()
+        return resolve_output_path(output_dir_arg)
 
     mode = "test" if test_mode else "train"
     return OUTPUTS_ROOT / f"{_get_task_spec(task_name).output_prefix}_{mode}_latest"
@@ -231,6 +231,7 @@ def train_bittle(
         A small result dictionary so sweep runners can inspect success status,
         summary metrics, and the final policy objects.
     """
+    output_dir = resolve_output_path(output_dir)
     task_spec = _get_task_spec(task_name)
 
     logger.info("=" * 80)
