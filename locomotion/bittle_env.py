@@ -41,42 +41,30 @@ def get_config():
     """Returns reward config for bittle quadruped environment."""
 
     def get_default_rewards_config():
+        # Max per step: +0.130 positive, negative unbounded (clipped to -10.0)
         default_config = config_dict.ConfigDict(
             dict(
                 scales=config_dict.ConfigDict(
                     dict(
                         # Tracking rewards
-                        tracking_lin_vel=5.0,
-                        # tracking_ang_vel=1.5,
-                        tracking_ang_vel=1.5,
+                        tracking_lin_vel=5.0,  # [0, +0.100]
+                        tracking_ang_vel=1.5,  # [0, +0.030]
                         # Base state regularizations
-                        lin_vel_z=-2.0,
-                        ang_vel_xy=-0.05,
-                        # lin_vel_z=0.0,
-                        # ang_vel_xy=0.0,
-                        orientation=-5.0,
-                        # orientation=0.0,
+                        lin_vel_z=-2.0,  # (-∞, 0]
+                        ang_vel_xy=-0.05,  # (-∞, 0]
+                        orientation=-5.0,  # [-0.100, 0]
                         # Joint regularizations
-                        torques=-0.0002,
-                        action_rate=-0.001,
-                        joint_acc=-0.0025,  # Penalize joint acceleration (for smooth velocity changes)
-                        # Joint regularizations
-                        # torques=0.0,
-                        # action_rate=0.0,
-                        # joint_acc=0.0,  # Penalize joint acceleration (for smooth velocity changes)
+                        torques=-0.0002,  # (-∞, 0]
+                        action_rate=-0.001,  # [-0.00072, 0]
+                        joint_acc=-0.000025,  # (-∞, 0]
                         # Behavior regularizations
-                        stand_still=-0.5,
-                        # stand_still=0.0,
-                        termination=-1.0,
-                        # termination=0.0,
+                        stand_still=-0.5,  # (-∞, 0]
+                        termination=-1.0,  # [-0.020, 0]
                         # Feet rewards
-                        feet_air_time=1.0,
-                        # feet_air_time=0.0,
-                        foot_slip=-0.04,
-                        # foot_slip=0.0,
+                        feet_air_time=1.0,  # ~[-0.012, +0.028]
+                        foot_slip=-0.04,  # (-∞, 0]
                         # Energy efficiency
-                        energy=-0.002,
-                        # energy=0.0,
+                        energy=-0.002,  # (-∞, 0]
                     )
                 ),
                 tracking_sigma=0.10,
