@@ -198,7 +198,7 @@ class BittleEnv(PipelineEnv):
     def sample_command(self, rng: jax.Array) -> jax.Array:
         """Sample a velocity command. Only forward velocity is sampled."""
         # lin_vel_x = [-0.3, 0.6]  # m/s
-        lin_vel_x = [0.3, 0.6]  # m/s
+        lin_vel_x = [0.2, 0.4]  # m/s
         lin_vel_y = [-0.3, 0.3]  # m/s
         ang_vel_yaw = [-0.5, 0.5]  # rad/s
 
