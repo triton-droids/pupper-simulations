@@ -44,9 +44,9 @@ SYNC_INTERVAL="${SYNC_INTERVAL:-15}"
 #   parallel_trials - one GPU per child trial, several trials run concurrently
 SWEEP_REMOTE_MODE="${SWEEP_REMOTE_MODE:-single_gpu}"
 
-# Optional explicit GPU ids, for example "0,1,2,3". When unset, the remote
-# host picks the least-used GPUs automatically.
-SWEEP_GPU_IDS="${SWEEP_GPU_IDS:-}"
+# Optional explicit GPU ids, for example "0,1,2,3". The special value "auto"
+# means the remote host should pick the least-used GPUs automatically.
+SWEEP_GPU_IDS="${SWEEP_GPU_IDS:-auto}"
 
 # Number of GPUs to reserve when selecting automatically.
 SWEEP_GPU_COUNT="${SWEEP_GPU_COUNT:-1}"
@@ -70,7 +70,7 @@ echo "Remote sweep dir: $REMOTE_SWEEP_ABS"
 echo "Local sweep dir: $LOCAL_SWEEP_BASE"
 echo "Trials: $SWEEP_TRIALS_JSON"
 echo "Remote mode: $SWEEP_REMOTE_MODE"
-echo "GPU ids: ${SWEEP_GPU_IDS:-auto}"
+echo "GPU ids: $SWEEP_GPU_IDS"
 echo "GPU count: $SWEEP_GPU_COUNT"
 echo "Parallel trials: $SWEEP_PARALLEL_TRIALS"
 
@@ -160,7 +160,7 @@ SWEEP_PARALLEL_TRIALS="$1"; shift
 pick_gpu_ids() {
   local requested_count="$1"
 
-  if [ -n "$SWEEP_GPU_IDS" ]; then
+  if [ -n "$SWEEP_GPU_IDS" ] && [ "$SWEEP_GPU_IDS" != "auto" ]; then
     echo "$SWEEP_GPU_IDS"
     return
   fi
