@@ -59,11 +59,11 @@ def get_config():
                         # Joint regularizations
                         torques=-0.0002,
                         action_rate=-0.001,
-                        # joint_acc=-0.0025,  # Penalize joint acceleration (for smooth velocity changes)
+                        joint_acc=-0.0025,  # Penalize joint acceleration (for smooth velocity changes)
                         # Joint regularizations
                         # torques=0.0,
                         # action_rate=0.0,
-                        joint_acc=0.0,  # Penalize joint acceleration (for smooth velocity changes)
+                        # joint_acc=0.0,  # Penalize joint acceleration (for smooth velocity changes)
                         # Behavior regularizations
                         stand_still=-0.5,
                         # stand_still=0.0,
