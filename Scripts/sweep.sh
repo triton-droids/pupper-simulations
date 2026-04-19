@@ -101,17 +101,19 @@ SYNC_INTERVAL="${SYNC_INTERVAL:-15}"
 #   single_gpu      = one visible GPU, trials one after another
 #   multi_gpu       = one trial at a time, but that trial can see several GPUs
 #   parallel_trials = several child trials at once, one GPU slot per child
-SWEEP_REMOTE_MODE="${SWEEP_REMOTE_MODE:-single_gpu}"
+SWEEP_REMOTE_MODE="${SWEEP_REMOTE_MODE:-parallel_trials}"
 
 # Optionally pin the sweep to specific GPUs. "auto" means the remote box should
 # choose the least-busy ones on its own.
 SWEEP_GPU_IDS="${SWEEP_GPU_IDS:-auto}"
 
-# If GPU choice is automatic, this says how many GPUs to reserve.
-SWEEP_GPU_COUNT="${SWEEP_GPU_COUNT:-1}"
+# If GPU choice is automatic, this says how many GPUs to reserve. "all" means
+# use every visible GPU the remote box reports.
+SWEEP_GPU_COUNT="${SWEEP_GPU_COUNT:-all}"
 
-# In parallel mode, this says how many trials may run at once.
-SWEEP_PARALLEL_TRIALS="${SWEEP_PARALLEL_TRIALS:-$SWEEP_GPU_COUNT}"
+# In parallel mode, this says how many trials may run at once. "auto" means
+# match the number of selected GPU slots.
+SWEEP_PARALLEL_TRIALS="${SWEEP_PARALLEL_TRIALS:-auto}"
 
 # Give each sweep one stable numbered label so both the remote artifacts and
 # the local mirror use the same human-readable folder name.
@@ -234,17 +236,47 @@ pick_gpu_ids() {
     return
   fi
 
-  # Otherwise, pick the least-busy GPUs by current memory use.
-  nvidia-smi --query-gpu=index,memory.used --format=csv,noheader,nounits |
-    sort -t, -k2 -n |
-    head -n "$requested_count" |
-    cut -d, -f1 |
-    tr -d ' ' |
-    paste -sd, -
+  # Otherwise, pick the least-busy GPUs by current memory use. "all" keeps
+  # every visible GPU instead of truncating the list.
+  if [ "$requested_count" = "all" ]; then
+    nvidia-smi --query-gpu=index,memory.used --format=csv,noheader,nounits |
+      sort -t, -k2 -n |
+      cut -d, -f1 |
+      tr -d ' ' |
+      paste -sd, -
+  else
+    nvidia-smi --query-gpu=index,memory.used --format=csv,noheader,nounits |
+      sort -t, -k2 -n |
+      head -n "$requested_count" |
+      cut -d, -f1 |
+      tr -d ' ' |
+      paste -sd, -
+  fi
+}
+
+count_csv_items() {
+  local csv="$1"
+  if [ -z "$csv" ]; then
+    echo "0"
+    return
+  fi
+  awk -F',' '{print NF}' <<< "$csv"
 }
 
 GPU_IDS="$(pick_gpu_ids "$SWEEP_GPU_COUNT")"
 echo "Selected GPU ids: ${GPU_IDS:-<none>}"
+GPU_SLOT_COUNT="$(count_csv_items "$GPU_IDS")"
+if [ "$SWEEP_PARALLEL_TRIALS" = "auto" ]; then
+  MAX_PARALLEL_TRIALS="$GPU_SLOT_COUNT"
+else
+  MAX_PARALLEL_TRIALS="$SWEEP_PARALLEL_TRIALS"
+fi
+if [ "$GPU_SLOT_COUNT" -lt 1 ]; then
+  echo "ERROR: no GPU slots were selected for the sweep." >&2
+  exit 2
+fi
+echo "Resolved GPU slot count: ${GPU_SLOT_COUNT}"
+echo "Resolved parallel trials: ${MAX_PARALLEL_TRIALS}"
 export XLA_PYTHON_CLIENT_PREALLOCATE="${XLA_PYTHON_CLIENT_PREALLOCATE:-false}"
 export XLA_PYTHON_CLIENT_MEM_FRACTION="${XLA_PYTHON_CLIENT_MEM_FRACTION:-0.70}"
 export TF_GPU_ALLOCATOR="${TF_GPU_ALLOCATOR:-cuda_malloc_async}"
@@ -313,7 +345,7 @@ case "$SWEEP_REMOTE_MODE" in
       --trials_json "$SWEEP_TRIALS_JSON" \
       --base_output_dir "$REMOTE_SWEEP_REL" \
       --task "$SELECTED_TASK_NAME" \
-      --max_concurrent_trials "$SWEEP_PARALLEL_TRIALS" \
+      --max_concurrent_trials "$MAX_PARALLEL_TRIALS" \
       --available_gpus "$GPU_IDS" \
       "${TASK_HPARAMS_ARGS[@]}" \
       "$@"
