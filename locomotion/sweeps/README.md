@@ -9,7 +9,7 @@ These settings control how PPO training is run. They are different from the task
 
 In plain language:
 
-- `locomotion/sweeps/*.json` controls how much training data PPO gets and how that data is chopped up.
+- `locomotion/sweeps/*.json` controls the training budget and how PPO slices that training data up.
 - `locomotion/tasks/*.json` controls the task world itself and what behavior is rewarded.
 
 ## What This JSON Represents
@@ -35,33 +35,46 @@ That trainer bundle is then paired with one task-side bundle from `locomotion/ta
 - one trainer override bundle
 - plus one task override bundle
 
-## Default Behavior
+## How The Loop Actually Works
 
-You do not have to specify every field in every JSON entry.
+The sweep is a nested loop.
 
-Anything you leave out falls back to the task-aware defaults from `locomotion/training/config.py`.
+In plain English, it does this:
 
-### Walking defaults
+1. Read the list of training-budget entries from `training_budget_and_batching_sweep.json`.
+2. Pick the first training-budget entry.
+3. While holding that one fixed, loop through every task-hyperparameter entry from the selected task JSON.
+4. After it finishes all task entries for that one training-budget entry, move to the next training-budget entry.
+5. Repeat until every outer entry has been paired with every inner entry.
 
-- `num_timesteps = 10000000`
-- `num_evals = 10`
-- `episode_length = 1000`
-- `num_envs = 5000`
-- `batch_size = 500`
-- `unroll_length = 20`
-- `num_minibatches = 10`
-- `num_updates_per_batch = 1`
+So the real loop order is:
 
-### Dance defaults
+1. outer loop = trainer-side JSON
+2. inner loop = task-side JSON
 
-- `num_timesteps = 200000`
-- `num_evals = 6`
-- `episode_length = 200`
-- `num_envs = 32`
-- `batch_size = 32`
-- `unroll_length = 8`
-- `num_minibatches = 4`
-- `num_updates_per_batch = 1`
+That means each row in `training_budget_and_batching_sweep.json` acts like a "main bucket" of training settings.
+Inside that bucket, the sweep then tries every matching task-world variation.
+
+## Where The Values Come From
+
+The sweep values are mainly coming from the JSON files themselves.
+
+That means:
+
+- the training-budget JSON tells the sweep which trainer-side cases to try
+- the task JSON tells the sweep which task-side cases to try
+
+If a JSON entry leaves a field out, the code falls back to the normal built-in default for that missing field.
+But the important practical point is: the sweep is driven by the list of cases written in the JSON files.
+
+An empty object like `{}` means:
+
+- "run one trial using the normal built-in defaults for this side of the sweep"
+
+So:
+
+- `{}` in the trainer-side JSON means "use the normal trainer defaults"
+- `{}` in the task-side JSON means "use the normal task defaults"
 
 ## Mental Model
 
@@ -109,6 +122,8 @@ So the current trainer-side sweep is mostly asking:
 - how many robot copies should practice in parallel?
 - how big should each PPO learning chunk be?
 
+Then, for each one of those trainer-side cases, the inner loop tries every task-side case from the selected task JSON.
+
 ## Practical Advice
 
 - If runs are too slow or too expensive, lower `num_timesteps` or `num_envs`.
@@ -126,5 +141,5 @@ So the current trainer-side sweep is mostly asking:
 That selected task then decides:
 
 - which task environment file is being targeted
-- which task-side JSON is paired with this trainer-side JSON
+- which task-side JSON is used for the inner loop
 - which `--task` value is passed to `hparam_sweep.py`

@@ -70,6 +70,41 @@ class HparamSweepPathTests(unittest.TestCase):
         self.assertGreaterEqual(len(task_trials), 1)
         self.assertIsInstance(task_trials[0], dict)
 
+    def test_prepare_trial_dir_uses_short_name_and_writes_parameters_txt(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output_dir = Path(temp_dir)
+            trial_dir = output_dir / hparam_sweep._build_trial_dir_name(1)
+
+            hparam_sweep._prepare_trial_dir(
+                trial_dir,
+                {
+                    "batch_size": 24,
+                    "episode_length": 200,
+                    "num_envs": 24,
+                },
+                {
+                    "action_scale": 0.35,
+                    "dance_amplitude": 0.85,
+                    "enable_kicks": False,
+                },
+                overwrite=False,
+            )
+
+            parameters_path = trial_dir / hparam_sweep.PARAMETERS_FILENAME
+
+            self.assertEqual(trial_dir.name, "trial_001")
+            self.assertTrue(parameters_path.exists())
+
+            contents = parameters_path.read_text(encoding="utf-8")
+            self.assertIn("train parameters:", contents)
+            self.assertIn("batch_size=24", contents)
+            self.assertIn("episode_length=200", contents)
+            self.assertIn("num_envs=24", contents)
+            self.assertIn("task parameters:", contents)
+            self.assertIn("action_scale=0.35", contents)
+            self.assertIn("dance_amplitude=0.85", contents)
+            self.assertIn("enable_kicks=False", contents)
+
 
 if __name__ == "__main__":
     unittest.main()

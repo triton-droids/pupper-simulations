@@ -179,10 +179,16 @@ bash Scripts/sweep.sh
 Current sweep flow:
 
 1. `Scripts/sweep.sh` loads `.env`, prepares the remote command, and reserves the next local folder name.
-2. The sweep runner reads trainer-side entries from `locomotion/sweeps/training_budget_and_batching_sweep.json`.
-3. It also reads task-side entries from the matching task JSON in `locomotion/tasks/`.
-4. It runs every trainer entry against every task entry.
+2. The sweep runner reads the outer-loop list from `locomotion/sweeps/training_budget_and_batching_sweep.json`.
+3. It reads the inner-loop list from the matching task JSON in `locomotion/tasks/`.
+4. For each one training-budget entry, it loops through every task-hyperparameter entry.
 5. Results sync back into a numbered folder under `Scripts/Outputs/`.
+
+In plain terms:
+
+- first pick one trainer-side case
+- then try all task-side cases inside that one trainer-side case
+- then move to the next trainer-side case
 
 Local sweep outputs now look like this:
 
@@ -192,13 +198,14 @@ Scripts/Outputs/
     |-- results.jsonl
     |-- leaderboard.json
     |-- best_trial.json
-    |-- trial_001__train__...__task__.../
-    |-- trial_002__train__...__task__.../
+    |-- trial_001/
+    |-- trial_002/
     `-- ...
 ```
 
 Each `trial_...` folder is one complete combined run. It contains:
 
+- `parameters.txt`
 - `training_overrides.json`
 - `task_overrides.json`
 - `combined_overrides.json`

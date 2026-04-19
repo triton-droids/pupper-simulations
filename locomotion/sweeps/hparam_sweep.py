@@ -50,6 +50,7 @@ RESULT_FILENAME = "trial_result.json"
 RESULTS_JSONL_FILENAME = "results.jsonl"
 LEADERBOARD_FILENAME = "leaderboard.json"
 BEST_TRIAL_FILENAME = "best_trial.json"
+PARAMETERS_FILENAME = "parameters.txt"
 TRAINING_OVERRIDES_FILENAME = "training_overrides.json"
 TASK_OVERRIDES_FILENAME = "task_overrides.json"
 COMBINED_OVERRIDES_FILENAME = "combined_overrides.json"
@@ -172,42 +173,34 @@ def _build_sweep_combinations(
     return combinations
 
 
-def _safe_name(value: str) -> str:
-    """Clean up text so it is safe to use inside a folder name."""
-    translation_table = str.maketrans(
-        {
-            " ": "",
-            "/": "_",
-            "\\": "_",
-            ":": "_",
-            "|": "_",
-            '"': "",
-            "'": "",
-        }
-    )
-    return value.translate(translation_table)
+def _build_trial_dir_name(trial_id: int) -> str:
+    """Keep trial folder names short so remote filesystems do not reject them."""
+    return f"trial_{trial_id:03d}"
 
 
-def _format_override_tag(label: str, overrides: dict[str, Any]) -> str:
-    """Turn one override bundle into a readable, filesystem-safe name chunk."""
+def _format_parameter_section(title: str, overrides: dict[str, Any]) -> str:
+    """Render one plain-text parameter section for humans browsing a trial folder."""
+    lines = [f"{title}:"]
     if not overrides:
-        return f"{label}__baseline"
+        lines.append("(using defaults from the selected JSON/code for this side)")
+        return "\n".join(lines)
 
-    override_pairs = [f"{key}={overrides[key]}" for key in sorted(overrides)]
-    return _safe_name(f"{label}__" + "__".join(override_pairs))
+    for key in sorted(overrides):
+        lines.append(f"{key}={overrides[key]}")
+    return "\n".join(lines)
 
 
-def _trial_tag(
+def _build_parameters_text(
     training_overrides: dict[str, Any],
     task_overrides: dict[str, Any],
 ) -> str:
-    """Build one folder tag that shows both halves of the sweep combination."""
-    return "__".join(
+    """Build the human-readable parameter summary saved inside each trial folder."""
+    return "\n\n".join(
         (
-            _format_override_tag("train", training_overrides),
-            _format_override_tag("task", task_overrides),
+            _format_parameter_section("train parameters", training_overrides),
+            _format_parameter_section("task parameters", task_overrides),
         )
-    )
+    ) + "\n"
 
 
 def _read_trial_result(trial_dir: Path) -> dict[str, Any]:
@@ -435,6 +428,10 @@ def _prepare_trial_dir(
         shutil.rmtree(trial_dir)
 
     trial_dir.mkdir(parents=True, exist_ok=True)
+    (trial_dir / PARAMETERS_FILENAME).write_text(
+        _build_parameters_text(training_overrides, task_overrides),
+        encoding="utf-8",
+    )
     _write_json(trial_dir / TRAINING_OVERRIDES_FILENAME, training_overrides)
     _write_json(trial_dir / TASK_OVERRIDES_FILENAME, task_overrides)
     _write_json(
@@ -554,11 +551,7 @@ def sweep_main(args: argparse.Namespace) -> int:
     if max_concurrent_trials <= 1:
         # Simple mode: run one trial, wait for it, then move to the next.
         for trial_id, combination in enumerate(sweep_combinations, start=1):
-            tag = _trial_tag(
-                combination.training_overrides,
-                combination.task_overrides,
-            )
-            trial_dir = output_dir / f"trial_{trial_id:03d}__{tag}"
+            trial_dir = output_dir / _build_trial_dir_name(trial_id)
             _prepare_trial_dir(
                 trial_dir,
                 combination.training_overrides,
@@ -605,11 +598,7 @@ def sweep_main(args: argparse.Namespace) -> int:
                 combination = sweep_combinations[next_trial_index]
                 next_trial_index += 1
 
-                tag = _trial_tag(
-                    combination.training_overrides,
-                    combination.task_overrides,
-                )
-                trial_dir = output_dir / f"trial_{trial_id:03d}__{tag}"
+                trial_dir = output_dir / _build_trial_dir_name(trial_id)
                 _prepare_trial_dir(
                     trial_dir,
                     combination.training_overrides,

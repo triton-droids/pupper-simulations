@@ -118,10 +118,14 @@ The dance task JSON file is:
 
 ## Relationship To The Sweep Runner
 
-The sweep runner loops over:
+The sweep runner is a nested loop.
 
-1. trainer-side entries from `locomotion/sweeps/training_budget_and_batching_sweep.json`
-2. task-side entries from the matching JSON in this folder
+In plain English, it works like this:
+
+1. Pick one trainer-side entry from `locomotion/sweeps/training_budget_and_batching_sweep.json`.
+2. Hold that trainer-side entry fixed.
+3. Loop through every task-side entry from the matching JSON in this folder.
+4. After those inner task trials are done, move to the next trainer-side entry.
 
 So one final trial is:
 
