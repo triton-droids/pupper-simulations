@@ -116,7 +116,7 @@ SWEEP_PARALLEL_TRIALS="${SWEEP_PARALLEL_TRIALS:-$SWEEP_GPU_COUNT}"
 # Give each sweep one stable numbered label so both the remote artifacts and
 # the local mirror use the same human-readable folder name.
 SWEEP_NUMBER="$(allocate_sweep_number "$SWEEP_COUNTER_FILE")"
-LOCAL_SWEEP_LABEL="Sweep #${SWEEP_NUMBER}"
+LOCAL_SWEEP_LABEL="Sweep_${SWEEP_NUMBER}"
 
 # Build the matching remote and local folder paths for this sweep.
 REMOTE_SWEEP_REL="../Scripts/Outputs/${LOCAL_SWEEP_LABEL}"
