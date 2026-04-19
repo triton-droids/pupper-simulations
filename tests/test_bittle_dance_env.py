@@ -8,12 +8,20 @@ from pathlib import Path
 
 import numpy as np
 import jax.numpy as jp
+from brax.io import mjcf
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from locomotion.tasks.bittle_dance_env import BittleDanceEnv, build_reward_config
+from locomotion.paths import DEFAULT_SCENE_PATH
+from locomotion.tasks.bittle_dance_env import (
+    BittleDanceEnv,
+    DEFAULT_POSE,
+    TERMINATION_MARGIN,
+    _actuator_position_ranges,
+    build_reward_config,
+)
 
 
 class BittleDanceEnvRewardTests(unittest.TestCase):
@@ -33,6 +41,17 @@ class BittleDanceEnvRewardTests(unittest.TestCase):
         self.assertAlmostEqual(late_penalty, 1.1)
         self.assertEqual(no_penalty, 0.0)
         self.assertGreater(early_penalty, late_penalty)
+
+    def test_default_pose_is_inside_model_actuator_limits(self) -> None:
+        sys = mjcf.load(str(DEFAULT_SCENE_PATH))
+        lowers, uppers = _actuator_position_ranges(sys)
+
+        self.assertTrue(
+            np.all(np.asarray(DEFAULT_POSE) >= np.asarray(lowers) - TERMINATION_MARGIN)
+        )
+        self.assertTrue(
+            np.all(np.asarray(DEFAULT_POSE) <= np.asarray(uppers) + TERMINATION_MARGIN)
+        )
 
 
 if __name__ == "__main__":

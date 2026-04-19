@@ -93,9 +93,7 @@ DEFAULT_POSE = jp.array(
     ]
 )
 
-TERMINATION_POSITION_LIMIT = 1.5
 TERMINATION_MARGIN = 0.3
-CONTROL_RANGE = 3.14159
 MIN_BASE_HEIGHT = 0.02
 UPRIGHT_THRESHOLD = 0.5
 
@@ -239,6 +237,17 @@ def _find_body_ids(mj_model: mujoco.MjModel, body_names: Sequence[str]) -> np.nd
     return np.asarray(body_ids, dtype=np.int32)
 
 
+def _actuator_position_ranges(sys: base.System) -> tuple[jax.Array, jax.Array]:
+    """
+    Read the real actuator position limits from the MuJoCo model.
+
+    This keeps termination and action clamping aligned with the robot's actual
+    allowed joint targets.
+    """
+    ctrl_range = jp.asarray(sys.mj_model.actuator_ctrlrange[: sys.nu], dtype=jp.float32)
+    return ctrl_range[:, 0], ctrl_range[:, 1]
+
+
 class BittleWalkingEnv(PipelineEnv):
     """
     Brax environment for Bittle walking with relative position control.
@@ -288,10 +297,9 @@ class BittleWalkingEnv(PipelineEnv):
         self._default_pose = DEFAULT_POSE
         self._observation_size = 1 + 3 + 3 + self._nu + self._nu + self._nu
 
-        self.pos_lowers = jp.full(sys.nu, -TERMINATION_POSITION_LIMIT)
-        self.pos_uppers = jp.full(sys.nu, TERMINATION_POSITION_LIMIT)
-        self._joint_range_lower = jp.full(sys.nu, -CONTROL_RANGE)
-        self._joint_range_upper = jp.full(sys.nu, CONTROL_RANGE)
+        self.pos_lowers, self.pos_uppers = _actuator_position_ranges(sys)
+        self._joint_range_lower = self.pos_lowers
+        self._joint_range_upper = self.pos_uppers
 
         self._lower_leg_body_id = _find_body_ids(sys.mj_model, LOWER_LEG_BODY_NAMES)
         self._foot_radius = FOOT_CONTACT_RADIUS

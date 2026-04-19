@@ -64,9 +64,7 @@ DEFAULT_POSE = jp.array(
     ]
 )
 
-TERMINATION_POSITION_LIMIT = 1.5
 TERMINATION_MARGIN = 0.35
-CONTROL_RANGE = 3.14159
 
 LOWER_LEG_BODY_NAMES = (
     "servos_rf_1",
@@ -221,6 +219,17 @@ def _find_body_ids(mj_model: mujoco.MjModel, body_names: Sequence[str]) -> np.nd
     return np.asarray(body_ids, dtype=np.int32)
 
 
+def _actuator_position_ranges(sys: base.System) -> tuple[jax.Array, jax.Array]:
+    """
+    Read the real actuator position limits from the MuJoCo model.
+
+    This avoids hardcoded safety bounds that can accidentally reject the
+    robot's normal standing pose.
+    """
+    ctrl_range = jp.asarray(sys.mj_model.actuator_ctrlrange[: sys.nu], dtype=jp.float32)
+    return ctrl_range[:, 0], ctrl_range[:, 1]
+
+
 class BittleDanceEnv(PipelineEnv):
     """
     Bittle environment that rewards a rhythmic in-place dance.
@@ -284,10 +293,9 @@ class BittleDanceEnv(PipelineEnv):
         self._default_pose = DEFAULT_POSE
         self._observation_size = 1 + 3 + 3 + self._nu + self._nu + self._nu
 
-        self.pos_lowers = jp.full(sys.nu, -TERMINATION_POSITION_LIMIT)
-        self.pos_uppers = jp.full(sys.nu, TERMINATION_POSITION_LIMIT)
-        self._joint_range_lower = jp.full(sys.nu, -CONTROL_RANGE)
-        self._joint_range_upper = jp.full(sys.nu, CONTROL_RANGE)
+        self.pos_lowers, self.pos_uppers = _actuator_position_ranges(sys)
+        self._joint_range_lower = self.pos_lowers
+        self._joint_range_upper = self.pos_uppers
         self._foot_radius = FOOT_CONTACT_RADIUS
 
         if log_init_summary:
