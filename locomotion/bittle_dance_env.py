@@ -1,30 +1,15 @@
 """
-Dance-focused Brax environment for the Bittle quadruped.
+Dance-specific simulator rules for the Bittle robot.
 
-High-level idea
----------------
-This environment keeps the same action interface as ``BittleEnv``:
+In everyday terms, this file tells the simulator:
 
-- the policy outputs 9 normalized joint offsets in ``[-1, 1]``
-- those offsets are scaled and added to a default pose
-- the MuJoCo position actuators track the resulting joint targets
+- what the robot is allowed to control
+- what a "good dance move" looks like
+- when the robot should be considered to have failed
+- what information the learning system gets to see each step
 
-What changes is the task. Instead of tracking a walking velocity command, the
-policy is rewarded for following a procedurally generated dance cycle. The
-cycle is encoded by a phase variable, and the observation exposes that phase
-using sine/cosine features so the policy can synchronize its motion to the
-beat.
-
-The reward mixes:
-
-- phase-conditioned pose tracking
-- synchronized base bounce
-- upright posture
-- staying roughly in place
-- smooth, energy-efficient control
-
-This is intentionally a separate file so the original locomotion environment
-remains intact.
+The dance task keeps the same 9 joint controls as locomotion, but changes the
+goal from "walk where commanded" to "follow an in-place rhythm."
 """
 
 from __future__ import annotations
@@ -92,7 +77,17 @@ FOOT_CONTACT_RADIUS = 0.015
 
 
 def build_reward_config() -> config_dict.ConfigDict:
-    """Return the reward weights and shape parameters for the dance task."""
+    """
+    Return the scoring recipe for the dance task.
+
+    These numbers decide how much the robot should care about things like:
+
+    - matching the target pose
+    - bobbing up and down with the beat
+    - staying upright
+    - staying near the starting point
+    - avoiding jerky or wasteful motion
+    """
     return config_dict.ConfigDict(
         dict(
             rewards=config_dict.ConfigDict(
@@ -122,9 +117,15 @@ def build_reward_config() -> config_dict.ConfigDict:
 
 
 def _find_body_ids(mj_model: mujoco.MjModel, body_names: Sequence[str]) -> np.ndarray:
-    """Resolve body names into MuJoCo body ids, warning on missing bodies."""
+    """
+    Convert friendly body names into MuJoCo's numeric ids.
+
+    MuJoCo uses integer ids internally, but the code is easier for humans to
+    read when we start from names like ``servos_rf_1``.
+    """
     body_ids: list[int] = []
 
+    # Look up each requested body one by one and keep only the ones that exist.
     for body_name in body_names:
         try:
             body_id = mujoco.mj_name2id(
@@ -143,10 +144,11 @@ def _find_body_ids(mj_model: mujoco.MjModel, body_names: Sequence[str]) -> np.nd
 
 class BittleDanceEnv(PipelineEnv):
     """
-    Bittle environment that rewards a rhythmic in-place dance cycle.
+    Bittle environment that rewards a rhythmic in-place dance.
 
-    The policy does not receive a velocity command. Instead, it receives a
-    phase encoding and learns to track a scripted periodic choreography.
+    Instead of being told "walk forward" or "turn left," the policy is told
+    where it is within a repeating dance beat and is rewarded for matching the
+    scripted pose for that moment.
     """
 
     def __init__(
@@ -161,19 +163,26 @@ class BittleDanceEnv(PipelineEnv):
         log_init_summary: bool = False,
         **kwargs,
     ):
+        # Load the robot model and make sure the simulator runs with the timing
+        # this task expects.
         sys = mjcf.load(xml_path)
         sys = sys.tree_replace({"opt.timestep": SIMULATION_TIMESTEP})
         sys = sys.replace(dof_damping=sys.dof_damping.at[FREEJOINT_QD_START:].set(JOINT_DAMPING))
 
+        # One control step in this environment covers several smaller MuJoCo
+        # physics steps under the hood.
         self._dt = CONTROL_DT
         n_frames = kwargs.pop("n_frames", int(self._dt / sys.opt.timestep))
         super().__init__(sys, backend="mjx", n_frames=n_frames)
 
+        # Start from the default reward recipe, then allow optional scale
+        # overrides from the caller.
         self.reward_config = build_reward_config()
         for key, value in kwargs.items():
             if key.endswith("_scale"):
                 self.reward_config.rewards.scales[key[:-6]] = value
 
+        # Cache important model ids that we will read on almost every step.
         self._base_body_id = mujoco.mj_name2id(
             sys.mj_model,
             mujoco.mjtObj.mjOBJ_BODY.value,
@@ -181,6 +190,7 @@ class BittleDanceEnv(PipelineEnv):
         )
         self._lower_leg_body_id = _find_body_ids(sys.mj_model, LOWER_LEG_BODY_NAMES)
 
+        # Save the main task knobs the environment will use throughout training.
         self._action_scale = action_scale
         self._obs_noise = obs_noise
         self._kick_vel = kick_vel
@@ -202,6 +212,7 @@ class BittleDanceEnv(PipelineEnv):
         self._foot_radius = FOOT_CONTACT_RADIUS
 
         if log_init_summary:
+            # Optional one-line summary for debugging environment setup.
             logger.info(
                 "Initialized BittleDanceEnv: cycle_steps=%s amplitude=%.3f obs=%s act=%s",
                 self._cycle_steps,
@@ -211,15 +222,15 @@ class BittleDanceEnv(PipelineEnv):
             )
 
     def _sample_initial_phase(self, rng: jax.Array) -> jax.Array:
-        """Sample a random starting phase so the dance is not tied to one reset."""
+        """Pick a random starting point within the dance beat."""
         return jax.random.uniform(rng, (), minval=0.0, maxval=2.0 * jp.pi)
 
     def _phase_features(self, phase: jax.Array) -> jax.Array:
         """
-        Encode the dance beat in three values.
+        Turn the beat position into three smooth numbers.
 
-        The shape matches the old locomotion command slot, which keeps the
-        observation length unchanged relative to the walking environment.
+        This gives the policy an easy way to know whether it is at the start,
+        middle, or end of the repeating dance cycle.
         """
         return jp.array(
             [
@@ -231,16 +242,21 @@ class BittleDanceEnv(PipelineEnv):
 
     def _target_pose(self, phase: jax.Array) -> jax.Array:
         """
-        Produce a procedurally scripted dance pose for the given phase.
+        Build the target joint pose for the current moment in the dance.
 
-        The pattern alternates diagonal leg pairs, adds a small foreleg/hindleg
-        counter-motion, and swings the neck side to side to make the motion
-        visibly stylized rather than just a stationary gait.
+        In plain language, this routine says:
+
+        - swing one diagonal pair one way
+        - swing the opposite diagonal pair the other way
+        - add a smaller counter-motion on top
+        - wag the neck side to side for extra style
         """
         sway = jp.sin(phase)
         counter = jp.cos(phase)
         accent = jp.sin(2.0 * phase)
 
+        # One number per actuator. Positive and negative signs decide which
+        # joints move together and which move opposite each other.
         offsets = self._dance_amplitude * jp.array(
             [
                 0.28 * sway,
@@ -257,7 +273,7 @@ class BittleDanceEnv(PipelineEnv):
         return self._default_pose + offsets
 
     def _target_base_height(self, phase: jax.Array) -> jax.Array:
-        """Target a gentle vertical bounce that follows the beat."""
+        """Return the torso height we want at this point in the beat."""
         return DEFAULT_BASE_POSITION[2] + 0.008 * self._dance_amplitude * jp.sin(2.0 * phase)
 
     def _make_initial_state_info(
@@ -266,7 +282,12 @@ class BittleDanceEnv(PipelineEnv):
         rng: jax.Array,
         phase: jax.Array,
     ) -> dict[str, Any]:
-        """Create the mutable info dictionary stored inside Brax state."""
+        """
+        Build the extra bookkeeping carried inside the simulator state.
+
+        This stores things the environment wants to remember from one step to
+        the next, such as the current phase, last action, and last foot contact.
+        """
         return {
             "rng": rng,
             "phase": phase,
@@ -282,8 +303,10 @@ class BittleDanceEnv(PipelineEnv):
         }
 
     def _build_initial_pipeline_state(self) -> base.State:
-        """Construct the initial MuJoCo state for a fresh episode."""
+        """Place the robot in its default standing pose at the start of an episode."""
         qpos = jp.zeros(self.sys.nq)
+
+        # Fill in the base position/orientation first, then the controllable joints.
         qpos = qpos.at[0:3].set(DEFAULT_BASE_POSITION)
         qpos = qpos.at[3:7].set(DEFAULT_BASE_ROTATION)
         qpos = qpos.at[self._q_joint_start :].set(self._default_pose)
@@ -292,12 +315,18 @@ class BittleDanceEnv(PipelineEnv):
         return self.pipeline_init(qpos, qvel)
 
     def reset(self, rng: jax.Array) -> State:
-        """Reset the dance environment and return the initial state."""
+        """
+        Start a fresh dance episode.
+
+        This chooses a random starting beat, rebuilds the robot's initial pose,
+        clears the history buffers, and returns the first observation.
+        """
         rng, phase_rng = jax.random.split(rng)
         phase = self._sample_initial_phase(phase_rng)
         pipeline_state = self._build_initial_pipeline_state()
         state_info = self._make_initial_state_info(rng=rng, phase=phase)
 
+        # The policy sees a history stack, so start with an all-zero history.
         obs_history = jp.zeros(OBSERVATION_HISTORY_LENGTH * self._observation_size)
         obs = self._get_obs(pipeline_state, state_info, obs_history)
 
@@ -314,7 +343,7 @@ class BittleDanceEnv(PipelineEnv):
         )
 
     def _sample_kick_velocity(self, rng: jax.Array) -> jax.Array:
-        """Sample a small random disturbance to keep the dance robust."""
+        """Occasionally add a tiny random shove so the policy learns some robustness."""
         return jp.where(
             self._enable_kicks & (jax.random.uniform(rng) < KICK_PROBABILITY),
             jax.random.uniform(
@@ -327,7 +356,7 @@ class BittleDanceEnv(PipelineEnv):
         )
 
     def _estimate_foot_contact(self, pipeline_state: base.State) -> jax.Array:
-        """Approximate foot contact from the lower leg body heights."""
+        """Guess which feet are touching the floor by checking how low the legs are."""
         if len(self._lower_leg_body_id) == 0:
             return jp.ones(4, dtype=bool)
 
@@ -341,7 +370,12 @@ class BittleDanceEnv(PipelineEnv):
         pipeline_state: base.State,
         joint_angles: jax.Array,
     ) -> jax.Array:
-        """Terminate if the robot falls or joints exceed loose safety bounds."""
+        """
+        Decide whether the episode should end right now.
+
+        The episode ends when the robot has clearly fallen over or bent its
+        joints beyond the safety margin.
+        """
         up_vec = math.rotate(jp.array([0, 0, 1]), x.rot[self._base_body_id])
 
         done = up_vec[2] < UPRIGHT_THRESHOLD
@@ -351,20 +385,20 @@ class BittleDanceEnv(PipelineEnv):
         return done
 
     def _reward_pose_tracking(self, joint_angles: jax.Array, target_pose: jax.Array) -> jax.Array:
-        """Reward matching the scripted dance pose."""
+        """Score how closely the robot matches the pose we wanted for this beat."""
         pose_error = jp.sum(jp.square(joint_angles - target_pose))
         sigma = self.reward_config.rewards.pose_sigma
         return jp.exp(-pose_error / sigma)
 
     def _reward_bounce_tracking(self, x: Transform, phase: jax.Array) -> jax.Array:
-        """Reward matching a small rhythmic base-height bounce."""
+        """Score how well the torso matches the target up-and-down bobbing motion."""
         target_height = self._target_base_height(phase)
         height_error = jp.square(x.pos[self._base_body_id, 2] - target_height)
         sigma = self.reward_config.rewards.height_sigma
         return jp.exp(-height_error / sigma)
 
     def _reward_upright(self, x: Transform) -> jax.Array:
-        """Reward keeping the torso aligned with world up."""
+        """Score how upright the robot is instead of leaning or tipping."""
         up = jp.array([0.0, 0.0, 1.0])
         rotated_up = math.rotate(up, x.rot[self._base_body_id])
         tilt_error = jp.sum(jp.square(rotated_up[:2]))
@@ -372,50 +406,53 @@ class BittleDanceEnv(PipelineEnv):
         return jp.exp(-tilt_error / sigma)
 
     def _reward_stay_centered(self, xd: Motion) -> jax.Array:
-        """Reward dancing mostly in place rather than drifting across the floor."""
+        """Score how well the robot stays near its starting spot instead of drifting."""
         planar_speed_sq = jp.sum(jp.square(xd.vel[self._base_body_id, :2]))
         sigma = self.reward_config.rewards.center_sigma
         return jp.exp(-planar_speed_sq / sigma)
 
     def _reward_foot_stability(self, contact_filt: jax.Array) -> jax.Array:
-        """Encourage keeping some feet grounded for a stable dance posture."""
+        """Prefer having some feet on the ground so the dance stays stable."""
         num_contacts = jp.sum(contact_filt.astype(jp.float32))
         return jp.exp(-jp.square(num_contacts - 2.5))
 
     def _reward_action_rate(self, act: jax.Array, last_act: jax.Array) -> jax.Array:
-        """Penalize abrupt action changes."""
+        """Penalize sudden command jumps from one step to the next."""
         return jp.sum(jp.square(act - last_act))
 
     def _reward_joint_acc(self, joint_vel: jax.Array, last_joint_vel: jax.Array) -> jax.Array:
-        """Penalize large joint accelerations."""
+        """Penalize very abrupt changes in joint speed."""
         joint_acc = (joint_vel - last_joint_vel) / self.dt
         return jp.sum(jp.square(joint_acc))
 
     def _reward_torques(self, torques: jax.Array) -> jax.Array:
-        """Penalize large actuator effort."""
+        """Penalize pushing the motors too hard."""
         return jp.sqrt(jp.sum(jp.square(torques))) + jp.sum(jp.abs(torques))
 
     def _reward_energy(self, qvel: jax.Array, qfrc_actuator: jax.Array) -> jax.Array:
-        """Penalize energy consumption."""
+        """Penalize wasting energy while moving."""
         actuator_forces = qfrc_actuator[self._qd_joint_start :]
         return jp.sum(jp.abs(qvel) * jp.abs(actuator_forces))
 
     def _reward_termination(self, done: jax.Array, step: jax.Array) -> jax.Array:
-        """Penalize early termination within the dance cycle."""
+        """Penalize falling early instead of surviving through the dance cycle."""
         return done & (step < self._cycle_steps)
 
     def step(self, state: State, action: jax.Array) -> State:
         """
-        Advance the environment by one control step.
+        Advance the simulator by one control step.
 
-        The action is interpreted the same way as the locomotion environment:
-        as an offset from ``DEFAULT_POSE`` that becomes the target for the
-        position actuators.
+        The policy does not command raw motor forces directly. Instead, it says
+        "move each joint a little away from the default pose," and the simulator
+        turns that into target joint positions.
         """
+        # Split the random key so we can use one part now and keep the rest for later.
         rng, kick_rng = jax.random.split(state.info["rng"])
         phase = state.info["phase"]
         target_pose = self._target_pose(phase)
 
+        # Convert the normalized action into real joint targets and clamp them to
+        # safe ranges.
         position_offsets = action * self._action_scale
         target_positions = jp.clip(
             self._default_pose + position_offsets,
@@ -423,20 +460,25 @@ class BittleDanceEnv(PipelineEnv):
             self._joint_range_upper,
         )
 
+        # Step the simulator once with those targets, then optionally add a tiny
+        # random push to make the policy less fragile.
         pipeline_state = self.pipeline_step(state.pipeline_state, target_positions)
         pipeline_state = pipeline_state.replace(
             qd=pipeline_state.qd.at[:3].set(pipeline_state.qd[:3] + self._sample_kick_velocity(kick_rng))
         )
 
+        # Read back the new physical state that resulted from the action.
         x, xd = pipeline_state.x, pipeline_state.xd
         joint_angles = pipeline_state.q[self._q_joint_start :]
         joint_vel = pipeline_state.qd[self._qd_joint_start :]
 
+        # Estimate which feet are on the floor and whether the robot has failed.
         contact = self._estimate_foot_contact(pipeline_state)
         contact_filt = contact | state.info["last_contact"]
 
         done = self._compute_termination(x, pipeline_state, joint_angles)
 
+        # Compute each reward piece separately so they can be logged and tuned.
         reward_terms = {
             "pose_tracking": self._reward_pose_tracking(joint_angles, target_pose),
             "bounce_tracking": self._reward_bounce_tracking(x, phase),
@@ -454,9 +496,11 @@ class BittleDanceEnv(PipelineEnv):
             for key, value in reward_terms.items()
         }
 
+        # Combine the reward pieces into one number, keeping it finite and bounded.
         reward = jp.clip(sum(scaled_rewards.values()) * self.dt, -10.0, 10.0)
         reward = jp.nan_to_num(reward, nan=0.0, posinf=0.0, neginf=0.0)
 
+        # Advance the beat and update the "memory" fields the next step will use.
         next_phase = jp.mod(phase + self._phase_increment, 2.0 * jp.pi)
         state.info["phase"] = next_phase
         state.info["last_act"] = action
@@ -466,9 +510,11 @@ class BittleDanceEnv(PipelineEnv):
         state.info["step"] = jp.where(done, 0, state.info["step"] + 1)
         state.info["rng"] = rng
 
+        # Save a few user-facing metrics for logs and plots.
         state.metrics["total_dist"] = jp.linalg.norm(xd.vel[self._base_body_id, :2]) * self.dt
         state.metrics.update(scaled_rewards)
 
+        # Build the next observation and package everything into the next state.
         obs = self._get_obs(pipeline_state, state.info, state.obs)
         return state.replace(
             pipeline_state=pipeline_state,
@@ -483,16 +529,27 @@ class BittleDanceEnv(PipelineEnv):
         state_info: dict[str, Any],
         obs_history: jax.Array,
     ) -> jax.Array:
-        """Assemble the observation vector and append it to the history stack."""
+        """
+        Build the observation the policy will see next.
+
+        The observation answers basic questions like:
+
+        - how is the body tilted?
+        - where are we in the dance beat?
+        - where are the joints now?
+        - what did we command last step?
+        """
         inv_base_rot = math.quat_inv(pipeline_state.x.rot[self._base_body_id])
         local_rpyrate = math.rotate(
             pipeline_state.xd.ang[self._base_body_id],
             inv_base_rot,
         )
 
+        # Gather the current pose and joint-speed information.
         joint_angles = pipeline_state.q[self._q_joint_start :]
         joint_vels = pipeline_state.qd[self._qd_joint_start :]
 
+        # Concatenate all observation pieces into one long vector.
         obs = jp.concatenate(
             [
                 jp.array([local_rpyrate[2]]) * 0.25,
@@ -503,6 +560,9 @@ class BittleDanceEnv(PipelineEnv):
                 state_info["last_act"],
             ]
         )
+
+        # Clamp extreme values and add a little noise so the policy does not
+        # overfit to a perfectly clean simulator.
         obs = jp.clip(obs, -100.0, 100.0) + self._obs_noise * jax.random.uniform(
             state_info["rng"],
             obs.shape,
@@ -510,6 +570,8 @@ class BittleDanceEnv(PipelineEnv):
             maxval=1,
         )
 
+        # Keep a short rolling history so the policy can infer motion, not just
+        # the current snapshot.
         return jp.roll(obs_history, obs.size).at[: obs.size].set(obs)
 
     def render(
@@ -519,7 +581,7 @@ class BittleDanceEnv(PipelineEnv):
         width: int = 240,
         height: int = 320,
     ) -> Sequence[np.ndarray]:
-        """Render a rollout using Brax's built-in MuJoCo renderer."""
+        """Render a list of saved simulator states into images."""
         return super().render(
             trajectory,
             camera=camera or "track",

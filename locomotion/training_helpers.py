@@ -1,16 +1,15 @@
 """
-Helper utilities shared by training entry points and sweep scripts.
+Shared support code for training runs and sweep runs.
 
-This module groups together three concerns that are reused from multiple
-callers:
+This file handles the supporting chores that are easy to forget about but need
+to work every time:
 
-- logger setup
-- checkpoint callback construction
-- command-line argument parsing for ``train.py``
+- building the log files
+- saving checkpoints while training is running
+- parsing command-line options from the terminal
 
-The parser intentionally stays lightweight: it only exposes the task selector
-and runtime paths, while the actual environment class lookup happens inside
-``train.py``.
+The main trainer calls into this file so the "real work" file can stay focused
+on the training flow instead of setup details.
 """
 
 from __future__ import annotations
@@ -34,24 +33,28 @@ TASK_CHOICES = ("locomotion", "dance")
 
 def setup_logging(output_dir: Path, level: int = logging.INFO) -> logging.Logger:
     """
-    Configure the package logger for one training run.
+    Build the logger for one run.
 
-    Existing handlers are removed before new ones are added. That matters for
-    sweeps and repeated local experiments where ``setup_logging`` may be called
-    more than once in the same Python process.
+    The logger writes to both the terminal and a timestamped log file. Old
+    handlers are removed first so repeated runs in the same Python process do
+    not accidentally duplicate each message.
     """
     output_dir = resolve_output_path(output_dir)
     log_dir = output_dir / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
 
+    # Reuse one named logger for the project so all training messages go through
+    # the same channel.
     logger = logging.getLogger(LOGGER_NAME)
     logger.setLevel(level)
     logger.propagate = False
 
+    # Clear any handlers left over from an earlier run in the same process.
     for handler in list(logger.handlers):
         logger.removeHandler(handler)
         handler.close()
 
+    # One handler prints short, readable messages to the console.
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(level)
     console_handler.setFormatter(
@@ -61,6 +64,7 @@ def setup_logging(output_dir: Path, level: int = logging.INFO) -> logging.Logger
         )
     )
 
+    # The second handler keeps the full detailed record on disk.
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     file_handler = logging.FileHandler(log_dir / f"training_{timestamp}.log")
     file_handler.setLevel(logging.DEBUG)
@@ -82,12 +86,13 @@ def policy_params_callback(
     monitor: Any | None = None,
 ):
     """
-    Create the callback that Brax calls whenever policy parameters are saved.
+    Build the save hook that training calls every time it has a new policy.
 
-    The callback performs two jobs:
+    In plain language, this hook does two chores whenever training reports a new
+    "current best guess" for the robot's brain:
 
-    1. cache an inference function in ``TrainingMonitor`` for video generation
-    2. write the latest policy parameters to an Orbax checkpoint directory
+    1. keep the latest version ready for the final video
+    2. save a checkpoint on disk in case the run is interrupted
     """
     output_dir = resolve_output_path(output_dir)
     checkpoint_dir = (output_dir / "checkpoints").resolve()
@@ -95,8 +100,15 @@ def policy_params_callback(
     checkpointer = ocp.PyTreeCheckpointer()
 
     def callback(current_step: int, make_policy: Any, params: Any) -> None:
-        """Persist one checkpoint snapshot for the current training step."""
-        if monitor is not None and monitor.make_inference_fn_cached is None:
+        """
+        Save one snapshot of the current policy.
+
+        ``current_step`` is just the progress counter so the saved folder names
+        stay easy to sort later.
+        """
+        if monitor is not None:
+            # Remember the newest policy so the final video really reflects the
+            # final training state rather than an earlier checkpoint.
             monitor.make_inference_fn_cached = make_policy(params)
 
         save_args = orbax_utils.save_args_from_target(params)
@@ -108,7 +120,12 @@ def policy_params_callback(
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
-    """Build the CLI parser shared by training entry points."""
+    """
+    Define the command-line options for ``train.py``.
+
+    This is the list of switches a person can type at the terminal to choose
+    the task, test mode, output folder, and log level.
+    """
     parser = argparse.ArgumentParser(
         description="Train a Bittle quadruped locomotion or dance policy.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -166,5 +183,5 @@ Examples:
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
-    """Parse training CLI arguments from ``argv`` or from ``sys.argv``."""
+    """Read command-line options from the terminal and turn them into fields."""
     return build_arg_parser().parse_args(argv)

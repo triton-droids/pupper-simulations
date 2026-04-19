@@ -1,20 +1,16 @@
 #!/usr/bin/env python3
 """
-Train a PPO policy for the Bittle quadruped.
+Main entrypoint for training the simulated robot.
 
-High-level workflow
--------------------
-``train.py`` is the orchestration layer for the locomotion package. It ties
-together:
+This file is the conductor for the whole training job. It does not contain the
+robot physics or the reward rules itself. Instead, it lines up the steps in a
+human-friendly order:
 
-- the Brax task environment from ``bittle_env.py`` or ``bittle_dance_env.py``
-- training presets from ``training_config.py``
-- checkpointing and CLI helpers from ``training_helpers.py``
-- plots and rollout videos from ``training_monitor.py``
-- ONNX export from ``onnx_export.py``
-
-That separation keeps the entry point focused on process flow rather than on
-implementation details.
+1. pick the task and settings
+2. create the simulator environment
+3. hand that environment to the PPO trainer
+4. save the finished policy and summary files
+5. write the final plot, metrics, and video
 """
 
 from __future__ import annotations
@@ -34,11 +30,11 @@ from typing import Any
 
 def configure_mujoco_backend() -> None:
     """
-    Choose a default MuJoCo GL backend when the caller has not set one.
+    Pick a safe default graphics backend for MuJoCo.
 
-    Linux training nodes usually use EGL for headless rendering, while macOS
-    generally needs GLFW. Windows is left unchanged because forcing the wrong
-    backend there can break imports.
+    MuJoCo needs a rendering backend even for headless jobs that only create
+    videos at the end. Different operating systems prefer different backends,
+    so this chooses a default only when the caller has not already chosen one.
     """
     if "MUJOCO_GL" in os.environ:
         return
@@ -114,7 +110,12 @@ TASK_SPECS = {
 
 
 def _get_task_spec(task_name: str) -> TaskSpec:
-    """Look up the task metadata used by training and visualization entrypoints."""
+    """
+    Fetch the small info bundle that describes one task.
+
+    This keeps task-specific names and labels in one place so the rest of the
+    code can say "give me the dance task" without hardcoding strings everywhere.
+    """
     try:
         return TASK_SPECS[task_name]
     except KeyError as exc:
@@ -123,7 +124,7 @@ def _get_task_spec(task_name: str) -> TaskSpec:
 
 
 def _import_onnx_exporter():
-    """Import the ONNX exporter without assuming one package execution style."""
+    """Load the ONNX export helper in a way that works from either run style."""
     if __package__ in (None, ""):
         from locomotion.onnx_export import export_policy_to_onnx
     else:
@@ -139,7 +140,12 @@ def _build_summary_payload(
     *,
     task_name: str,
 ) -> dict[str, Any]:
-    """Add metadata to the monitor summary before writing it to disk."""
+    """
+    Add extra facts to the summary before saving it.
+
+    The monitor knows the reward history, but this helper adds context like the
+    task name, chosen settings, and start/end times.
+    """
     payload = dict(summary)
     payload["task"] = task_name
     payload["config"] = config.to_dict()
@@ -155,7 +161,7 @@ def _log_training_config(
     *,
     task_name: str,
 ) -> None:
-    """Log the training configuration in a compact aligned block."""
+    """Print the chosen task and settings in a readable block for the log."""
     logger.info("Task:")
     logger.info("  %-30s: %s", "name", task_name)
     logger.info("  %-30s: %s", "description", _get_task_spec(task_name).description)
@@ -167,7 +173,7 @@ def _log_training_config(
 
 
 def _log_jax_devices(logger: logging.Logger) -> None:
-    """Log the JAX devices visible to the current runtime."""
+    """Print which CPU/GPU devices JAX can see before training starts."""
     devices = jax.devices()
     logger.info("JAX devices available: %s", len(devices))
     for index, device in enumerate(devices):
@@ -176,7 +182,7 @@ def _log_jax_devices(logger: logging.Logger) -> None:
 
 
 def _log_training_summary(summary: dict[str, Any], logger: logging.Logger) -> None:
-    """Log the post-training summary block if evaluations were recorded."""
+    """Print the final reward summary after training finishes."""
     logger.info("")
     if not summary:
         logger.warning("Training finished without evaluation metrics to summarize")
@@ -202,7 +208,12 @@ def _resolve_output_dir(
     test_mode: bool,
     task_name: str,
 ) -> Path:
-    """Resolve the output directory from CLI input or package defaults."""
+    """
+    Decide where this run should save its files.
+
+    If the user passed an explicit output folder, use it. Otherwise, build the
+    usual "latest train/test" folder for the selected task.
+    """
     if output_dir_arg is not None:
         return resolve_output_path(output_dir_arg)
 
@@ -211,7 +222,12 @@ def _resolve_output_dir(
 
 
 def _prepare_output_dir(output_dir: Path) -> None:
-    """Start each run from a clean output directory."""
+    """
+    Make sure the output folder starts empty for this run.
+
+    That prevents old artifacts from a previous run from being mistaken for new
+    results.
+    """
     if output_dir.exists():
         shutil.rmtree(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -225,15 +241,22 @@ def train_bittle(
     task_name: str = "locomotion",
 ) -> dict[str, Any]:
     """
-    Train a Bittle policy for the selected task and write artifacts to ``output_dir``.
+    Run one full training job and save the outputs.
 
-    Returns:
-        A small result dictionary so sweep runners can inspect success status,
-        summary metrics, and the final policy objects.
+    In everyday terms, this function is:
+
+    - create the environment
+    - start PPO training
+    - save the trained policy in a few formats
+    - save the human-facing artifacts and summary
+
+    It returns a small status dictionary so the sweep runner can tell whether
+    the job finished cleanly.
     """
     output_dir = resolve_output_path(output_dir)
     task_spec = _get_task_spec(task_name)
 
+    # Log the "what are we about to do?" header first so the run log is readable.
     logger.info("=" * 80)
     logger.info(task_spec.banner_title)
     logger.info("=" * 80)
@@ -246,6 +269,8 @@ def train_bittle(
     _log_training_config(config, logger, task_name=task_name)
     _log_jax_devices(logger)
 
+    # Register the chosen environment class with Brax, then build one instance
+    # so PPO knows what world it will be training in.
     envs.register_environment(task_spec.env_name, task_spec.env_class)
     logger.info("Registered %s environment", task_spec.env_name)
 
@@ -258,6 +283,8 @@ def train_bittle(
     monitor = TrainingMonitor(output_dir, config.num_timesteps, logger, env=env)
     checkpoint_callback = policy_params_callback(output_dir, logger, monitor=monitor)
 
+    # Hand the whole job over to Brax PPO. This is the part that actually does
+    # the repeated trial-and-error learning.
     logger.info("Starting training...")
     start_time = datetime.now()
 
@@ -286,6 +313,7 @@ def train_bittle(
     end_time = datetime.now()
     training_time = (end_time - start_time).total_seconds()
 
+    # Training is done. From here on, we are packaging the results.
     logger.info("")
     logger.info("=" * 80)
     logger.info("TRAINING COMPLETED")
@@ -305,6 +333,7 @@ def train_bittle(
     summary = monitor.get_summary()
     _log_training_summary(summary, logger)
 
+    # Save the final learned parameters in the native Brax/JAX format.
     model_dir = output_dir / "models"
     model_dir.mkdir(parents=True, exist_ok=True)
     final_model_path = model_dir / "final_policy"
@@ -313,11 +342,13 @@ def train_bittle(
     model.save_params(str(final_model_path), params)
     logger.info("Model saved successfully")
 
+    # Save a second copy in the legacy project location used by other tools.
     policy_export_path = output_dir / "policy.pt"
     logger.info("Exporting policy to %s...", policy_export_path)
     model.save_params(str(policy_export_path), params)
     logger.info("Policy exported successfully")
 
+    # Export ONNX so the policy can be loaded outside the training stack.
     export_policy_to_onnx = _import_onnx_exporter()
     onnx_export_path = output_dir / "policy.onnx"
     logger.info("Exporting policy to ONNX format at %s...", onnx_export_path)
@@ -335,6 +366,11 @@ def train_bittle(
     with open(summary_path, "w", encoding="utf-8") as file_handle:
         json.dump(summary_payload, file_handle, indent=2)
     logger.info("Saved training summary to %s", summary_path)
+
+    # Make sure the monitor uses the final policy, then ask it to write the
+    # final plot, metrics JSON, and rollout video.
+    monitor.make_inference_fn_cached = make_inference_fn(params)
+    monitor.finalize()
     logger.info("=" * 80)
 
     return {
@@ -346,18 +382,26 @@ def train_bittle(
 
 
 def main() -> None:
-    """Parse the CLI and launch one training run."""
+    """
+    Read terminal arguments, prepare the run folder, and launch training.
+
+    This is the small wrapper that turns `python locomotion/train.py ...` into a
+    real training job.
+    """
     args = parse_args()
     output_dir = _resolve_output_dir(
         args.output_dir,
         test_mode=args.test,
         task_name=args.task,
     )
+
+    # Start from a clean folder so each run tells a clear story.
     _prepare_output_dir(output_dir)
 
     logger = setup_logging(output_dir, level=getattr(logging, args.log_level.upper()))
-    config = TrainingConfig(test_mode=args.test)
+    config = TrainingConfig.for_task(args.task, test_mode=args.test)
 
+    # Run one training job, then return success/failure to the shell.
     results = train_bittle(
         config=config,
         xml_path=args.xml_path,

@@ -1,22 +1,20 @@
 #!/usr/bin/env python3
 """
-Coordinate hyperparameter sweeps for Bittle PPO training.
+Run many training experiments and compare the results.
 
-This script has two modes:
+This script is the experiment manager for hyperparameter sweeps. In plain
+language, it does one of two jobs:
 
-1. Sweep mode:
-   The parent process reads a JSON list of config overrides, creates one output
-   directory per trial, launches each trial as a child Python process, and
-   ranks the successful runs by a chosen metric.
+1. parent mode:
+   read a list of trial settings, launch one training job per trial, and rank
+   the finished runs
 
-2. Child-trial mode:
-   The spawned child process applies one set of overrides to ``TrainingConfig``,
-   runs training once, and writes ``trial_result.json`` back into its trial
-   directory.
+2. child mode:
+   run one single trial with one single set of overrides and write the result
+   back to disk
 
-The separation keeps each training run isolated. A failed trial can exit
-cleanly without leaving the parent process in a partially initialized JAX or
-MuJoCo state.
+The parent/child split keeps runs isolated from each other so one bad trial
+does not poison the whole sweep process.
 """
 
 from __future__ import annotations
@@ -57,7 +55,7 @@ TASK_CHOICES = ("locomotion", "dance")
 
 @dataclass(slots=True)
 class TrialRecord:
-    """Serializable summary of one trial within a sweep."""
+    """A plain data record describing one finished trial."""
 
     trial_id: int
     trial_dir: str
@@ -72,7 +70,7 @@ class TrialRecord:
 
 @dataclass(slots=True)
 class RunningTrial:
-    """Bookkeeping for one currently running child trial process."""
+    """Small bookkeeping object for a trial that is still running right now."""
 
     trial_id: int
     trial_dir: Path
@@ -82,13 +80,13 @@ class RunningTrial:
 
 
 def _resolve_from_locomotion(path_str: str | os.PathLike[str]) -> Path:
-    """Resolve a path relative to ``locomotion/`` unless it is absolute."""
+    """Interpret a path relative to `locomotion/` unless it is already absolute."""
     path = Path(path_str)
     return path if path.is_absolute() else (LOCOMOTION_DIR / path).resolve()
 
 
 def _load_trials(trials_json: Path) -> list[dict[str, Any]]:
-    """Load and validate the sweep override list."""
+    """Read the trial list from JSON and make sure it has the expected shape."""
     data = json.loads(trials_json.read_text(encoding="utf-8"))
     if not isinstance(data, list) or not all(isinstance(item, dict) for item in data):
         raise ValueError(
@@ -99,7 +97,7 @@ def _load_trials(trials_json: Path) -> list[dict[str, Any]]:
 
 
 def _safe_name(value: str) -> str:
-    """Convert a human-readable override string into a filesystem-safe token."""
+    """Clean up text so it is safe to use inside a folder name."""
     translation_table = str.maketrans(
         {
             " ": "",
@@ -115,13 +113,13 @@ def _safe_name(value: str) -> str:
 
 
 def _trial_tag(overrides: dict[str, Any]) -> str:
-    """Build a stable directory suffix from sorted override key/value pairs."""
+    """Turn one trial's override settings into a readable folder-name suffix."""
     override_pairs = [f"{key}={overrides[key]}" for key in sorted(overrides)]
     return _safe_name("__".join(override_pairs))
 
 
 def _read_trial_result(trial_dir: Path) -> dict[str, Any]:
-    """Read the trial result written by the child process, if present."""
+    """Load the result file for one trial, or return a failure stub if it is missing."""
     result_path = trial_dir / RESULT_FILENAME
     if not result_path.exists():
         return {"success": False, "error": f"{RESULT_FILENAME} missing", "summary": {}}
@@ -129,19 +127,19 @@ def _read_trial_result(trial_dir: Path) -> dict[str, Any]:
 
 
 def _write_json(path: Path, payload: Any) -> None:
-    """Write JSON with parent directories created automatically."""
+    """Write one JSON file, creating parent folders if needed."""
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
 def _append_jsonl(path: Path, payload: Any) -> None:
-    """Append one JSON object per line for easy streaming and inspection."""
+    """Append one JSON row to a `.jsonl` log file."""
     with path.open("a", encoding="utf-8") as file_handle:
         file_handle.write(json.dumps(payload) + "\n")
 
 
 def _build_sweep_output_dir(args: argparse.Namespace) -> Path:
-    """Choose the sweep output directory from CLI input or a timestamp."""
+    """Decide which top-level folder should hold this sweep's output."""
     if args.base_output_dir:
         return _resolve_from_locomotion(args.base_output_dir)
 
@@ -158,7 +156,7 @@ def _build_trial_command(
     test_mode: bool,
     overrides: dict[str, Any],
 ) -> list[str]:
-    """Build the subprocess command that runs exactly one child trial."""
+    """Assemble the shell command used to launch one child trial."""
     command = [
         sys.executable,
         str(THIS_FILE),
@@ -181,7 +179,7 @@ def _build_trial_command(
 
 
 def _build_child_env(cuda_visible_devices: str | None) -> dict[str, str]:
-    """Build the environment mapping for one child training process."""
+    """Build the environment variables for one child process."""
     child_env = os.environ.copy()
     if cuda_visible_devices is not None:
         child_env["CUDA_VISIBLE_DEVICES"] = cuda_visible_devices
@@ -198,7 +196,7 @@ def _start_trial_process(
     overrides: dict[str, Any],
     cuda_visible_devices: str | None = None,
 ) -> subprocess.Popen[Any]:
-    """Start one child training process without waiting for completion."""
+    """Launch one trial process and immediately return control to the caller."""
     command = _build_trial_command(
         trial_id=trial_id,
         xml_path=xml_path,
@@ -214,7 +212,7 @@ def _start_trial_process(
 
 
 def _parse_gpu_csv(gpu_csv: str | None) -> list[str]:
-    """Split a comma-separated GPU list into normalized slot tokens."""
+    """Turn a comma-separated GPU string like `0,1,2` into a clean list."""
     if gpu_csv is None:
         return []
     return [gpu_id.strip() for gpu_id in gpu_csv.split(",") if gpu_id.strip()]
@@ -222,11 +220,10 @@ def _parse_gpu_csv(gpu_csv: str | None) -> list[str]:
 
 def _discover_gpu_slots() -> list[str]:
     """
-    Discover GPU ids visible to the current process.
+    Figure out which GPU ids are available to use.
 
-    Preference order:
-    1. explicit ``CUDA_VISIBLE_DEVICES`` inherited from the caller
-    2. all system GPUs reported by ``nvidia-smi``
+    First respect any explicit GPU restriction already in the environment. If
+    there is none, ask `nvidia-smi` what GPUs exist on the machine.
     """
     visible_devices = _parse_gpu_csv(os.environ.get("CUDA_VISIBLE_DEVICES"))
     if visible_devices:
@@ -250,7 +247,7 @@ def _discover_gpu_slots() -> list[str]:
 
 
 def _resolve_gpu_slots(args: argparse.Namespace) -> list[str]:
-    """Resolve the GPU ids available for exclusive child-trial scheduling."""
+    """Choose the GPU ids that child trials are allowed to use."""
     if args.available_gpus:
         return _parse_gpu_csv(args.available_gpus)
     return _discover_gpu_slots()
@@ -259,7 +256,7 @@ def _resolve_gpu_slots(args: argparse.Namespace) -> list[str]:
 def _rank_successful_trials(
     rows: list[TrialRecord],
 ) -> list[TrialRecord]:
-    """Return successful trials sorted by descending score."""
+    """Keep only successful trials and sort them from best score to worst."""
     scored_rows = [
         row
         for row in rows
@@ -279,7 +276,7 @@ def _print_sweep_header(
     gpu_slots: list[str],
     num_trials: int,
 ) -> None:
-    """Print a compact summary of the sweep about to run."""
+    """Print the "about to start" summary block for the sweep."""
     print(f"Sweep starting. Trials: {num_trials}")
     print(f"Trials file: {trials_path}")
     print(f"Output dir:  {output_dir}")
@@ -301,7 +298,7 @@ def _make_trial_record(
     exit_code: int,
     result: dict[str, Any],
 ) -> TrialRecord:
-    """Normalize one child's result into a typed sweep record."""
+    """Convert one child's raw result JSON into a clean typed record."""
     summary = result.get("summary", {}) or {}
     success = bool(result.get("success", False))
     score = summary.get(metric)
@@ -328,7 +325,7 @@ def _prepare_trial_dir(
     *,
     overwrite: bool,
 ) -> None:
-    """Create one trial directory and persist the override payload used to run it."""
+    """Create the folder for one trial and save its chosen settings."""
     if trial_dir.exists() and overwrite:
         shutil.rmtree(trial_dir)
 
@@ -346,7 +343,7 @@ def _record_trial_completion(
     results_jsonl: Path,
     all_rows: list[TrialRecord],
 ) -> TrialRecord:
-    """Read a finished child's result file, append it to outputs, and print status."""
+    """Record a finished trial in the sweep-wide outputs and print its status."""
     result = _read_trial_result(trial_dir)
     row = _make_trial_record(
         trial_id=trial_id,
@@ -368,7 +365,16 @@ def _record_trial_completion(
 
 
 def sweep_main(args: argparse.Namespace) -> int:
-    """Run all requested trials and build the final leaderboard."""
+    """
+    Run the whole sweep from start to finish.
+
+    This is the parent-mode workflow:
+
+    - load the trial list
+    - launch child runs
+    - watch them finish
+    - build the leaderboard at the end
+    """
     if args.max_concurrent_trials < 1:
         print("ERROR: --max_concurrent_trials must be at least 1.")
         return 2
@@ -378,10 +384,12 @@ def sweep_main(args: argparse.Namespace) -> int:
         print(f"ERROR: trials_json not found: {trials_path}")
         return 2
 
+    # Read the trial list and optionally trim it for quick experiments.
     trials = _load_trials(trials_path)
     if args.max_trials is not None:
         trials = trials[: args.max_trials]
 
+    # Prepare the sweep-wide output files and any GPU scheduling information.
     output_dir = _build_sweep_output_dir(args)
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -421,6 +429,7 @@ def sweep_main(args: argparse.Namespace) -> int:
     all_rows: list[TrialRecord] = []
 
     if max_concurrent_trials <= 1:
+        # Simple mode: run one trial, wait for it, then move to the next.
         for trial_id, overrides in enumerate(trials, start=1):
             tag = _trial_tag(overrides)
             trial_dir = output_dir / f"trial_{trial_id:03d}__{tag}"
@@ -446,6 +455,8 @@ def sweep_main(args: argparse.Namespace) -> int:
                 all_rows=all_rows,
             )
     else:
+        # Parallel mode: treat GPUs like worker slots and keep feeding them
+        # trials until everything has completed.
         free_gpu_slots = gpu_slots.copy()
         slot_order = {gpu_slot: index for index, gpu_slot in enumerate(gpu_slots)}
         running_trials: list[RunningTrial] = []
@@ -489,6 +500,7 @@ def sweep_main(args: argparse.Namespace) -> int:
                     )
                 )
 
+            # Poll every running child to see whether any of them finished.
             completed_this_tick = False
             for running_trial in list(running_trials):
                 exit_code = running_trial.process.poll()
@@ -514,9 +526,11 @@ def sweep_main(args: argparse.Namespace) -> int:
                     all_rows=all_rows,
                 )
 
+            # If nothing finished this pass, sleep briefly before polling again.
             if running_trials and not completed_this_tick:
                 time.sleep(1.0)
 
+    # Once all trials are done, write the final leaderboard and the "best trial" file.
     leaderboard = _rank_successful_trials(all_rows)
     _write_json(leaderboard_json, [asdict(row) for row in leaderboard])
 
@@ -536,7 +550,7 @@ def sweep_main(args: argparse.Namespace) -> int:
 
 
 def _configure_child_mujoco_backend() -> None:
-    """Apply a platform-appropriate default MuJoCo backend for child trials."""
+    """Pick a safe MuJoCo rendering backend for one child trial process."""
     if "MUJOCO_GL" in os.environ:
         return
 
@@ -548,7 +562,7 @@ def _configure_child_mujoco_backend() -> None:
 
 
 def _load_inline_overrides(payload: str) -> dict[str, Any]:
-    """Decode the inline JSON blob passed from the parent process."""
+    """Decode the one-trial override JSON passed in by the parent process."""
     overrides = json.loads(payload)
     if not isinstance(overrides, dict):
         raise ValueError("overrides_json_inline must decode to a dict")
@@ -556,7 +570,7 @@ def _load_inline_overrides(payload: str) -> dict[str, Any]:
 
 
 def _apply_overrides(config: Any, overrides: dict[str, Any]) -> None:
-    """Apply sweep overrides to ``TrainingConfig`` with strict field checking."""
+    """Copy the chosen trial overrides onto the training config, with validation."""
     for key, value in overrides.items():
         if not hasattr(config, key):
             raise ValueError(f"Override '{key}' is not a field on TrainingConfig")
@@ -564,7 +578,12 @@ def _apply_overrides(config: Any, overrides: dict[str, Any]) -> None:
 
 
 def _warn_on_awkward_batch_shapes(config: Any, logger: Any) -> None:
-    """Warn about common batch-size relationships that tend to cause issues."""
+    """
+    Warn about setting combinations that are known to be awkward or invalid.
+
+    These warnings try to catch "this probably will not divide evenly" mistakes
+    before the expensive part of training burns time.
+    """
     if (config.batch_size * config.num_minibatches) % config.num_envs != 0:
         logger.warning(
             "batch_size * num_minibatches is not divisible by num_envs. "
@@ -587,7 +606,12 @@ def _warn_on_awkward_batch_shapes(config: Any, logger: Any) -> None:
 
 
 def run_one_trial_main(args: argparse.Namespace) -> int:
-    """Run one child training job and write ``trial_result.json``."""
+    """
+    Run one single trial in child mode.
+
+    This is the worker-side workflow: build the config, launch training, and
+    write one `trial_result.json` file for the parent to read later.
+    """
     _configure_child_mujoco_backend()
 
     if str(REPO_ROOT) not in sys.path:
@@ -596,6 +620,7 @@ def run_one_trial_main(args: argparse.Namespace) -> int:
     trial_dir = Path(args.trial_dir).resolve()
     trial_dir.mkdir(parents=True, exist_ok=True)
 
+    # Read the exact override values that define this one trial.
     overrides = _load_inline_overrides(args.overrides_json_inline)
 
     from locomotion.train import train_bittle
@@ -604,10 +629,12 @@ def run_one_trial_main(args: argparse.Namespace) -> int:
 
     logger = setup_logging(trial_dir, level=getattr(__import__("logging"), "INFO"))
 
-    config = TrainingConfig(test_mode=args.test)
+    # Start from the task preset, then replace any fields this trial wants to vary.
+    config = TrainingConfig.for_task(args.task, test_mode=args.test)
     _apply_overrides(config, overrides)
     _warn_on_awkward_batch_shapes(config, logger)
 
+    # Run training and convert the result into the sweep's standard result format.
     outcome = train_bittle(
         config=config,
         xml_path=args.xml_path,
@@ -628,7 +655,7 @@ def run_one_trial_main(args: argparse.Namespace) -> int:
 
 
 def build_argparser() -> argparse.ArgumentParser:
-    """Build the CLI shared by both the parent and child modes."""
+    """Define the command-line options used by both parent and child modes."""
     parser = argparse.ArgumentParser(
         description=(
             "Run a Bittle PPO hyperparameter sweep or, internally, a single "
@@ -714,7 +741,7 @@ def build_argparser() -> argparse.ArgumentParser:
 
 
 def main() -> int:
-    """Parse CLI arguments and dispatch to parent or child mode."""
+    """Read terminal arguments and decide whether this process is parent or child."""
     args = build_argparser().parse_args()
 
     if args._run_one_trial:

@@ -1,7 +1,25 @@
 [
   {
-    "num_timesteps": 100000,
-    "num_evals": 8,
+    "num_timesteps": 150000,
+    "num_evals": 6,
+    "episode_length": 200,
+    "num_envs": 24,
+    "batch_size": 24,
+    "unroll_length": 8,
+    "num_minibatches": 4
+  },
+  {
+    "num_timesteps": 200000,
+    "num_evals": 6,
+    "episode_length": 200,
+    "num_envs": 24,
+    "batch_size": 24,
+    "unroll_length": 8,
+    "num_minibatches": 4
+  },
+  {
+    "num_timesteps": 150000,
+    "num_evals": 6,
     "episode_length": 200,
     "num_envs": 32,
     "batch_size": 32,
@@ -9,29 +27,38 @@
     "num_minibatches": 4
   },
   {
-    "num_timesteps": 100000,
-    "num_evals": 8,
+    "num_timesteps": 200000,
+    "num_evals": 6,
     "episode_length": 200,
-    "num_envs": 64,
+    "num_envs": 32,
+    "batch_size": 32,
+    "unroll_length": 8,
+    "num_minibatches": 4
+  },
+  {
+    "num_timesteps": 250000,
+    "num_evals": 6,
+    "episode_length": 200,
+    "num_envs": 32,
+    "batch_size": 32,
+    "unroll_length": 8,
+    "num_minibatches": 4
+  },
+  {
+    "num_timesteps": 200000,
+    "num_evals": 6,
+    "episode_length": 200,
+    "num_envs": 32,
     "batch_size": 64,
     "unroll_length": 8,
     "num_minibatches": 4
   },
   {
-    "num_timesteps": 100000,
-    "num_evals": 8,
+    "num_timesteps": 200000,
+    "num_evals": 6,
     "episode_length": 200,
-    "num_envs": 64,
-    "batch_size": 128,
-    "unroll_length": 8,
-    "num_minibatches": 4
-  },
-  {
-    "num_timesteps": 100000,
-    "num_evals": 8,
-    "episode_length": 200,
-    "num_envs": 128,
-    "batch_size": 128,
+    "num_envs": 48,
+    "batch_size": 48,
     "unroll_length": 8,
     "num_minibatches": 4
   }
