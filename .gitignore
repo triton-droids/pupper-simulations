@@ -2,8 +2,10 @@
 renderingEnv/
 .DS_Store
 
+outputs/
 Scripts/outputs/*
 !Scripts/outputs/.gitkeep
+Scripts/Outputs/
 locomotion/sim-outputs/media/*
 !locomotion/sim-outputs/media/.gitkeep
 locomotion/sim-outputs/policies/*
@@ -16,3 +18,5 @@ MUJOCO_LOG.TXT
 ssh
 
 .env
+.sweep_counter
+Scripts/.sweep_counter

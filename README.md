@@ -1,84 +1,98 @@
 # Pupper New
 
-Reorganizes repository for the Triton Pupper Simulations team. This project centers on MuJoCo and Brax-based simulation, reinforcement learning, and visualization for the Bittle quadruped.
+MuJoCo + Brax training, sweeping, and visualization for the Bittle quadruped.
 
-## Overview
+This repo is organized around three questions:
 
-This repository contains:
+- What can the robot be asked to do?
+- How is training run and monitored?
+- What scripts do you launch directly?
 
-- a Brax locomotion environment for Bittle
-- training utilities and hyperparameter sweep tooling
-- visualization scripts for trained policies
-- asset conversion and inspection tools for the robot model
-- MuJoCo assets, meshes, MJCF files, URDF, and Xacro sources
-
-The current repository is organized around responsibilities:
-
-- **root files** define the project and environment
-- **`Scripts/`** contains user-facing entry scripts
-- **`locomotion/`** contains the training and environment logic
-- **`asset_visualization/`** contains model conversion and model inspection utilities
-- **`assets/`** contains robot description files and meshes
-- **`tests/`** contains validation helpers
-- **`docs/`** contains setup and infrastructure documentation
-
-## Current Repository Structure
+## Repository Layout
 
 ```text
-pupper-simulations/
-├── README.md
-├── pyproject.toml
-├── .gitignore
-├── .env                         # local only, gitignored
-│
-├── Scripts/
-│   ├── sweep.sh                 # deploy and run remote hyperparameter sweeps
-│   └── visualize.py             # load ONNX policy and render rollout video
-│
-├── locomotion/
-│   ├── bittle_env.py            # Brax environment definition for Bittle
-│   ├── domain_randomization.py  # domain randomization logic for training
-│   ├── onnx_export.py           # export trained policy to ONNX
-│   ├── train.py                 # main training entrypoint
-│   ├── training_config.py       # training configuration container
-│   ├── training_helpers.py      # logging, checkpointing, CLI helpers
-│   ├── training_monitor.py      # metrics, plots, and training monitoring
-│   ├── export/
-│   │   └── convert_onnx_ir_version.py
-│   └── sweeps/
-│       ├── hparam_sweep.py      # sweep runner
-│       └── trials_2080ti_screen.json
-│
-├── asset_visualization/
-│   ├── constants.py             # model and path constants
-│   ├── logging_utils.py         # logger setup
-│   ├── main.py                  # interactive MuJoCo model viewer
-│   └── model_converter.py       # URDF to MJCF conversion utilities
-│
-├── assets/
-│   └── descriptions/
-│       └── bittle/
-│           ├── meshes/
-│           │   └── stl/
-│           ├── mjcf/
-│           │   ├── bittle.xml
-│           │   ├── bittle_adapted.xml
-│           │   ├── bittle_adapted_scene.xml
-│           │   ├── bittle_assets.xml
-│           │   └── bittle_body.xml
-│           ├── urdf/
-│           │   └── bittle.urdf
-│           └── xacro/
-│
-├── tests/
-│   └── test_env_build.py        # quick environment build check
-│
-├── docs/
-│   ├── SETUP.md
-│   └── How to SSH into the ML Node.pdf
-│
-└── pupper_simulations.egg-info/ # generated packaging metadata
+Pupper New/
+|-- README.md
+|-- pyproject.toml
+|-- Scripts/
+|   |-- train.py
+|   |-- sweep.sh
+|   |-- visualize.py
+|   `-- Outputs/
+|-- locomotion/
+|   |-- __init__.py
+|   |-- paths.py
+|   |-- domain_randomization.py
+|   |-- onnx_export.py
+|   |-- train_compat.py
+|   |-- training/
+|   |   |-- __init__.py
+|   |   |-- run.py
+|   |   |-- config.py
+|   |   |-- helpers.py
+|   |   `-- monitor.py
+|   |-- tasks/
+|   |   |-- __init__.py
+|   |   |-- README.md
+|   |   |-- bittle_walk_env.py
+|   |   |-- bittle_walking_hparams.json
+|   |   |-- bittle_dance_env.py
+|   |   `-- bittle_dance_hparams.json
+|   |-- sweeps/
+|   |   |-- README.md
+|   |   |-- hparam_sweep.py
+|   |   `-- training_budget_and_batching_sweep.json
+|   `-- export/
+|       `-- convert_onnx_ir_version.py
+|-- asset_visualization/
+|-- assets/
+|-- docs/
+`-- tests/
 ```
+
+## What Lives Where
+
+### `Scripts/`
+
+This is the user-facing layer.
+
+- `Scripts/train.py` is the main local training entrypoint.
+- `Scripts/sweep.sh` launches a remote hyperparameter sweep and syncs results back.
+- `Scripts/visualize.py` loads a policy and renders a rollout.
+- `Scripts/Outputs/` is the default output root for training runs, sweep runs, and visualization output.
+
+### `locomotion/training/`
+
+This is the training implementation layer.
+
+- `run.py` wires the whole training job together.
+- `config.py` holds task-aware PPO presets.
+- `helpers.py` handles CLI parsing, logging, and checkpoint callbacks.
+- `monitor.py` writes final metrics, plots, and videos.
+
+`locomotion/train_compat.py` is only a compatibility shim for older commands. The preferred entrypoint is `Scripts/train.py`.
+
+### `locomotion/tasks/`
+
+This is the task-definition layer.
+
+- `bittle_walk_env.py` defines the walking task.
+- `bittle_dance_env.py` defines the dance task.
+- `bittle_walking_hparams.json` and `bittle_dance_hparams.json` hold task-side hyperparameter sweep entries.
+- `locomotion/tasks/README.md` explains what those task-side hyperparameters do in plain language.
+
+### `locomotion/sweeps/`
+
+This is the sweep-coordination layer.
+
+- `README.md` explains the trainer-side sweep parameters in plain language.
+- `training_budget_and_batching_sweep.json` controls trainer-side values like total training budget, batch size, minibatching, and parallel environment count.
+- `hparam_sweep.py` combines the trainer-side JSON with the task-side JSON for the selected task and runs every combination.
+
+### `assets/` and `asset_visualization/`
+
+- `assets/` contains the Bittle MJCF, meshes, URDF, and related robot-description files.
+- `asset_visualization/` contains model-inspection utilities for opening and checking the robot in MuJoCo.
 
 ## Installation
 
@@ -86,28 +100,28 @@ pupper-simulations/
 
 - Python 3.11 or newer
 - Git
-- CUDA 12 compatible environment if you plan to use GPU-backed JAX training
-- Git Bash on Windows if you want to run the shell scripts in `Scripts/`
+- CUDA 12 compatible environment if you plan to train on GPU-backed JAX
+- Git Bash on Windows if you want to run `Scripts/sweep.sh`
 
 ### Setup
 
-1. Clone the repository:
-
 ```bash
 git clone <repo-url>
-cd pupper-simulations
+cd "Pupper New"
+python -m venv .venv
 ```
 
-2. Create and activate a virtual environment:
+Activate the virtual environment:
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-# On Windows (PowerShell): .venv\Scripts\Activate.ps1
-# On Windows (Git Bash): source .venv/Scripts/activate
+# PowerShell
+.venv\Scripts\Activate.ps1
+
+# Git Bash
+source .venv/Scripts/activate
 ```
 
-3. Install the project from `pyproject.toml`:
+Install the project:
 
 ```bash
 pip install -e .
@@ -120,86 +134,85 @@ pip install -e .[training]
 pip install -e .[dev]
 ```
 
-## What Each Area Does
+## Main Workflow
 
-### `Scripts/`
-User-facing operational entrypoints.
+### 1. Train locally
 
-- `sweep.sh` pushes your branch, connects to the remote training node, runs a hyperparameter sweep, and syncs artifacts back locally.
-- `visualize.py` loads a trained ONNX policy, runs rollout in the Bittle environment, and writes MP4 and GIF outputs.
-
-### `locomotion/`
-Core training and environment code.
-
-- defines the Bittle Brax environment
-- defines training configuration and monitoring
-- runs training
-- exports trained policies
-- runs parameter sweeps
-
-### `asset_visualization/`
-Model-side utilities.
-
-- converts model descriptions into MJCF components when needed
-- opens the MuJoCo viewer to inspect the Bittle model
-- provides asset-related constants and logging helpers
-
-### `assets/`
-Robot description and simulation resources.
-
-- MJCF scene and body files
-- URDF source
-- Xacro source
-- STL meshes used by the MuJoCo model
-
-### `tests/`
-Quick validation helpers.
-
-- `test_env_build.py` is a smoke test that checks whether the Bittle environment can be constructed successfully.
-
-## Usage
-
-### 1. Train a policy locally
-
-From the repository root:
+Quick smoke test:
 
 ```bash
-python locomotion/train.py --test
+python Scripts/train.py --test
 ```
 
-For a full run:
+Full walking run:
 
 ```bash
-python locomotion/train.py
+python Scripts/train.py
 ```
 
-The training code uses the Bittle scene XML under:
+Full dance run:
 
-```text
-assets/descriptions/bittle/mjcf/bittle_adapted_scene.xml
+```bash
+python Scripts/train.py --task dance
 ```
 
-### 2. Run a hyperparameter sweep on the remote node
+By default, training outputs land in `Scripts/Outputs/` under a task-specific folder such as:
 
-From the repository root or by launching the script directly in PyCharm:
+- `Scripts/Outputs/bittle_walking_train_latest`
+- `Scripts/Outputs/bittle_dance_train_latest`
+- `Scripts/Outputs/bittle_walking_test_latest`
+- `Scripts/Outputs/bittle_dance_test_latest`
+
+Each run folder contains logs, checkpoints, model exports, and final human-facing artifacts such as:
+
+- `metrics/final_metrics.json`
+- `plots/final_progress.png`
+- `videos/final_video.mp4`
+- `training_summary.json`
+
+### 2. Run a sweep
 
 ```bash
 bash Scripts/sweep.sh
 ```
 
-Current behavior of `Scripts/sweep.sh`:
+Current sweep flow:
 
-- loads environment variables from the repository root `.env`
-- commits and pushes the current branch
-- SSHes into the remote ML node
-- runs `locomotion/sweeps/hparam_sweep.py`
-- syncs sweep artifacts back to a local folder under:
+1. `Scripts/sweep.sh` loads `.env`, prepares the remote command, and reserves the next local folder name.
+2. The sweep runner reads trainer-side entries from `locomotion/sweeps/training_budget_and_batching_sweep.json`.
+3. It also reads task-side entries from the matching task JSON in `locomotion/tasks/`.
+4. It runs every trainer entry against every task entry.
+5. Results sync back into a numbered folder under `Scripts/Outputs/`.
+
+Local sweep outputs now look like this:
 
 ```text
-Scripts/outputs/sweeps/
+Scripts/Outputs/
+`-- Sweep #N/
+    |-- results.jsonl
+    |-- leaderboard.json
+    |-- best_trial.json
+    |-- trial_001__train__...__task__.../
+    |-- trial_002__train__...__task__.../
+    `-- ...
 ```
 
-If you want to change remote connection details, branch name, or key paths, edit `.env` and consult `docs/SETUP.md`.
+Each `trial_...` folder is one complete combined run. It contains:
+
+- `training_overrides.json`
+- `task_overrides.json`
+- `combined_overrides.json`
+- `trial_result.json`
+- `training_summary.json`
+- `metrics/final_metrics.json`
+- `plots/final_progress.png`
+- `videos/final_video.mp4`
+- model exports and checkpoints
+
+Important distinction:
+
+- `locomotion/sweeps/training_budget_and_batching_sweep.json` changes how PPO training is budgeted and sliced up.
+- `locomotion/tasks/*.json` changes task-side environment behavior and reward weighting.
 
 ### 3. Visualize a trained policy
 
@@ -207,74 +220,60 @@ If you want to change remote connection details, branch name, or key paths, edit
 python Scripts/visualize.py
 ```
 
-Or provide an explicit ONNX policy path:
+You can also pass an explicit ONNX file:
 
 ```bash
-python Scripts/visualize.py outputs/bittle_train_latest/policy.onnx
+python Scripts/visualize.py Scripts/Outputs/bittle_dance_train_latest/policy.onnx
 ```
 
-`Scripts/visualize.py` searches common policy locations and writes rendered outputs to:
-
-```text
-outputs/visualize/
-```
-
-### 4. Inspect the robot model in MuJoCo
+### 4. Inspect the robot model
 
 ```bash
 python asset_visualization/main.py
 ```
 
-This launches the MuJoCo viewer for the Bittle model and uses the asset conversion utilities if the generated MJCF components are missing.
-
-### 5. Smoke test the environment build
+### 5. Run the test suite
 
 ```bash
-python tests/test_env_build.py
+python -m unittest
 ```
 
-This is useful after reorganizing asset paths or changing MJCF files.
+Or run a smaller targeted subset:
 
-## Dependencies
+```bash
+python -m unittest tests.test_env_build tests.test_hparam_sweep
+```
 
-Project dependencies are defined in `pyproject.toml`, not in `requirements.txt` files.
+## Tasks
 
-Core dependencies currently include:
+There are two canonical trainable tasks:
 
-- `numpy`
-- `mujoco`
-- `xacrodoc`
-- `ml_collections`
-- `jax[cuda12]`
-- `brax`
-- `opencv-python`
-- `matplotlib`
-- `onnx`
-- `onnxruntime`
+- `walking`
+- `dance`
 
-Optional groups:
+`locomotion` is still accepted as a compatibility alias for `walking`.
 
-- `training`: plotting, Pillow, TensorBoardX
-- `dev`: Jupyter and notebook tooling
+The task-specific hyperparameter reference lives in [locomotion/tasks/README.md](locomotion/tasks/README.md).
 
-## Development Notes
+## Outputs
 
-- Work on your own branch.
-- Use `docs/SETUP.md` for ML node and SSH setup.
-- Keep `.env`, `.venv`, local outputs, and IDE files out of version control.
-- If you move MJCF or mesh assets, update both Python paths and XML-relative asset references.
+`Scripts/Outputs/` is the default output root across the current workflow.
 
-## Known Caveats
+That includes:
 
-- The repository still contains some generated or local-only material in exports and archives that should not be treated as source of truth.
-- Local sweep artifacts currently sync into `Scripts/outputs/`, while visualization writes to `outputs/visualize/`. That is the current behavior, even though a future cleanup may consolidate outputs into a single top-level `outputs/` directory.
-- Asset path changes can break MuJoCo loading if `meshdir` or included MJCF asset references are not updated consistently.
+- local train/test runs
+- visualization output
+- numbered sweep folders like `Sweep #0`, `Sweep #1`, and so on
+
+Relative output paths are resolved under `Scripts/Outputs/` by `locomotion/paths.py`, so ad hoc names like `run_01` do not end up in whatever directory you happened to launch from.
+
+## Notes
+
+- `Scripts/sweep.sh` currently defaults to the dance task when it launches the remote sweep command.
+- The direct Python sweep runner in `locomotion/sweeps/hparam_sweep.py` supports task selection and task-side JSON overrides directly.
+- `locomotion/train_compat.py` exists only to avoid breaking older commands while the repo transitions to the `Scripts/train.py` entrypoint.
 
 ## Additional Documentation
 
-- `docs/SETUP.md` for environment and ML node setup
+- `docs/SETUP.md` for environment and ML-node setup
 - `docs/How to SSH into the ML Node.pdf` for SSH access instructions
-
-## Contributing
-
-For contributions, follow the team workflow documented in `docs/SETUP.md`, keep changes scoped to your branch, and include enough context for others to reproduce training or visualization results.

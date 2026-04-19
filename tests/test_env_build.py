@@ -11,15 +11,15 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from locomotion.bittle_env import BittleEnv
+from locomotion.tasks.bittle_walk_env import BittleWalkingEnv
 from locomotion.paths import DEFAULT_SCENE_PATH
 
 
 def main() -> int:
-    env_name = "bittle"
+    env_name = "bittle_walking"
     xml_path = str(DEFAULT_SCENE_PATH)
 
-    envs.register_environment(env_name, BittleEnv)
+    envs.register_environment(env_name, BittleWalkingEnv)
 
     try:
         envs.get_environment(env_name, xml_path=xml_path)

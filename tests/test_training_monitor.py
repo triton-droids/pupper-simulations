@@ -13,7 +13,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from locomotion.training_monitor import FINAL_METRICS_FILENAME, FINAL_PLOT_FILENAME, TrainingMonitor
+from locomotion.training.monitor import FINAL_METRICS_FILENAME, FINAL_PLOT_FILENAME, TrainingMonitor
 
 
 class TrainingMonitorTests(unittest.TestCase):

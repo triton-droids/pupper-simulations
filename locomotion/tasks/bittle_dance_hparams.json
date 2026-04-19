@@ -1,0 +1,37 @@
+[
+  {},
+  {
+    "action_scale": 0.35,
+    "kick_vel": 0.0,
+    "enable_kicks": false,
+    "dance_amplitude": 0.85,
+    "pose_tracking_scale": 4.5,
+    "stay_centered_scale": 1.25
+  },
+  {
+    "action_scale": 0.4,
+    "kick_vel": 0.0,
+    "enable_kicks": false,
+    "dance_amplitude": 0.95,
+    "upright_scale": 1.5,
+    "termination_scale": -24.0
+  },
+  {
+    "action_scale": 0.4,
+    "kick_vel": 0.0,
+    "enable_kicks": false,
+    "cycle_steps": 120,
+    "dance_amplitude": 1.0,
+    "bounce_tracking_scale": 1.75,
+    "stay_centered_scale": 1.2
+  },
+  {
+    "action_scale": 0.32,
+    "kick_vel": 0.0,
+    "enable_kicks": false,
+    "cycle_steps": 80,
+    "dance_amplitude": 0.8,
+    "pose_tracking_scale": 5.0,
+    "upright_scale": 1.5
+  }
+]

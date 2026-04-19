@@ -1,21 +1,29 @@
 """
-Custom Brax environment for the Bittle quadruped.
+Custom Brax environment for Bittle walking.
 
 High-level environment design
 -----------------------------
-This environment trains a policy to track commanded planar velocities while
-remaining upright, efficient, and smooth.
+This environment trains the robot to walk where it is asked to go while
+staying upright, smooth, and efficient.
+
+In plain terms, the robot is given a simple movement request:
+- walk forward or backward at a certain speed
+- drift a little left or right if asked
+- turn left or right at a certain rate
+
+So this task is not just "move somehow." It is closer to "walk at the
+requested pace and direction, like following a simple path instruction."
 
 Key design choices:
 
 - action space:
   The policy outputs joint position offsets relative to a learned default pose.
 - observation space:
-  The observation includes base orientation cues, the commanded velocity, joint
-  states, and a short history stack.
+  The observation includes balance cues, the requested walking direction and
+  turning rate, joint states, and a short history stack.
 - reward:
-  The reward mixes command tracking with penalties for instability, jerky
-  motion, slipping feet, excess torque, and early termination.
+  The reward mixes "did you walk the way you were asked?" with penalties for
+  wobbling, jerky motion, slipping feet, wasted effort, and falling.
 - robustness:
   Optional random kicks make the policy recover from small disturbances.
 
@@ -26,7 +34,9 @@ easier to understand.
 
 from __future__ import annotations
 
+import json
 import logging
+from pathlib import Path
 from typing import Any, Sequence
 
 import jax
@@ -96,6 +106,83 @@ COMMAND_RANGE_X = (-0.3, 0.6)
 COMMAND_RANGE_Y = (-0.3, 0.3)
 COMMAND_RANGE_YAW = (-0.5, 0.5)
 
+TASK_HPARAMS_FILENAME = "bittle_walking_hparams.json"
+TASK_HPARAMETER_KEYS = frozenset(
+    {
+        "obs_noise",
+        "action_scale",
+        "kick_vel",
+        "enable_kicks",
+        "n_frames",
+        "tracking_lin_vel_scale",
+        "tracking_ang_vel_scale",
+        "lin_vel_z_scale",
+        "ang_vel_xy_scale",
+        "orientation_scale",
+        "torques_scale",
+        "action_rate_scale",
+        "joint_acc_scale",
+        "stand_still_scale",
+        "termination_scale",
+        "feet_air_time_scale",
+        "foot_slip_scale",
+        "energy_scale",
+    }
+)
+
+
+def get_task_hparams_path() -> Path:
+    """
+    Return the JSON file that stores sweepable task settings for walking.
+
+    Keeping the path next to the environment code makes it easy to see which
+    JSON file belongs to which task.
+    """
+    return Path(__file__).with_name(TASK_HPARAMS_FILENAME)
+
+
+def _validate_task_hparam_entry(overrides: dict[str, Any]) -> dict[str, Any]:
+    """
+    Make sure one task-setting entry only contains supported knobs.
+
+    In plain terms, this rejects misspelled or unsupported keys before an
+    expensive training run starts.
+    """
+    cleaned: dict[str, Any] = {}
+
+    for key, value in overrides.items():
+        if key not in TASK_HPARAMETER_KEYS:
+            valid = ", ".join(sorted(TASK_HPARAMETER_KEYS))
+            raise ValueError(
+                f"Unsupported walking task hyperparameter '{key}'. "
+                f"Expected one of: {valid}"
+            )
+        cleaned[key] = value
+
+    return cleaned
+
+
+def load_task_hparam_sweep(path: str | Path | None = None) -> list[dict[str, Any]]:
+    """
+    Load the walking task sweep JSON as a list of override dictionaries.
+
+    Each item in the returned list is one environment-side setting bundle the
+    sweep runner can try, for example a gentler action scale or different
+    reward weights.
+    """
+    resolved_path = Path(path) if path is not None else get_task_hparams_path()
+    if not resolved_path.is_absolute():
+        resolved_path = (Path(__file__).parent / resolved_path).resolve()
+    data = json.loads(resolved_path.read_text(encoding="utf-8"))
+
+    if not isinstance(data, list) or not all(isinstance(item, dict) for item in data):
+        raise ValueError(
+            "Task hyperparameter JSON must be a list of objects, for example "
+            '[{"action_scale": 0.4}, {"kick_vel": 0.02}]'
+        )
+
+    return [_validate_task_hparam_entry(entry) for entry in data]
+
 
 def build_reward_config() -> config_dict.ConfigDict:
     """Build the reward-scale configuration used by the environment."""
@@ -152,9 +239,9 @@ def _find_body_ids(mj_model: mujoco.MjModel, body_names: Sequence[str]) -> np.nd
     return np.asarray(body_ids, dtype=np.int32)
 
 
-class BittleEnv(PipelineEnv):
+class BittleWalkingEnv(PipelineEnv):
     """
-    Brax environment for Bittle locomotion with relative position control.
+    Brax environment for Bittle walking with relative position control.
 
     The policy outputs one value per actuator in ``[-1, 1]``. Those values are
     scaled and added to ``DEFAULT_POSE`` to produce the target joint positions
@@ -215,7 +302,7 @@ class BittleEnv(PipelineEnv):
     def _log_initialization_summary(self) -> None:
         """Log one concise environment summary for debugging."""
         logger.info(
-            "Initialized BittleEnv: actuators=%s nq=%s nv=%s base_body_id=%s action_scale=+/-%.3f",
+            "Initialized BittleWalkingEnv: actuators=%s nq=%s nv=%s base_body_id=%s action_scale=+/-%.3f",
             self.sys.nu,
             self.sys.nq,
             self.sys.nv,
@@ -232,7 +319,13 @@ class BittleEnv(PipelineEnv):
         )
 
     def sample_command(self, rng: jax.Array) -> jax.Array:
-        """Sample the target planar velocity command for the next episode chunk."""
+        """
+        Sample the next walking instruction for the robot.
+
+        In everyday terms, this picks a small "walk like this for a while"
+        request: how fast to move forward/backward, how much to drift sideways,
+        and how quickly to turn.
+        """
         key_x, key_y, key_yaw = jax.random.split(rng, 3)
         command_x = jax.random.uniform(
             key_x,
@@ -302,7 +395,7 @@ class BittleEnv(PipelineEnv):
         )
 
     def _sample_kick_velocity(self, rng: jax.Array) -> jax.Array:
-        """Sample a small random kick to the base velocity."""
+        """Sample a small random shove to the robot's body speed."""
         return jp.where(
             self._enable_kicks & (jax.random.uniform(rng) < KICK_PROBABILITY),
             jax.random.uniform(
@@ -538,7 +631,7 @@ class BittleEnv(PipelineEnv):
         x: Transform,
         xd: Motion,
     ) -> jax.Array:
-        """Reward matching the commanded linear velocity."""
+        """Reward walking at the requested forward/sideways speed."""
         local_vel = math.rotate(
             xd.vel[self._base_body_id],
             math.quat_inv(x.rot[self._base_body_id]),
@@ -552,7 +645,7 @@ class BittleEnv(PipelineEnv):
         x: Transform,
         xd: Motion,
     ) -> jax.Array:
-        """Reward matching the commanded yaw rate."""
+        """Reward turning at the requested left/right rate."""
         base_ang_vel = math.rotate(
             xd.ang[self._base_body_id],
             math.quat_inv(x.rot[self._base_body_id]),
@@ -620,3 +713,9 @@ class BittleEnv(PipelineEnv):
             width=width,
             height=height,
         )
+
+
+# Compatibility aliases for older imports while the repo transitions to the
+# clearer walking name.
+BittleEnv = BittleWalkingEnv
+BittleVelocityTrackingEnv = BittleWalkingEnv

@@ -10,12 +10,12 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from locomotion.training_config import TrainingConfig
+from locomotion.training.config import TrainingConfig
 
 
 class TrainingConfigTests(unittest.TestCase):
-    def test_locomotion_defaults_remain_unchanged(self) -> None:
-        config = TrainingConfig.for_task("locomotion")
+    def test_walking_defaults_remain_unchanged(self) -> None:
+        config = TrainingConfig.for_task("walking")
 
         self.assertEqual(config.num_timesteps, 10_000_000)
         self.assertEqual(config.num_evals, 10)
@@ -24,6 +24,12 @@ class TrainingConfigTests(unittest.TestCase):
         self.assertEqual(config.batch_size, 500)
         self.assertEqual(config.unroll_length, 20)
         self.assertEqual(config.num_minibatches, 10)
+
+    def test_locomotion_alias_maps_to_walking_defaults(self) -> None:
+        config = TrainingConfig.for_task("locomotion")
+
+        self.assertEqual(config.num_timesteps, 10_000_000)
+        self.assertEqual(config.num_envs, 5000)
 
     def test_dance_full_preset_uses_refined_defaults(self) -> None:
         config = TrainingConfig.for_task("dance")

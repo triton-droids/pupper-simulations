@@ -8,13 +8,15 @@ In everyday terms, this file tells the simulator:
 - when the robot should be considered to have failed
 - what information the learning system gets to see each step
 
-The dance task keeps the same 9 joint controls as locomotion, but changes the
+The dance task keeps the same 9 joint controls as the walking task, but changes the
 goal from "walk where commanded" to "follow an in-place rhythm."
 """
 
 from __future__ import annotations
 
+import json
 import logging
+from pathlib import Path
 from typing import Any, Sequence
 
 import jax
@@ -75,6 +77,80 @@ LOWER_LEG_BODY_NAMES = (
 FOOT_HEIGHT_OFFSET = 0.06
 FOOT_CONTACT_RADIUS = 0.015
 
+TASK_HPARAMS_FILENAME = "bittle_dance_hparams.json"
+TASK_HPARAMETER_KEYS = frozenset(
+    {
+        "obs_noise",
+        "action_scale",
+        "kick_vel",
+        "enable_kicks",
+        "cycle_steps",
+        "dance_amplitude",
+        "n_frames",
+        "pose_tracking_scale",
+        "bounce_tracking_scale",
+        "upright_scale",
+        "stay_centered_scale",
+        "foot_stability_scale",
+        "action_rate_scale",
+        "joint_acc_scale",
+        "torques_scale",
+        "energy_scale",
+        "termination_scale",
+    }
+)
+
+
+def get_task_hparams_path() -> Path:
+    """
+    Return the JSON file that stores sweepable dance-task settings.
+
+    Keeping the file beside this environment makes the relationship obvious to
+    someone browsing the repo.
+    """
+    return Path(__file__).with_name(TASK_HPARAMS_FILENAME)
+
+
+def _validate_task_hparam_entry(overrides: dict[str, Any]) -> dict[str, Any]:
+    """
+    Check one dance-task override bundle for unsupported keys.
+
+    This catches typos up front so a bad JSON entry does not waste a full trial.
+    """
+    cleaned: dict[str, Any] = {}
+
+    for key, value in overrides.items():
+        if key not in TASK_HPARAMETER_KEYS:
+            valid = ", ".join(sorted(TASK_HPARAMETER_KEYS))
+            raise ValueError(
+                f"Unsupported dance task hyperparameter '{key}'. "
+                f"Expected one of: {valid}"
+            )
+        cleaned[key] = value
+
+    return cleaned
+
+
+def load_task_hparam_sweep(path: str | Path | None = None) -> list[dict[str, Any]]:
+    """
+    Load the dance task sweep JSON as a list of override dictionaries.
+
+    Each list item is one "how should this dance world behave?" bundle the
+    sweep runner can combine with the trainer-side PPO settings.
+    """
+    resolved_path = Path(path) if path is not None else get_task_hparams_path()
+    if not resolved_path.is_absolute():
+        resolved_path = (Path(__file__).parent / resolved_path).resolve()
+    data = json.loads(resolved_path.read_text(encoding="utf-8"))
+
+    if not isinstance(data, list) or not all(isinstance(item, dict) for item in data):
+        raise ValueError(
+            "Task hyperparameter JSON must be a list of objects, for example "
+            '[{"action_scale": 0.4}, {"dance_amplitude": 0.9}]'
+        )
+
+    return [_validate_task_hparam_entry(entry) for entry in data]
+
 
 def build_reward_config() -> config_dict.ConfigDict:
     """
@@ -103,7 +179,10 @@ def build_reward_config() -> config_dict.ConfigDict:
                             joint_acc=-0.003,
                             torques=-0.0002,
                             energy=-0.002,
-                            termination=-1.0,
+                            # This is intentionally large because the reward is
+                            # later scaled by dt, which would otherwise make an
+                            # instant fall look almost harmless.
+                            termination=-20.0,
                         )
                     ),
                     pose_sigma=0.20,
@@ -435,8 +514,17 @@ class BittleDanceEnv(PipelineEnv):
         return jp.sum(jp.abs(qvel) * jp.abs(actuator_forces))
 
     def _reward_termination(self, done: jax.Array, step: jax.Array) -> jax.Array:
-        """Penalize falling early instead of surviving through the dance cycle."""
-        return done & (step < self._cycle_steps)
+        """
+        Penalize early falls more than late ones.
+
+        In plain language: a face-plant on the first beat should hurt the score
+        much more than losing balance near the end of the dance phrase.
+        """
+        done_float = done.astype(jp.float32)
+        step_float = jp.asarray(step, dtype=jp.float32)
+        cycle_steps = jp.asarray(self._cycle_steps, dtype=jp.float32)
+        remaining_fraction = jp.clip((cycle_steps - step_float) / cycle_steps, 0.0, 1.0)
+        return done_float * (1.0 + remaining_fraction)
 
     def step(self, state: State, action: jax.Array) -> State:
         """

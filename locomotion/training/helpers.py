@@ -25,10 +25,11 @@ from flax.training import orbax_utils
 from orbax import checkpoint as ocp
 
 from locomotion.paths import DEFAULT_SCENE_PATH, resolve_output_path
+from locomotion.tasks import TASK_CLI_CHOICES
 
 
 LOGGER_NAME = "bittle_training"
-TASK_CHOICES = ("locomotion", "dance")
+TASK_CHOICES = TASK_CLI_CHOICES
 
 
 def setup_logging(output_dir: Path, level: int = logging.INFO) -> logging.Logger:
@@ -107,9 +108,9 @@ def policy_params_callback(
         stay easy to sort later.
         """
         if monitor is not None:
-            # Remember the newest policy so the final video really reflects the
-            # final training state rather than an earlier checkpoint.
-            monitor.make_inference_fn_cached = make_policy(params)
+            # Cache a deterministic replay policy so final videos show the
+            # policy's "best guess" motion instead of a fresh random sample.
+            monitor.make_inference_fn_cached = make_policy(params, deterministic=True)
 
         save_args = orbax_utils.save_args_from_target(params)
         path = checkpoint_dir / f"step_{current_step:08d}"
@@ -127,28 +128,28 @@ def build_arg_parser() -> argparse.ArgumentParser:
     the task, test mode, output folder, and log level.
     """
     parser = argparse.ArgumentParser(
-        description="Train a Bittle quadruped locomotion or dance policy.",
+        description="Train a Bittle quadruped walking or dance policy.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   # Quick smoke test
-  python locomotion/train.py --test
+  python Scripts/train.py --test
 
   # Full training run
-  python locomotion/train.py
+  python Scripts/train.py
 
-  # Train the dance task instead of locomotion
-  python locomotion/train.py --task dance
+  # Train the dance task instead of walking
+  python Scripts/train.py --task dance
 
   # Custom output directory
-  python locomotion/train.py --output_dir ./experiments/run_001
+  python Scripts/train.py --output_dir ./experiments/run_001
         """,
     )
 
     parser.add_argument(
         "--task",
         type=str,
-        default="locomotion",
+        default="walking",
         choices=TASK_CHOICES,
         help="Training task/environment to run.",
     )
@@ -169,7 +170,7 @@ Examples:
         default=None,
         help=(
             "Directory for checkpoints, plots, videos, and logs. Relative paths "
-            "are placed under the repo outputs/ folder."
+            "are placed under the repo Scripts/Outputs/ folder."
         ),
     )
     parser.add_argument(

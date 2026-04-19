@@ -49,27 +49,29 @@ def configure_mujoco_backend() -> None:
 configure_mujoco_backend()
 
 if __package__ in (None, ""):
-    repo_root = Path(__file__).resolve().parent.parent
+    repo_root = Path(__file__).resolve().parents[2]
     if str(repo_root) not in sys.path:
         sys.path.insert(0, str(repo_root))
 
-    from locomotion.bittle_dance_env import BittleDanceEnv
-    from locomotion.bittle_env import BittleEnv
     from locomotion.paths import OUTPUTS_ROOT, resolve_output_path
-    from locomotion.training_config import TrainingConfig
-    from locomotion.training_helpers import (
+    from locomotion.tasks import normalize_task_name
+    from locomotion.tasks.bittle_dance_env import BittleDanceEnv
+    from locomotion.tasks.bittle_walk_env import BittleWalkingEnv
+    from locomotion.training.config import TrainingConfig
+    from locomotion.training.helpers import (
         parse_args,
         policy_params_callback,
         setup_logging,
     )
-    from locomotion.training_monitor import TrainingMonitor
+    from locomotion.training.monitor import TrainingMonitor
 else:
-    from .bittle_dance_env import BittleDanceEnv
-    from .bittle_env import BittleEnv
-    from .paths import OUTPUTS_ROOT, resolve_output_path
-    from .training_config import TrainingConfig
-    from .training_helpers import parse_args, policy_params_callback, setup_logging
-    from .training_monitor import TrainingMonitor
+    from ..paths import OUTPUTS_ROOT, resolve_output_path
+    from ..tasks import normalize_task_name
+    from ..tasks.bittle_dance_env import BittleDanceEnv
+    from ..tasks.bittle_walk_env import BittleWalkingEnv
+    from .config import TrainingConfig
+    from .helpers import parse_args, policy_params_callback, setup_logging
+    from .monitor import TrainingMonitor
 
 warnings.filterwarnings("ignore", message="overflow encountered in cast")
 
@@ -92,12 +94,12 @@ class TaskSpec:
 
 
 TASK_SPECS = {
-    "locomotion": TaskSpec(
-        env_name="bittle",
-        env_class=BittleEnv,
-        banner_title="BITTLE LOCOMOTION TRAINING",
-        output_prefix="bittle",
-        description="walking velocity tracking",
+    "walking": TaskSpec(
+        env_name="bittle_walking",
+        env_class=BittleWalkingEnv,
+        banner_title="BITTLE WALKING TRAINING",
+        output_prefix="bittle_walking",
+        description="walk at the asked speed and turn rate",
     ),
     "dance": TaskSpec(
         env_name="bittle_dance",
@@ -116,6 +118,7 @@ def _get_task_spec(task_name: str) -> TaskSpec:
     This keeps task-specific names and labels in one place so the rest of the
     code can say "give me the dance task" without hardcoding strings everywhere.
     """
+    task_name = normalize_task_name(task_name)
     try:
         return TASK_SPECS[task_name]
     except KeyError as exc:
@@ -128,7 +131,7 @@ def _import_onnx_exporter():
     if __package__ in (None, ""):
         from locomotion.onnx_export import export_policy_to_onnx
     else:
-        from .onnx_export import export_policy_to_onnx
+        from ..onnx_export import export_policy_to_onnx
     return export_policy_to_onnx
 
 
@@ -139,6 +142,7 @@ def _build_summary_payload(
     end_time: datetime,
     *,
     task_name: str,
+    env_overrides: dict[str, Any],
 ) -> dict[str, Any]:
     """
     Add extra facts to the summary before saving it.
@@ -147,8 +151,9 @@ def _build_summary_payload(
     task name, chosen settings, and start/end times.
     """
     payload = dict(summary)
-    payload["task"] = task_name
+    payload["task"] = normalize_task_name(task_name)
     payload["config"] = config.to_dict()
+    payload["task_hyperparameters"] = env_overrides
     payload["training_time"] = (end_time - start_time).total_seconds()
     payload["start_time"] = start_time.isoformat()
     payload["end_time"] = end_time.isoformat()
@@ -238,7 +243,8 @@ def train_bittle(
     xml_path: str,
     output_dir: Path,
     logger: logging.Logger,
-    task_name: str = "locomotion",
+    task_name: str = "walking",
+    env_overrides: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """
     Run one full training job and save the outputs.
@@ -254,7 +260,9 @@ def train_bittle(
     the job finished cleanly.
     """
     output_dir = resolve_output_path(output_dir)
+    task_name = normalize_task_name(task_name)
     task_spec = _get_task_spec(task_name)
+    env_overrides = dict(env_overrides or {})
 
     # Log the "what are we about to do?" header first so the run log is readable.
     logger.info("=" * 80)
@@ -264,6 +272,7 @@ def train_bittle(
     logger.info("Task: %s", task_name)
     logger.info("Output directory: %s", output_dir)
     logger.info("XML path: %s", xml_path)
+    logger.info("Task hyperparameters: %s", env_overrides if env_overrides else "{}")
     logger.info("")
 
     _log_training_config(config, logger, task_name=task_name)
@@ -275,7 +284,7 @@ def train_bittle(
     logger.info("Registered %s environment", task_spec.env_name)
 
     logger.info("Creating environment...")
-    env = envs.get_environment(task_spec.env_name, xml_path=xml_path)
+    env = envs.get_environment(task_spec.env_name, xml_path=xml_path, **env_overrides)
     logger.info("Environment created successfully")
     logger.info("Environment sizes: obs=%s act=%s", env.observation_size, env.action_size)
     logger.info("")
@@ -361,6 +370,7 @@ def train_bittle(
         start_time,
         end_time,
         task_name=task_name,
+        env_overrides=env_overrides,
     )
     summary_path = output_dir / "training_summary.json"
     with open(summary_path, "w", encoding="utf-8") as file_handle:
@@ -369,7 +379,7 @@ def train_bittle(
 
     # Make sure the monitor uses the final policy, then ask it to write the
     # final plot, metrics JSON, and rollout video.
-    monitor.make_inference_fn_cached = make_inference_fn(params)
+    monitor.make_inference_fn_cached = make_inference_fn(params, deterministic=True)
     monitor.finalize()
     logger.info("=" * 80)
 
@@ -385,7 +395,7 @@ def main() -> None:
     """
     Read terminal arguments, prepare the run folder, and launch training.
 
-    This is the small wrapper that turns `python locomotion/train.py ...` into a
+    This is the small wrapper that turns `python Scripts/train.py ...` into a
     real training job.
     """
     args = parse_args()

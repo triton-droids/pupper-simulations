@@ -6,12 +6,12 @@ This script is the experiment manager for hyperparameter sweeps. In plain
 language, it does one of two jobs:
 
 1. parent mode:
-   read a list of trial settings, launch one training job per trial, and rank
-   the finished runs
+   read the trainer-side JSON and the task-side JSON, build the full trial
+   matrix, launch one training job per combined entry, and rank the finished
+   runs
 
 2. child mode:
-   run one single trial with one single set of overrides and write the result
-   back to disk
+   run one single combined trial and write the result back to disk
 
 The parent/child split keeps runs isolated from each other so one bad trial
 does not poison the whole sweep process.
@@ -28,7 +28,6 @@ import subprocess
 import sys
 import time
 from dataclasses import asdict, dataclass
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -43,14 +42,18 @@ REPO_ROOT = LOCOMOTION_DIR.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from locomotion.paths import DEFAULT_SCENE_PATH
+from locomotion.paths import DEFAULT_SCENE_PATH, OUTPUTS_ROOT, build_numbered_sweep_output_dir
+from locomotion.tasks import TASK_CLI_CHOICES, import_task_module, normalize_task_name
 
 
 RESULT_FILENAME = "trial_result.json"
 RESULTS_JSONL_FILENAME = "results.jsonl"
 LEADERBOARD_FILENAME = "leaderboard.json"
 BEST_TRIAL_FILENAME = "best_trial.json"
-TASK_CHOICES = ("locomotion", "dance")
+TRAINING_OVERRIDES_FILENAME = "training_overrides.json"
+TASK_OVERRIDES_FILENAME = "task_overrides.json"
+COMBINED_OVERRIDES_FILENAME = "combined_overrides.json"
+TASK_CHOICES = TASK_CLI_CHOICES
 
 
 @dataclass(slots=True)
@@ -59,7 +62,9 @@ class TrialRecord:
 
     trial_id: int
     trial_dir: str
-    overrides: dict[str, Any]
+    training_overrides: dict[str, Any]
+    task_overrides: dict[str, Any]
+    combined_overrides: dict[str, Any]
     success: bool
     exit_code: int
     metric: str
@@ -74,9 +79,18 @@ class RunningTrial:
 
     trial_id: int
     trial_dir: Path
-    overrides: dict[str, Any]
+    training_overrides: dict[str, Any]
+    task_overrides: dict[str, Any]
     gpu_slot: str
     process: subprocess.Popen[Any]
+
+
+@dataclass(slots=True, frozen=True)
+class SweepCombination:
+    """One full sweep candidate: PPO trainer knobs plus task-world knobs."""
+
+    training_overrides: dict[str, Any]
+    task_overrides: dict[str, Any]
 
 
 def _resolve_from_locomotion(path_str: str | os.PathLike[str]) -> Path:
@@ -96,6 +110,68 @@ def _load_trials(trials_json: Path) -> list[dict[str, Any]]:
     return data
 
 
+def _load_task_hparam_trials(
+    task: str,
+    task_hparams_json: str | None,
+) -> tuple[Path, list[dict[str, Any]]]:
+    """
+    Load the task-specific environment hyperparameters for the chosen task.
+
+    The returned list describes the "world-side" knobs that should be combined
+    with the trainer-side PPO JSON. This is the inner loop of the sweep matrix.
+    """
+    task_module = import_task_module(task)
+
+    if task_hparams_json is None:
+        task_path = task_module.get_task_hparams_path()
+        task_trials = task_module.load_task_hparam_sweep()
+    else:
+        task_path = _resolve_from_locomotion(task_hparams_json)
+        task_trials = task_module.load_task_hparam_sweep(task_path)
+
+    return task_path, task_trials
+
+
+def _combine_override_dicts(
+    training_overrides: dict[str, Any],
+    task_overrides: dict[str, Any],
+) -> dict[str, Any]:
+    """Merge the two override bundles and fail fast on accidental key overlap."""
+    conflicts = sorted(set(training_overrides) & set(task_overrides))
+    if conflicts:
+        raise ValueError(
+            "Trainer and task overrides reuse the same keys, which would make "
+            f"results ambiguous: {', '.join(conflicts)}"
+        )
+
+    return {**training_overrides, **task_overrides}
+
+
+def _build_sweep_combinations(
+    training_trials: list[dict[str, Any]],
+    task_trials: list[dict[str, Any]],
+) -> list[SweepCombination]:
+    """
+    Build the full trial matrix in the requested loop order.
+
+    The order is:
+    1. pick one trainer-side PPO setting bundle
+    2. loop over every task-side environment bundle
+    """
+    combinations: list[SweepCombination] = []
+
+    for training_overrides in training_trials:
+        for task_overrides in task_trials:
+            combinations.append(
+                SweepCombination(
+                    training_overrides=dict(training_overrides),
+                    task_overrides=dict(task_overrides),
+                )
+            )
+
+    return combinations
+
+
 def _safe_name(value: str) -> str:
     """Clean up text so it is safe to use inside a folder name."""
     translation_table = str.maketrans(
@@ -112,10 +188,26 @@ def _safe_name(value: str) -> str:
     return value.translate(translation_table)
 
 
-def _trial_tag(overrides: dict[str, Any]) -> str:
-    """Turn one trial's override settings into a readable folder-name suffix."""
+def _format_override_tag(label: str, overrides: dict[str, Any]) -> str:
+    """Turn one override bundle into a readable, filesystem-safe name chunk."""
+    if not overrides:
+        return f"{label}__baseline"
+
     override_pairs = [f"{key}={overrides[key]}" for key in sorted(overrides)]
-    return _safe_name("__".join(override_pairs))
+    return _safe_name(f"{label}__" + "__".join(override_pairs))
+
+
+def _trial_tag(
+    training_overrides: dict[str, Any],
+    task_overrides: dict[str, Any],
+) -> str:
+    """Build one folder tag that shows both halves of the sweep combination."""
+    return "__".join(
+        (
+            _format_override_tag("train", training_overrides),
+            _format_override_tag("task", task_overrides),
+        )
+    )
 
 
 def _read_trial_result(trial_dir: Path) -> dict[str, Any]:
@@ -143,8 +235,7 @@ def _build_sweep_output_dir(args: argparse.Namespace) -> Path:
     if args.base_output_dir:
         return _resolve_from_locomotion(args.base_output_dir)
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    return (LOCOMOTION_DIR / "outputs" / "sweeps" / f"sweep_{timestamp}").resolve()
+    return build_numbered_sweep_output_dir()
 
 
 def _build_trial_command(
@@ -154,7 +245,8 @@ def _build_trial_command(
     task: str,
     trial_dir: Path,
     test_mode: bool,
-    overrides: dict[str, Any],
+    training_overrides: dict[str, Any],
+    task_overrides: dict[str, Any],
 ) -> list[str]:
     """Assemble the shell command used to launch one child trial."""
     command = [
@@ -169,8 +261,10 @@ def _build_trial_command(
         task,
         "--trial_dir",
         str(trial_dir),
-        "--overrides_json_inline",
-        json.dumps(overrides),
+        "--training_overrides_json_inline",
+        json.dumps(training_overrides),
+        "--task_overrides_json_inline",
+        json.dumps(task_overrides),
     ]
     if test_mode:
         command.append("--test")
@@ -193,7 +287,8 @@ def _start_trial_process(
     task: str,
     trial_dir: Path,
     test_mode: bool,
-    overrides: dict[str, Any],
+    training_overrides: dict[str, Any],
+    task_overrides: dict[str, Any],
     cuda_visible_devices: str | None = None,
 ) -> subprocess.Popen[Any]:
     """Launch one trial process and immediately return control to the caller."""
@@ -203,7 +298,8 @@ def _start_trial_process(
         task=task,
         trial_dir=trial_dir,
         test_mode=test_mode,
-        overrides=overrides,
+        training_overrides=training_overrides,
+        task_overrides=task_overrides,
     )
     return subprocess.Popen(
         command,
@@ -268,21 +364,26 @@ def _rank_successful_trials(
 def _print_sweep_header(
     *,
     trials_path: Path,
+    task_hparams_path: Path,
     output_dir: Path,
     metric: str,
     test_mode: bool,
     task: str,
     max_concurrent_trials: int,
     gpu_slots: list[str],
+    num_training_trials: int,
+    num_task_trials: int,
     num_trials: int,
 ) -> None:
     """Print the "about to start" summary block for the sweep."""
     print(f"Sweep starting. Trials: {num_trials}")
     print(f"Trials file: {trials_path}")
+    print(f"Task hparams: {task_hparams_path}")
     print(f"Output dir:  {output_dir}")
     print(f"Metric:      {metric}")
     print(f"Mode:        {'TEST' if test_mode else 'FULL'}")
     print(f"Task:        {task}")
+    print(f"Matrix:      {num_training_trials} trainer x {num_task_trials} task = {num_trials}")
     print(f"Concurrency: {max_concurrent_trials}")
     if gpu_slots:
         print(f"GPU slots:   {', '.join(gpu_slots)}")
@@ -293,7 +394,8 @@ def _make_trial_record(
     *,
     trial_id: int,
     trial_dir: Path,
-    overrides: dict[str, Any],
+    training_overrides: dict[str, Any],
+    task_overrides: dict[str, Any],
     metric: str,
     exit_code: int,
     result: dict[str, Any],
@@ -309,7 +411,9 @@ def _make_trial_record(
     return TrialRecord(
         trial_id=trial_id,
         trial_dir=str(trial_dir),
-        overrides=overrides,
+        training_overrides=training_overrides,
+        task_overrides=task_overrides,
+        combined_overrides=_combine_override_dicts(training_overrides, task_overrides),
         success=success,
         exit_code=exit_code,
         metric=metric,
@@ -321,7 +425,8 @@ def _make_trial_record(
 
 def _prepare_trial_dir(
     trial_dir: Path,
-    overrides: dict[str, Any],
+    training_overrides: dict[str, Any],
+    task_overrides: dict[str, Any],
     *,
     overwrite: bool,
 ) -> None:
@@ -330,14 +435,20 @@ def _prepare_trial_dir(
         shutil.rmtree(trial_dir)
 
     trial_dir.mkdir(parents=True, exist_ok=True)
-    _write_json(trial_dir / "overrides.json", overrides)
+    _write_json(trial_dir / TRAINING_OVERRIDES_FILENAME, training_overrides)
+    _write_json(trial_dir / TASK_OVERRIDES_FILENAME, task_overrides)
+    _write_json(
+        trial_dir / COMBINED_OVERRIDES_FILENAME,
+        _combine_override_dicts(training_overrides, task_overrides),
+    )
 
 
 def _record_trial_completion(
     *,
     trial_id: int,
     trial_dir: Path,
-    overrides: dict[str, Any],
+    training_overrides: dict[str, Any],
+    task_overrides: dict[str, Any],
     metric: str,
     exit_code: int,
     results_jsonl: Path,
@@ -348,7 +459,8 @@ def _record_trial_completion(
     row = _make_trial_record(
         trial_id=trial_id,
         trial_dir=trial_dir,
-        overrides=overrides,
+        training_overrides=training_overrides,
+        task_overrides=task_overrides,
         metric=metric,
         exit_code=exit_code,
         result=result,
@@ -378,16 +490,24 @@ def sweep_main(args: argparse.Namespace) -> int:
     if args.max_concurrent_trials < 1:
         print("ERROR: --max_concurrent_trials must be at least 1.")
         return 2
+    canonical_task = normalize_task_name(args.task)
 
     trials_path = _resolve_from_locomotion(args.trials_json)
     if not trials_path.exists():
         print(f"ERROR: trials_json not found: {trials_path}")
         return 2
 
-    # Read the trial list and optionally trim it for quick experiments.
-    trials = _load_trials(trials_path)
+    # Read the trainer-side and task-side JSON files, then build the requested
+    # outer-loop/inner-loop sweep matrix.
+    training_trials = _load_trials(trials_path)
+    task_hparams_path, task_trials = _load_task_hparam_trials(
+        canonical_task,
+        args.task_hparams_json,
+    )
+    sweep_combinations = _build_sweep_combinations(training_trials, task_trials)
+
     if args.max_trials is not None:
-        trials = trials[: args.max_trials]
+        sweep_combinations = sweep_combinations[: args.max_trials]
 
     # Prepare the sweep-wide output files and any GPU scheduling information.
     output_dir = _build_sweep_output_dir(args)
@@ -417,38 +537,51 @@ def sweep_main(args: argparse.Namespace) -> int:
 
     _print_sweep_header(
         trials_path=trials_path,
+        task_hparams_path=task_hparams_path,
         output_dir=output_dir,
         metric=args.metric,
         test_mode=args.test,
-        task=args.task,
+        task=canonical_task,
         max_concurrent_trials=max_concurrent_trials,
         gpu_slots=gpu_slots,
-        num_trials=len(trials),
+        num_training_trials=len(training_trials),
+        num_task_trials=len(task_trials),
+        num_trials=len(sweep_combinations),
     )
 
     all_rows: list[TrialRecord] = []
 
     if max_concurrent_trials <= 1:
         # Simple mode: run one trial, wait for it, then move to the next.
-        for trial_id, overrides in enumerate(trials, start=1):
-            tag = _trial_tag(overrides)
+        for trial_id, combination in enumerate(sweep_combinations, start=1):
+            tag = _trial_tag(
+                combination.training_overrides,
+                combination.task_overrides,
+            )
             trial_dir = output_dir / f"trial_{trial_id:03d}__{tag}"
-            _prepare_trial_dir(trial_dir, overrides, overwrite=args.overwrite)
+            _prepare_trial_dir(
+                trial_dir,
+                combination.training_overrides,
+                combination.task_overrides,
+                overwrite=args.overwrite,
+            )
 
-            print(f"[{trial_id}/{len(trials)}] Running trial: {trial_dir.name}")
+            print(f"[{trial_id}/{len(sweep_combinations)}] Running trial: {trial_dir.name}")
             process = _start_trial_process(
                 trial_id=trial_id,
                 xml_path=args.xml_path,
-                task=args.task,
+                task=canonical_task,
                 trial_dir=trial_dir,
                 test_mode=args.test,
-                overrides=overrides,
+                training_overrides=combination.training_overrides,
+                task_overrides=combination.task_overrides,
             )
             exit_code = process.wait()
             _record_trial_completion(
                 trial_id=trial_id,
                 trial_dir=trial_dir,
-                overrides=overrides,
+                training_overrides=combination.training_overrides,
+                task_overrides=combination.task_overrides,
                 metric=args.metric,
                 exit_code=exit_code,
                 results_jsonl=results_jsonl,
@@ -462,39 +595,49 @@ def sweep_main(args: argparse.Namespace) -> int:
         running_trials: list[RunningTrial] = []
         next_trial_index = 0
 
-        while next_trial_index < len(trials) or running_trials:
+        while next_trial_index < len(sweep_combinations) or running_trials:
             while (
-                next_trial_index < len(trials)
+                next_trial_index < len(sweep_combinations)
                 and free_gpu_slots
                 and len(running_trials) < max_concurrent_trials
             ):
                 trial_id = next_trial_index + 1
-                overrides = trials[next_trial_index]
+                combination = sweep_combinations[next_trial_index]
                 next_trial_index += 1
 
-                tag = _trial_tag(overrides)
+                tag = _trial_tag(
+                    combination.training_overrides,
+                    combination.task_overrides,
+                )
                 trial_dir = output_dir / f"trial_{trial_id:03d}__{tag}"
-                _prepare_trial_dir(trial_dir, overrides, overwrite=args.overwrite)
+                _prepare_trial_dir(
+                    trial_dir,
+                    combination.training_overrides,
+                    combination.task_overrides,
+                    overwrite=args.overwrite,
+                )
 
                 gpu_slot = free_gpu_slots.pop(0)
                 print(
-                    f"[launch {trial_id}/{len(trials)}] "
+                    f"[launch {trial_id}/{len(sweep_combinations)}] "
                     f"GPU {gpu_slot}: {trial_dir.name}"
                 )
                 process = _start_trial_process(
                     trial_id=trial_id,
                     xml_path=args.xml_path,
-                    task=args.task,
+                    task=canonical_task,
                     trial_dir=trial_dir,
                     test_mode=args.test,
-                    overrides=overrides,
+                    training_overrides=combination.training_overrides,
+                    task_overrides=combination.task_overrides,
                     cuda_visible_devices=gpu_slot,
                 )
                 running_trials.append(
                     RunningTrial(
                         trial_id=trial_id,
                         trial_dir=trial_dir,
-                        overrides=overrides,
+                        training_overrides=combination.training_overrides,
+                        task_overrides=combination.task_overrides,
                         gpu_slot=gpu_slot,
                         process=process,
                     )
@@ -513,13 +656,14 @@ def sweep_main(args: argparse.Namespace) -> int:
                 free_gpu_slots.sort(key=lambda gpu_slot: slot_order[gpu_slot])
 
                 print(
-                    f"[finish {running_trial.trial_id}/{len(trials)}] "
+                    f"[finish {running_trial.trial_id}/{len(sweep_combinations)}] "
                     f"GPU {running_trial.gpu_slot}: {running_trial.trial_dir.name}"
                 )
                 _record_trial_completion(
                     trial_id=running_trial.trial_id,
                     trial_dir=running_trial.trial_dir,
-                    overrides=running_trial.overrides,
+                    training_overrides=running_trial.training_overrides,
+                    task_overrides=running_trial.task_overrides,
                     metric=args.metric,
                     exit_code=exit_code,
                     results_jsonl=results_jsonl,
@@ -545,7 +689,8 @@ def sweep_main(args: argparse.Namespace) -> int:
     print(f"  trial_id: {best.trial_id}")
     print(f"  score:    {best.score}")
     print(f"  dir:      {best.trial_dir}")
-    print(f"  overrides:{best.overrides}")
+    print(f"  training: {best.training_overrides}")
+    print(f"  task:     {best.task_overrides}")
     return 0
 
 
@@ -561,11 +706,11 @@ def _configure_child_mujoco_backend() -> None:
         os.environ["MUJOCO_GL"] = "glfw"
 
 
-def _load_inline_overrides(payload: str) -> dict[str, Any]:
-    """Decode the one-trial override JSON passed in by the parent process."""
+def _load_inline_overrides(payload: str, *, arg_name: str) -> dict[str, Any]:
+    """Decode one JSON override object passed in by the parent process."""
     overrides = json.loads(payload)
     if not isinstance(overrides, dict):
-        raise ValueError("overrides_json_inline must decode to a dict")
+        raise ValueError(f"{arg_name} must decode to a dict")
     return overrides
 
 
@@ -621,17 +766,24 @@ def run_one_trial_main(args: argparse.Namespace) -> int:
     trial_dir.mkdir(parents=True, exist_ok=True)
 
     # Read the exact override values that define this one trial.
-    overrides = _load_inline_overrides(args.overrides_json_inline)
+    training_overrides = _load_inline_overrides(
+        args.training_overrides_json_inline,
+        arg_name="training_overrides_json_inline",
+    )
+    task_overrides = _load_inline_overrides(
+        args.task_overrides_json_inline,
+        arg_name="task_overrides_json_inline",
+    )
 
-    from locomotion.train import train_bittle
-    from locomotion.training_config import TrainingConfig
-    from locomotion.training_helpers import setup_logging
+    from locomotion.training.config import TrainingConfig
+    from locomotion.training.helpers import setup_logging
+    from locomotion.training.run import train_bittle
 
     logger = setup_logging(trial_dir, level=getattr(__import__("logging"), "INFO"))
 
     # Start from the task preset, then replace any fields this trial wants to vary.
     config = TrainingConfig.for_task(args.task, test_mode=args.test)
-    _apply_overrides(config, overrides)
+    _apply_overrides(config, training_overrides)
     _warn_on_awkward_batch_shapes(config, logger)
 
     # Run training and convert the result into the sweep's standard result format.
@@ -641,11 +793,14 @@ def run_one_trial_main(args: argparse.Namespace) -> int:
         output_dir=trial_dir,
         logger=logger,
         task_name=args.task,
+        env_overrides=task_overrides,
     )
 
     result = {
         "success": bool(outcome.get("success", False)),
-        "overrides": overrides,
+        "training_overrides": training_overrides,
+        "task_overrides": task_overrides,
+        "combined_overrides": _combine_override_dicts(training_overrides, task_overrides),
         "trial_dir": str(trial_dir),
         "summary": outcome.get("summary", {}) if outcome.get("success") else {},
         "error": outcome.get("error"),
@@ -673,13 +828,22 @@ def build_argparser() -> argparse.ArgumentParser:
         "--task",
         type=str,
         choices=TASK_CHOICES,
-        default="locomotion",
+        default="walking",
         help="Task/environment to train in each trial.",
     )
     parser.add_argument(
         "--trials_json",
         type=str,
-        help="Path to a JSON list of override dictionaries.",
+        help="Path to the trainer-side JSON list of PPO override dictionaries.",
+    )
+    parser.add_argument(
+        "--task_hparams_json",
+        type=str,
+        default=None,
+        help=(
+            "Path to the task-side JSON list of environment hyperparameter "
+            "dictionaries. Defaults to the JSON next to the selected task file."
+        ),
     )
     parser.add_argument(
         "--base_output_dir",
@@ -703,7 +867,7 @@ def build_argparser() -> argparse.ArgumentParser:
         "--max_trials",
         type=int,
         default=None,
-        help="Limit the number of trials read from the input JSON.",
+        help="Limit the total number of combined matrix entries that will run.",
     )
     parser.add_argument(
         "--overwrite",
@@ -732,7 +896,13 @@ def build_argparser() -> argparse.ArgumentParser:
     parser.add_argument("--trial_id", type=int, default=0, help=argparse.SUPPRESS)
     parser.add_argument("--trial_dir", type=str, default="", help=argparse.SUPPRESS)
     parser.add_argument(
-        "--overrides_json_inline",
+        "--training_overrides_json_inline",
+        type=str,
+        default="{}",
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--task_overrides_json_inline",
         type=str,
         default="{}",
         help=argparse.SUPPRESS,

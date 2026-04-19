@@ -4,7 +4,7 @@ Plain-English training settings for Bittle runs.
 Think of this file as the preset shelf for training jobs:
 
 - the class holds the main "how big/how long" knobs for a run
-- the normal locomotion task keeps the large default values
+- the normal walking task keeps the large default values
 - the dance task can swap in a smaller preset that is better for that job
 
 The object stays editable on purpose so sweep scripts can take one of these
@@ -15,6 +15,8 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from typing import Any
+
+from locomotion.tasks import normalize_task_name
 
 
 TEST_MODE_OVERRIDES = {
@@ -30,7 +32,7 @@ TEST_MODE_OVERRIDES = {
 
 # The first dance sweep improved most in the smallest batch/env setting, and
 # that run was still getting better when the run ended. These presets start new
-# dance runs near that "best so far" region instead of at the locomotion scale.
+# dance runs near that "best so far" region instead of at the walking scale.
 TASK_FULL_MODE_OVERRIDES = {
     "dance": {
         "num_timesteps": 200_000,
@@ -113,6 +115,7 @@ class TrainingConfig:
         In practice, this means "if the task is dance, replace the general
         defaults with the smaller dance-friendly values."
         """
+        task_name = normalize_task_name(task_name)
         task_overrides_by_mode = (
             TASK_TEST_MODE_OVERRIDES if self.test_mode else TASK_FULL_MODE_OVERRIDES
         )

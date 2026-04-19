@@ -1,0 +1,27 @@
+[
+  {},
+  {
+    "action_scale": 0.4,
+    "kick_vel": 0.0,
+    "enable_kicks": false
+  },
+  {
+    "action_scale": 0.45,
+    "kick_vel": 0.03,
+    "enable_kicks": true,
+    "tracking_lin_vel_scale": 3.0,
+    "orientation_scale": -6.0
+  },
+  {
+    "action_scale": 0.35,
+    "orientation_scale": -6.5,
+    "termination_scale": -2.0,
+    "foot_slip_scale": -0.06
+  },
+  {
+    "action_scale": 0.45,
+    "feet_air_time_scale": 1.25,
+    "stand_still_scale": -0.35,
+    "energy_scale": -0.0015
+  }
+]

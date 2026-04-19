@@ -41,22 +41,35 @@ REPO_ROOT = SCRIPT_DIR.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from locomotion.paths import DEFAULT_SCENE_PATH, resolve_output_path
+from locomotion.paths import DEFAULT_SCENE_PATH, OUTPUTS_ROOT, resolve_output_path
+from locomotion.tasks import TASK_CLI_CHOICES, normalize_task_name
 
 
-TASK_CHOICES = ("locomotion", "dance")
+TASK_CHOICES = TASK_CLI_CHOICES
 DEFAULT_POLICY_CANDIDATES_BY_TASK = {
-    "locomotion": [
+    "walking": [
+        OUTPUTS_ROOT / "bittle_walking_train_latest" / "policy.onnx",
+        OUTPUTS_ROOT / "bittle_walking_test_latest" / "policy.onnx",
+        OUTPUTS_ROOT / "bittle_train_latest" / "policy.onnx",
+        OUTPUTS_ROOT / "bittle_test_latest" / "policy.onnx",
+        OUTPUTS_ROOT / "bittle_velocity_tracking_train_latest" / "policy.onnx",
+        OUTPUTS_ROOT / "bittle_velocity_tracking_test_latest" / "policy.onnx",
+        REPO_ROOT / "outputs" / "bittle_walking_train_latest" / "policy.onnx",
+        REPO_ROOT / "outputs" / "bittle_walking_test_latest" / "policy.onnx",
+        REPO_ROOT / "outputs" / "bittle_velocity_tracking_train_latest" / "policy.onnx",
+        REPO_ROOT / "outputs" / "bittle_velocity_tracking_test_latest" / "policy.onnx",
         REPO_ROOT / "outputs" / "bittle_train_latest" / "policy.onnx",
         REPO_ROOT / "outputs" / "bittle_test_latest" / "policy.onnx",
         REPO_ROOT / "locomotion" / "sim-outputs" / "policies" / "policy.onnx",
     ],
     "dance": [
+        OUTPUTS_ROOT / "bittle_dance_train_latest" / "policy.onnx",
+        OUTPUTS_ROOT / "bittle_dance_test_latest" / "policy.onnx",
         REPO_ROOT / "outputs" / "bittle_dance_train_latest" / "policy.onnx",
         REPO_ROOT / "outputs" / "bittle_dance_test_latest" / "policy.onnx",
     ],
 }
-DEFAULT_OUTPUT_ROOT = REPO_ROOT / "outputs" / "visualize"
+DEFAULT_OUTPUT_ROOT = OUTPUTS_ROOT / "visualize"
 
 
 @dataclass(slots=True, frozen=True)
@@ -90,14 +103,14 @@ class LoadedPolicy:
 def build_argparser() -> argparse.ArgumentParser:
     """Build the CLI for the visualization script."""
     parser = argparse.ArgumentParser(
-        description="Render a rollout video for a trained Bittle locomotion or dance ONNX policy.",
+        description="Render a rollout video for a trained Bittle walking or dance ONNX policy.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
         "--task",
         type=str,
         choices=TASK_CHOICES,
-        default="locomotion",
+        default="walking",
         help="Environment/task that matches the exported policy.",
     )
     parser.add_argument(
@@ -118,7 +131,7 @@ def build_argparser() -> argparse.ArgumentParser:
         default=None,
         help=(
             "Directory where MP4 and GIF outputs will be written. Relative paths "
-            "are placed under the repo outputs/ folder."
+            "are placed under the repo Scripts/Outputs/ folder."
         ),
     )
     parser.add_argument(
@@ -165,14 +178,15 @@ def resolve_policy_path(cli_policy_path: str | None, task: str) -> Path:
 
 def build_config(args: argparse.Namespace) -> VisualizationConfig:
     """Convert raw CLI arguments into a fully resolved config object."""
-    policy_path = resolve_policy_path(args.policy_path, args.task)
+    task = normalize_task_name(args.task)
+    policy_path = resolve_policy_path(args.policy_path, task)
     scene_path = args.scene_path.expanduser()
     if args.output_dir:
         output_dir = resolve_output_path(args.output_dir)
     else:
-        output_dir = DEFAULT_OUTPUT_ROOT / args.task
+        output_dir = DEFAULT_OUTPUT_ROOT / task
     return VisualizationConfig(
-        task=args.task,
+        task=task,
         policy_path=policy_path,
         scene_path=scene_path,
         output_dir=output_dir,
@@ -193,7 +207,7 @@ def validate_inputs(config: VisualizationConfig) -> None:
             f"Policy file not found: {config.policy_path}\n"
             f"Checked these default locations:\n{checked_locations}\n\n"
             "Train first with something like: "
-            f"python locomotion/train.py --task {config.task} --test"
+            f"python Scripts/train.py --task {config.task} --test"
         )
 
     if not config.scene_path.exists():
@@ -246,17 +260,20 @@ def initialize_mujoco_module():
 def setup_environment(scene_path: Path, task: str) -> Any:
     """Register and instantiate the Bittle Brax environment for one task."""
     from brax import envs
+    task = normalize_task_name(task)
 
     if task == "dance":
-        from locomotion.bittle_dance_env import BittleDanceEnv
+        from locomotion.tasks.bittle_dance_env import BittleDanceEnv
 
         env_name = "bittle_dance"
         env_class = BittleDanceEnv
     else:
-        from locomotion.bittle_env import BittleEnv
+        from locomotion.tasks.bittle_walk_env import (
+            BittleWalkingEnv,
+        )
 
-        env_name = "bittle"
-        env_class = BittleEnv
+        env_name = "bittle_walking"
+        env_class = BittleWalkingEnv
 
     print("      Registering environment...")
     envs.register_environment(env_name, env_class)
