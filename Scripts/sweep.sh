@@ -10,11 +10,14 @@ set -euo pipefail
 # Figure out where this script lives and where the repo root is.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+ENV_FILE="$REPO_ROOT/.env"
 
 # Load reusable settings like SSH credentials and branch names from `.env`.
 set -a
-source "$REPO_ROOT/.env"
+source <(tr -d '\r' < "$ENV_FILE")
 set +a
+
+SSH_COMMON_ARGS=(-o BatchMode=yes -o ConnectTimeout=15 -o Port="$SSH_PORT" -i "$SSH_KEY_PATH")
 
 # Run all git commands from the repo root so paths stay predictable.
 cd "$REPO_ROOT"
@@ -94,9 +97,6 @@ allocate_sweep_number() {
   printf '%s' "$current_number"
 }
 
-# Decide how often to poll the remote machine for newly finished artifacts.
-SYNC_INTERVAL="${SYNC_INTERVAL:-15}"
-
 # Decide how the remote machine should use its GPUs.
 #   single_gpu      = one visible GPU, trials one after another
 #   multi_gpu       = one trial at a time, but that trial can see several GPUs
@@ -124,6 +124,7 @@ LOCAL_SWEEP_LABEL="Sweep_${SWEEP_NUMBER}"
 REMOTE_SWEEP_REL="../Scripts/Outputs/${LOCAL_SWEEP_LABEL}"
 REMOTE_SWEEP_ABS="${SSH_DIRECTORY}/Scripts/Outputs/${LOCAL_SWEEP_LABEL}"
 LOCAL_SWEEP_BASE="${LOCAL_OUTPUT_DIR}/${LOCAL_SWEEP_LABEL}"
+LOCAL_SUBMISSION_RECEIPT="${LOCAL_SWEEP_BASE}/submission_receipt.txt"
 
 echo "Sweep number: $SWEEP_NUMBER"
 echo "Local sweep label: $LOCAL_SWEEP_LABEL"
@@ -138,78 +139,27 @@ echo "Parallel trials: $SWEEP_PARALLEL_TRIALS"
 
 mkdir -p "$LOCAL_SWEEP_BASE"
 
-sync_artifacts() {
-    local remote_sweep_abs="$1"
-    local local_sweep_base="$2"
-
-    # Make sure the local destination exists before we start copying files in.
-    mkdir -p "$local_sweep_base"
-
-    # Ask the remote host for the current list of artifact files we care about.
-    ssh -p "$SSH_PORT" -i "$SSH_KEY_PATH" "$DROIDS_IP_ADDRESS" \
-    "test -d '$remote_sweep_abs' && find '$remote_sweep_abs' -type f \
-    \( -name '*.mp4' \
-    -o -name 'final_metrics.json' \
-    -o -name 'final_progress.png' \
-    -o -name 'training_summary.json' \
-    -o -name 'trial_result.json' \
-    -o -name 'results.jsonl' \
-    -o -name 'leaderboard.json' \
-    -o -name 'best_trial.json' \) 2>/dev/null || true" |
-    while read -r remote_file; do
-        [ -n "$remote_file" ] || continue
-
-        # Recreate the same relative folder layout locally.
-        local rel_path="${remote_file#"$remote_sweep_abs"/}"
-        local local_file="$local_sweep_base/$rel_path"
-        local local_dir
-        local base_name
-
-        local_dir="$(dirname "$local_file")"
-        base_name="$(basename "$remote_file")"
-
-        mkdir -p "$local_dir"
-
-        # Always refresh the "latest final" files, but avoid recopying older
-        # immutable files unnecessarily.
-        case "$base_name" in
-            final_metrics.json|final_progress.png|training_summary.json|trial_result.json|results.jsonl|leaderboard.json|best_trial.json|final_video.mp4)
-                scp -P "$SSH_PORT" -i "$SSH_KEY_PATH" \
-                    "$DROIDS_IP_ADDRESS:$remote_file" "$local_file" >/dev/null 2>&1 || true
-                ;;
-            *)
-                if [ ! -f "$local_file" ]; then
-                    scp -P "$SSH_PORT" -i "$SSH_KEY_PATH" \
-                        "$DROIDS_IP_ADDRESS:$remote_file" "$local_file" >/dev/null 2>&1 || true
-                fi
-                ;;
-        esac
-    done
-
-    # Drop a small timestamp file so you can tell when the last sync happened.
-    date +"Last sync: %Y-%m-%d %H:%M:%S" > "$local_sweep_base/.last_sync.txt"
+write_local_submission_receipt() {
+  cat > "$LOCAL_SUBMISSION_RECEIPT" <<EOF
+local_sweep_label=$LOCAL_SWEEP_LABEL
+task_name=$SELECTED_TASK_NAME
+task_env_file=$SELECTED_TASK_ENV_FILE
+trainer_trials_json=$SWEEP_TRIALS_JSON
+task_hparams_json=$TASK_HPARAMS_JSON
+remote_mode=$SWEEP_REMOTE_MODE
+requested_gpu_ids=$SWEEP_GPU_IDS
+requested_gpu_count=$SWEEP_GPU_COUNT
+requested_parallel_trials=$SWEEP_PARALLEL_TRIALS
+remote_sweep_abs=$REMOTE_SWEEP_ABS
+local_output_dir=$LOCAL_SWEEP_BASE
+submitted_at_local=$(date +"%Y-%m-%dT%H:%M:%S%z")
+EOF
 }
 
 echo "Connecting to remote server at $DROIDS_IP_ADDRESS"
 
-# Keep syncing in the background while the remote sweep is running.
-(
-  while true; do
-    sync_artifacts "$REMOTE_SWEEP_ABS" "$LOCAL_SWEEP_BASE"
-    sleep "$SYNC_INTERVAL"
-  done
-) &
-SYNC_PID=$!
-
-cleanup() {
-  echo ""
-  echo "[sync] Stopping background sync..."
-  kill "$SYNC_PID" >/dev/null 2>&1 || true
-}
-trap cleanup EXIT
-
-ssh -A -p "$SSH_PORT" -i "$SSH_KEY_PATH" "$DROIDS_IP_ADDRESS" bash -s -- \
-  "$BRANCH_NAME" "$SSH_DIRECTORY" "$GITHUB_REPO_SSH" "$SWEEP_TRIALS_JSON" "$REMOTE_SWEEP_REL" \
+ssh -A "${SSH_COMMON_ARGS[@]}" "$DROIDS_IP_ADDRESS" bash -s -- \
+  "$BRANCH_NAME" "$SSH_DIRECTORY" "$GITHUB_REPO_SSH" "$SWEEP_TRIALS_JSON" "$REMOTE_SWEEP_REL" "$REMOTE_SWEEP_ABS" "$LOCAL_SWEEP_LABEL" \
   "$SWEEP_REMOTE_MODE" "$SWEEP_GPU_IDS" "$SWEEP_GPU_COUNT" "$SWEEP_PARALLEL_TRIALS" \
   "$TASK_HPARAMS_JSON" "$SELECTED_TASK_NAME" "$SELECTED_TASK_ENV_FILE" "$@" <<'REMOTE'
 set -euo pipefail
@@ -219,6 +169,8 @@ SSH_DIRECTORY="$1"; shift
 GITHUB_REPO_SSH="$1"; shift
 SWEEP_TRIALS_JSON="$1"; shift
 REMOTE_SWEEP_REL="$1"; shift
+REMOTE_SWEEP_ABS="$1"; shift
+LOCAL_SWEEP_LABEL="$1"; shift
 SWEEP_REMOTE_MODE="$1"; shift
 SWEEP_GPU_IDS="$1"; shift
 SWEEP_GPU_COUNT="$1"; shift
@@ -281,7 +233,9 @@ export XLA_PYTHON_CLIENT_PREALLOCATE="${XLA_PYTHON_CLIENT_PREALLOCATE:-false}"
 export XLA_PYTHON_CLIENT_MEM_FRACTION="${XLA_PYTHON_CLIENT_MEM_FRACTION:-0.70}"
 export TF_GPU_ALLOCATOR="${TF_GPU_ALLOCATOR:-cuda_malloc_async}"
 
-# Make sure the remote repo exists, is up to date, and matches the requested branch.
+# Make sure the remote repo exists, is up to date, and matches the requested
+# branch before we detach. This part still runs inside the live SSH session so
+# it can use agent forwarding for any private Git access.
 mkdir -p "$SSH_DIRECTORY"
 cd "$SSH_DIRECTORY"
 
@@ -300,7 +254,69 @@ git checkout -B "$BRANCH_NAME" "origin/$BRANCH_NAME"
 git reset --hard "origin/$BRANCH_NAME"
 git clean -fd
 
-cd locomotion
+mkdir -p "$REMOTE_SWEEP_ABS"
+STATUS_FILE="$REMOTE_SWEEP_ABS/.remote_status"
+EXIT_CODE_FILE="$REMOTE_SWEEP_ABS/.remote_exit_code"
+RUNNER_SCRIPT="$REMOTE_SWEEP_ABS/run_remote_sweep.sh"
+RUNNER_LOG="$REMOTE_SWEEP_ABS/remote_runner.log"
+REMOTE_PID_FILE="$REMOTE_SWEEP_ABS/.remote_pid"
+JOB_INFO_FILE="$REMOTE_SWEEP_ABS/job_info.txt"
+
+rm -f "$EXIT_CODE_FILE" "$REMOTE_PID_FILE" "$RUNNER_LOG"
+printf 'launching\n' > "$STATUS_FILE"
+
+cat > "$JOB_INFO_FILE" <<EOF
+local_sweep_label=$LOCAL_SWEEP_LABEL
+task_name=$SELECTED_TASK_NAME
+task_env_file=$SELECTED_TASK_ENV_FILE
+trainer_trials_json=$SWEEP_TRIALS_JSON
+task_hparams_json=$TASK_HPARAMS_JSON
+remote_mode=$SWEEP_REMOTE_MODE
+requested_gpu_ids=$SWEEP_GPU_IDS
+requested_gpu_count=$SWEEP_GPU_COUNT
+resolved_gpu_ids=$GPU_IDS
+gpu_slot_count=$GPU_SLOT_COUNT
+resolved_parallel_trials=$MAX_PARALLEL_TRIALS
+branch_name=$BRANCH_NAME
+remote_sweep_abs=$REMOTE_SWEEP_ABS
+submitted_at_utc=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+EOF
+
+cat > "$RUNNER_SCRIPT" <<'RUNNER'
+#!/usr/bin/env bash
+set -euo pipefail
+
+SSH_DIRECTORY="$1"; shift
+SWEEP_TRIALS_JSON="$1"; shift
+REMOTE_SWEEP_REL="$1"; shift
+SWEEP_REMOTE_MODE="$1"; shift
+GPU_IDS="$1"; shift
+MAX_PARALLEL_TRIALS="$1"; shift
+TASK_HPARAMS_JSON="$1"; shift
+SELECTED_TASK_NAME="$1"; shift
+SELECTED_TASK_ENV_FILE="$1"; shift
+STATUS_FILE="$1"; shift
+EXIT_CODE_FILE="$1"; shift
+
+export XLA_PYTHON_CLIENT_PREALLOCATE="${XLA_PYTHON_CLIENT_PREALLOCATE:-false}"
+export XLA_PYTHON_CLIENT_MEM_FRACTION="${XLA_PYTHON_CLIENT_MEM_FRACTION:-0.70}"
+export TF_GPU_ALLOCATOR="${TF_GPU_ALLOCATOR:-cuda_malloc_async}"
+
+cleanup_remote_status() {
+  local exit_code="$1"
+  printf '%s\n' "$exit_code" > "$EXIT_CODE_FILE"
+  if [ "$exit_code" -eq 0 ]; then
+    printf 'succeeded\n' > "$STATUS_FILE"
+  else
+    printf 'failed\n' > "$STATUS_FILE"
+  fi
+}
+
+trap 'cleanup_remote_status "$?"' EXIT
+
+printf 'running\n' > "$STATUS_FILE"
+
+cd "$SSH_DIRECTORY/locomotion"
 
 echo "Running hyperparameter sweep..."
 echo "Task name: $SELECTED_TASK_NAME"
@@ -356,11 +372,43 @@ case "$SWEEP_REMOTE_MODE" in
     exit 2
     ;;
 esac
+RUNNER
+
+chmod +x "$RUNNER_SCRIPT"
+
+nohup bash "$RUNNER_SCRIPT" \
+  "$SSH_DIRECTORY" \
+  "$SWEEP_TRIALS_JSON" \
+  "$REMOTE_SWEEP_REL" \
+  "$SWEEP_REMOTE_MODE" \
+  "$GPU_IDS" \
+  "$MAX_PARALLEL_TRIALS" \
+  "$TASK_HPARAMS_JSON" \
+  "$SELECTED_TASK_NAME" \
+  "$SELECTED_TASK_ENV_FILE" \
+  "$STATUS_FILE" \
+  "$EXIT_CODE_FILE" \
+  "$@" > "$RUNNER_LOG" 2>&1 < /dev/null &
+
+REMOTE_PID="$!"
+printf '%s\n' "$REMOTE_PID" > "$REMOTE_PID_FILE"
+
+echo "Detached remote sweep launched successfully."
+echo "Remote PID: $REMOTE_PID"
+echo "Selected GPU ids: ${GPU_IDS:-<none>}"
+echo "Resolved GPU slot count: ${GPU_SLOT_COUNT}"
+echo "Resolved parallel trials: ${MAX_PARALLEL_TRIALS}"
+echo "Remote status file: $STATUS_FILE"
+echo "Remote log file: $RUNNER_LOG"
+echo "Remote job info file: $JOB_INFO_FILE"
 REMOTE
 
-# Do one last sync at the end so late-written files are not missed.
-sync_artifacts "$REMOTE_SWEEP_ABS" "$LOCAL_SWEEP_BASE"
+write_local_submission_receipt
 
 echo ""
-echo "Sweep finished. Artifacts should now be synced under:"
-echo "  $LOCAL_SWEEP_BASE"
+echo "Job sent to remote server."
+echo "Remote sweep dir:"
+echo "  $REMOTE_SWEEP_ABS"
+echo "Local receipt:"
+echo "  $LOCAL_SUBMISSION_RECEIPT"
+echo "Use Scripts/retrieve_sweeps.sh when you want to pull results back."
