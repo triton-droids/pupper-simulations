@@ -30,16 +30,16 @@ TEST_MODE_OVERRIDES = {
     "num_updates_per_batch": 1,
 }
 
-# The first dance sweep improved most in the smallest batch/env setting, and
-# that run was still getting better when the run ended. These presets start new
-# dance runs near that "best so far" region instead of at the walking scale.
+# The latest retrieved dance sweep finished strongest at the smaller 24-env
+# training shape, so new dance runs now start from that narrower best-known
+# budget instead of the heavier 32-env preset.
 TASK_FULL_MODE_OVERRIDES = {
     "dance": {
-        "num_timesteps": 200_000,
+        "num_timesteps": 175_000,
         "num_evals": 6,
         "episode_length": 200,
-        "num_envs": 32,
-        "batch_size": 32,
+        "num_envs": 24,
+        "batch_size": 24,
         "unroll_length": 8,
         "num_minibatches": 4,
         "num_updates_per_batch": 1,

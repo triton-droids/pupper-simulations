@@ -1,14 +1,5 @@
 [
   {
-    "action_scale": 0.32,
-    "kick_vel": 0.0,
-    "enable_kicks": false,
-    "cycle_steps": 80,
-    "dance_amplitude": 0.8,
-    "pose_tracking_scale": 5.0,
-    "upright_scale": 1.5
-  },
-  {
     "action_scale": 0.3,
     "kick_vel": 0.0,
     "enable_kicks": false,
@@ -18,30 +9,21 @@
     "upright_scale": 1.6
   },
   {
-    "action_scale": 0.33,
+    "action_scale": 0.32,
     "kick_vel": 0.0,
     "enable_kicks": false,
-    "cycle_steps": 90,
-    "dance_amplitude": 0.82,
+    "cycle_steps": 80,
+    "dance_amplitude": 0.8,
     "pose_tracking_scale": 5.0,
-    "upright_scale": 1.6
+    "upright_scale": 1.5
   },
   {
-    "action_scale": 0.35,
+    "action_scale": 0.29,
     "kick_vel": 0.0,
     "enable_kicks": false,
-    "dance_amplitude": 0.85,
-    "pose_tracking_scale": 4.5,
-    "stay_centered_scale": 1.25
-  },
-  {
-    "action_scale": 0.35,
-    "kick_vel": 0.0,
-    "enable_kicks": false,
-    "cycle_steps": 90,
-    "dance_amplitude": 0.85,
-    "pose_tracking_scale": 4.75,
-    "upright_scale": 1.5,
-    "stay_centered_scale": 1.1
+    "cycle_steps": 80,
+    "dance_amplitude": 0.74,
+    "pose_tracking_scale": 5.35,
+    "upright_scale": 1.65
   }
 ]

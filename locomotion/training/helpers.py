@@ -180,6 +180,11 @@ Examples:
         choices=["DEBUG", "INFO", "WARNING", "ERROR"],
         help="Console logging verbosity.",
     )
+    parser.add_argument(
+        "--require_gpu",
+        action="store_true",
+        help="Fail immediately if JAX cannot see a GPU-backed device for this run.",
+    )
     return parser
 
 

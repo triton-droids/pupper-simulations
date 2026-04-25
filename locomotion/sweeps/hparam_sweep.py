@@ -54,7 +54,9 @@ PARAMETERS_FILENAME = "parameters.txt"
 TRAINING_OVERRIDES_FILENAME = "training_overrides.json"
 TASK_OVERRIDES_FILENAME = "task_overrides.json"
 COMBINED_OVERRIDES_FILENAME = "combined_overrides.json"
+SWEEP_ARTIFACT_LOCK_FILENAME = ".sweep_artifacts.lock"
 TASK_CHOICES = TASK_CLI_CHOICES
+GPU_PLATFORM_NAMES = frozenset({"gpu", "cuda", "rocm"})
 
 
 @dataclass(slots=True)
@@ -92,6 +94,18 @@ class SweepCombination:
 
     training_overrides: dict[str, Any]
     task_overrides: dict[str, Any]
+
+
+@dataclass(slots=True, frozen=True)
+class JaxDeviceProbe:
+    """Summarize one short-lived subprocess that asks JAX which devices it sees."""
+
+    probe_target: str
+    cuda_visible_devices: str | None
+    returncode: int
+    platforms: tuple[str, ...]
+    devices: tuple[str, ...]
+    stderr_tail: tuple[str, ...]
 
 
 def _resolve_from_locomotion(path_str: str | os.PathLike[str]) -> Path:
@@ -223,6 +237,155 @@ def _append_jsonl(path: Path, payload: Any) -> None:
         file_handle.write(json.dumps(payload) + "\n")
 
 
+def _write_jsonl(path: Path, payloads: list[Any]) -> None:
+    """Rewrite one `.jsonl` file from a list of JSON-serializable rows."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as file_handle:
+        for payload in payloads:
+            file_handle.write(json.dumps(payload) + "\n")
+
+
+def _read_jsonl(path: Path) -> list[dict[str, Any]]:
+    """Read a `.jsonl` file into a list of JSON objects, skipping blank lines."""
+    if not path.exists():
+        return []
+
+    rows: list[dict[str, Any]] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        rows.append(json.loads(line))
+    return rows
+
+
+def _remove_file_if_exists(path: Path) -> None:
+    """Delete one file when present, ignoring the already-missing case."""
+    try:
+        path.unlink()
+    except FileNotFoundError:
+        pass
+
+
+def _pid_is_running(pid: int) -> bool:
+    """Return whether a process id still appears to be alive."""
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+    return True
+
+
+def _break_stale_lock(lock_path: Path) -> bool:
+    """Remove a lock file when it clearly belongs to a dead or ancient process."""
+    try:
+        lock_text = lock_path.read_text(encoding="utf-8").strip().splitlines()
+    except OSError:
+        return False
+
+    lock_pid: int | None = None
+    if lock_text:
+        try:
+            lock_pid = int(lock_text[0].strip())
+        except ValueError:
+            lock_pid = None
+
+    if lock_pid is not None and _pid_is_running(lock_pid):
+        try:
+            age_seconds = time.time() - lock_path.stat().st_mtime
+        except OSError:
+            return False
+        if age_seconds < 60.0:
+            return False
+
+    try:
+        lock_path.unlink()
+    except FileNotFoundError:
+        return False
+    return True
+
+
+def _acquire_artifact_lock(lock_path: Path, *, timeout_seconds: float = 30.0) -> None:
+    """Create a tiny exclusive lock file so child trials can update shared artifacts safely."""
+    deadline = time.monotonic() + timeout_seconds
+
+    while True:
+        try:
+            fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            with os.fdopen(fd, "w", encoding="utf-8") as lock_file:
+                lock_file.write(f"{os.getpid()}\n{time.time():.6f}\n")
+            return
+        except FileExistsError:
+            if _break_stale_lock(lock_path):
+                continue
+            if time.monotonic() >= deadline:
+                raise TimeoutError(f"Timed out waiting for sweep artifact lock: {lock_path}")
+            time.sleep(0.1)
+
+
+def _release_artifact_lock(lock_path: Path) -> None:
+    """Release the sweep artifact lock file."""
+    _remove_file_if_exists(lock_path)
+
+
+def _load_persisted_trial_records(results_jsonl: Path) -> list[TrialRecord]:
+    """Read the current persisted sweep rows from disk."""
+    return [TrialRecord(**payload) for payload in _read_jsonl(results_jsonl)]
+
+
+def _write_progress_artifacts(
+    *,
+    output_dir: Path,
+    rows: list[TrialRecord],
+) -> None:
+    """Rewrite the sweep-wide results, leaderboard, and best-trial files from the current rows."""
+    results_jsonl = output_dir / RESULTS_JSONL_FILENAME
+    leaderboard_json = output_dir / LEADERBOARD_FILENAME
+    best_json = output_dir / BEST_TRIAL_FILENAME
+    ordered_rows = sorted(rows, key=lambda row: row.trial_id)
+
+    _write_jsonl(results_jsonl, [asdict(row) for row in ordered_rows])
+
+    leaderboard = _rank_successful_trials(ordered_rows)
+    _write_json(leaderboard_json, [asdict(row) for row in leaderboard])
+
+    if leaderboard:
+        _write_json(best_json, asdict(leaderboard[0]))
+    else:
+        _remove_file_if_exists(best_json)
+
+
+def _persist_trial_record(output_dir: Path, row: TrialRecord) -> list[TrialRecord]:
+    """Upsert one finished trial into the shared sweep artifacts and return the full row set."""
+    lock_path = output_dir / SWEEP_ARTIFACT_LOCK_FILENAME
+    results_jsonl = output_dir / RESULTS_JSONL_FILENAME
+    _acquire_artifact_lock(lock_path)
+    try:
+        rows_by_trial_id = {
+            existing_row.trial_id: existing_row
+            for existing_row in _load_persisted_trial_records(results_jsonl)
+        }
+        rows_by_trial_id[row.trial_id] = row
+        updated_rows = [rows_by_trial_id[trial_id] for trial_id in sorted(rows_by_trial_id)]
+        _write_progress_artifacts(output_dir=output_dir, rows=updated_rows)
+        return updated_rows
+    finally:
+        _release_artifact_lock(lock_path)
+
+
+def _initialize_progress_artifacts(output_dir: Path) -> None:
+    """Rebuild the sweep-wide progress files from whatever rows already exist on disk."""
+    lock_path = output_dir / SWEEP_ARTIFACT_LOCK_FILENAME
+    results_jsonl = output_dir / RESULTS_JSONL_FILENAME
+    _acquire_artifact_lock(lock_path)
+    try:
+        _write_progress_artifacts(
+            output_dir=output_dir,
+            rows=_load_persisted_trial_records(results_jsonl),
+        )
+    finally:
+        _release_artifact_lock(lock_path)
+
+
 def _build_sweep_output_dir(args: argparse.Namespace) -> Path:
     """Decide which top-level folder should hold this sweep's output."""
     if args.base_output_dir:
@@ -240,6 +403,8 @@ def _build_trial_command(
     test_mode: bool,
     training_overrides: dict[str, Any],
     task_overrides: dict[str, Any],
+    metric: str,
+    require_gpu: bool,
 ) -> list[str]:
     """Assemble the shell command used to launch one child trial."""
     command = [
@@ -254,6 +419,8 @@ def _build_trial_command(
         task,
         "--trial_dir",
         str(trial_dir),
+        "--metric",
+        metric,
         "--training_overrides_json_inline",
         json.dumps(training_overrides),
         "--task_overrides_json_inline",
@@ -261,6 +428,8 @@ def _build_trial_command(
     ]
     if test_mode:
         command.append("--test")
+    if require_gpu:
+        command.append("--require_gpu")
 
     return command
 
@@ -282,7 +451,9 @@ def _start_trial_process(
     test_mode: bool,
     training_overrides: dict[str, Any],
     task_overrides: dict[str, Any],
+    metric: str,
     cuda_visible_devices: str | None = None,
+    require_gpu: bool = False,
 ) -> subprocess.Popen[Any]:
     """Launch one trial process and immediately return control to the caller."""
     command = _build_trial_command(
@@ -293,6 +464,8 @@ def _start_trial_process(
         test_mode=test_mode,
         training_overrides=training_overrides,
         task_overrides=task_overrides,
+        metric=metric,
+        require_gpu=require_gpu,
     )
     return subprocess.Popen(
         command,
@@ -340,6 +513,120 @@ def _resolve_gpu_slots(args: argparse.Namespace) -> list[str]:
     if args.available_gpus:
         return _parse_gpu_csv(args.available_gpus)
     return _discover_gpu_slots()
+
+
+def _build_probe_target_label(cuda_visible_devices: str | None) -> str:
+    """Describe which CUDA visibility setting one probe subprocess is testing."""
+    if cuda_visible_devices is None:
+        inherited = os.environ.get("CUDA_VISIBLE_DEVICES")
+        if inherited:
+            return f"CUDA_VISIBLE_DEVICES={inherited}"
+        return "current environment"
+    return f"CUDA_VISIBLE_DEVICES={cuda_visible_devices}"
+
+
+def _probe_jax_devices(cuda_visible_devices: str | None) -> JaxDeviceProbe:
+    """Launch a tiny subprocess and record whether JAX sees a GPU device there."""
+    probe_script = """
+import json
+import jax
+
+devices = jax.devices()
+payload = {
+    "platforms": sorted(
+        {
+            str(getattr(device, "platform", "")).lower()
+            for device in devices
+            if str(getattr(device, "platform", "")).strip()
+        }
+    ),
+    "devices": [str(device) for device in devices],
+}
+print(json.dumps(payload))
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", probe_script],
+        capture_output=True,
+        text=True,
+        env=_build_child_env(cuda_visible_devices),
+    )
+
+    platforms: tuple[str, ...] = ()
+    devices: tuple[str, ...] = ()
+    stdout = result.stdout.strip()
+    if stdout:
+        try:
+            payload = json.loads(stdout)
+        except json.JSONDecodeError:
+            payload = {}
+        platforms = tuple(payload.get("platforms", ()))
+        devices = tuple(payload.get("devices", ()))
+
+    stderr_tail = tuple(
+        line.strip()
+        for line in result.stderr.splitlines()
+        if line.strip()
+    )[-8:]
+
+    return JaxDeviceProbe(
+        probe_target=_build_probe_target_label(cuda_visible_devices),
+        cuda_visible_devices=cuda_visible_devices,
+        returncode=result.returncode,
+        platforms=platforms,
+        devices=devices,
+        stderr_tail=stderr_tail,
+    )
+
+
+def _validate_gpu_probe(probe: JaxDeviceProbe) -> str | None:
+    """Return a clear failure reason when a JAX probe did not expose a GPU."""
+    if probe.returncode != 0:
+        message = (
+            f"{probe.probe_target}: JAX probe exited with code {probe.returncode}."
+        )
+        if probe.stderr_tail:
+            message += f" stderr tail: {' | '.join(probe.stderr_tail)}"
+        return message
+
+    if any(platform in GPU_PLATFORM_NAMES for platform in probe.platforms):
+        return None
+
+    platform_summary = ", ".join(probe.platforms) if probe.platforms else "<none>"
+    device_summary = ", ".join(probe.devices) if probe.devices else "<none>"
+    message = (
+        f"{probe.probe_target}: JAX did not expose a GPU-backed device. "
+        f"platforms={platform_summary}; devices={device_summary}."
+    )
+    if probe.stderr_tail:
+        message += f" stderr tail: {' | '.join(probe.stderr_tail)}"
+    return message
+
+
+def _run_gpu_preflight_checks(
+    *,
+    require_gpu: bool,
+    max_concurrent_trials: int,
+    gpu_slots: list[str],
+) -> list[str]:
+    """Probe the exact execution environment and fail before expensive training starts."""
+    if not require_gpu:
+        return []
+
+    if max_concurrent_trials > 1:
+        probe_targets: list[str | None] = gpu_slots[:max_concurrent_trials]
+        if not probe_targets:
+            return [
+                "GPU preflight was requested, but no GPU slots were available to test."
+            ]
+    else:
+        probe_targets = [None]
+
+    failures: list[str] = []
+    for probe_target in probe_targets:
+        failure = _validate_gpu_probe(_probe_jax_devices(probe_target))
+        if failure is not None:
+            failures.append(failure)
+    return failures
 
 
 def _rank_successful_trials(
@@ -463,7 +750,7 @@ def _record_trial_completion(
         result=result,
     )
     all_rows.append(row)
-    _append_jsonl(results_jsonl, asdict(row))
+    _persist_trial_record(trial_dir.parent, row)
 
     if row.success:
         print(f"  done: score={row.score}")
@@ -509,6 +796,7 @@ def sweep_main(args: argparse.Namespace) -> int:
     # Prepare the sweep-wide output files and any GPU scheduling information.
     output_dir = _build_sweep_output_dir(args)
     output_dir.mkdir(parents=True, exist_ok=True)
+    _initialize_progress_artifacts(output_dir)
 
     results_jsonl = output_dir / RESULTS_JSONL_FILENAME
     leaderboard_json = output_dir / LEADERBOARD_FILENAME
@@ -531,6 +819,17 @@ def sweep_main(args: argparse.Namespace) -> int:
                 f"{len(gpu_slots)} GPU slots are available; limiting concurrency."
             )
             max_concurrent_trials = len(gpu_slots)
+
+    preflight_failures = _run_gpu_preflight_checks(
+        require_gpu=args.require_gpu,
+        max_concurrent_trials=max_concurrent_trials,
+        gpu_slots=gpu_slots,
+    )
+    if preflight_failures:
+        print("ERROR: GPU preflight failed before the sweep started.")
+        for failure in preflight_failures:
+            print(f"  {failure}")
+        return 2
 
     _print_sweep_header(
         trials_path=trials_path,
@@ -568,6 +867,8 @@ def sweep_main(args: argparse.Namespace) -> int:
                 test_mode=args.test,
                 training_overrides=combination.training_overrides,
                 task_overrides=combination.task_overrides,
+                metric=args.metric,
+                require_gpu=args.require_gpu,
             )
             exit_code = process.wait()
             _record_trial_completion(
@@ -619,7 +920,9 @@ def sweep_main(args: argparse.Namespace) -> int:
                     test_mode=args.test,
                     training_overrides=combination.training_overrides,
                     task_overrides=combination.task_overrides,
+                    metric=args.metric,
                     cuda_visible_devices=gpu_slot,
+                    require_gpu=args.require_gpu,
                 )
                 running_trials.append(
                     RunningTrial(
@@ -664,15 +967,13 @@ def sweep_main(args: argparse.Namespace) -> int:
                 time.sleep(1.0)
 
     # Once all trials are done, write the final leaderboard and the "best trial" file.
-    leaderboard = _rank_successful_trials(all_rows)
-    _write_json(leaderboard_json, [asdict(row) for row in leaderboard])
+    persisted_rows = _load_persisted_trial_records(results_jsonl)
+    leaderboard = _rank_successful_trials(persisted_rows)
 
     if not leaderboard:
         print("No successful trials to rank.")
         return 1
-
     best = leaderboard[0]
-    _write_json(best_json, asdict(best))
 
     print("Best trial:")
     print(f"  trial_id: {best.trial_id}")
@@ -783,6 +1084,7 @@ def run_one_trial_main(args: argparse.Namespace) -> int:
         logger=logger,
         task_name=args.task,
         env_overrides=task_overrides,
+        require_gpu=args.require_gpu,
     )
 
     result = {
@@ -795,6 +1097,16 @@ def run_one_trial_main(args: argparse.Namespace) -> int:
         "error": outcome.get("error"),
     }
     _write_json(trial_dir / RESULT_FILENAME, result)
+    row = _make_trial_record(
+        trial_id=args.trial_id,
+        trial_dir=trial_dir,
+        training_overrides=training_overrides,
+        task_overrides=task_overrides,
+        metric=args.metric,
+        exit_code=0 if result["success"] else 1,
+        result=result,
+    )
+    _persist_trial_record(trial_dir.parent, row)
     return 0 if result["success"] else 1
 
 
@@ -877,6 +1189,11 @@ def build_argparser() -> argparse.ArgumentParser:
             "Comma-separated GPU ids reserved for concurrent child trials, "
             "for example '0,1,2,3'."
         ),
+    )
+    parser.add_argument(
+        "--require_gpu",
+        action="store_true",
+        help="Fail before training if JAX cannot expose a GPU-backed device.",
     )
 
     # Internal child-process arguments. These are intentionally hidden from the

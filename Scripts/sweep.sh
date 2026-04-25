@@ -340,6 +340,7 @@ case "$SWEEP_REMOTE_MODE" in
       --trials_json "$SWEEP_TRIALS_JSON" \
       --base_output_dir "$REMOTE_SWEEP_REL" \
       --task "$SELECTED_TASK_NAME" \
+      --require_gpu \
       "${TASK_HPARAMS_ARGS[@]}" \
       "$@"
     ;;
@@ -351,6 +352,7 @@ case "$SWEEP_REMOTE_MODE" in
       --trials_json "$SWEEP_TRIALS_JSON" \
       --base_output_dir "$REMOTE_SWEEP_REL" \
       --task "$SELECTED_TASK_NAME" \
+      --require_gpu \
       "${TASK_HPARAMS_ARGS[@]}" \
       "$@"
     ;;
@@ -363,6 +365,7 @@ case "$SWEEP_REMOTE_MODE" in
       --task "$SELECTED_TASK_NAME" \
       --max_concurrent_trials "$MAX_PARALLEL_TRIALS" \
       --available_gpus "$GPU_IDS" \
+      --require_gpu \
       "${TASK_HPARAMS_ARGS[@]}" \
       "$@"
     ;;
@@ -411,4 +414,4 @@ echo "Remote sweep dir:"
 echo "  $REMOTE_SWEEP_ABS"
 echo "Local receipt:"
 echo "  $LOCAL_SUBMISSION_RECEIPT"
-echo "Use Scripts/retrieve_sweeps.sh when you want to pull results back."
+echo "Use Scripts/return.sh when you want to pull results back."

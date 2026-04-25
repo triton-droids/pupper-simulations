@@ -2,5 +2,12 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../Classes/ECE 208/ECE 208 Hw #1" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../Classes/ECE 208/ECE 208 Hw #2" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../Classes/ECE 208/ECE 208 Hw #3" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../ECE_176_Final_Project" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../Mini_Project_#2" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../Mini_Project_1" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../Numpy Feedforward Network" vcs="Git" />
   </component>
 </project>

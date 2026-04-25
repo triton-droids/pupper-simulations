@@ -34,11 +34,11 @@ class TrainingConfigTests(unittest.TestCase):
     def test_dance_full_preset_uses_refined_defaults(self) -> None:
         config = TrainingConfig.for_task("dance")
 
-        self.assertEqual(config.num_timesteps, 200_000)
+        self.assertEqual(config.num_timesteps, 175_000)
         self.assertEqual(config.num_evals, 6)
         self.assertEqual(config.episode_length, 200)
-        self.assertEqual(config.num_envs, 32)
-        self.assertEqual(config.batch_size, 32)
+        self.assertEqual(config.num_envs, 24)
+        self.assertEqual(config.batch_size, 24)
         self.assertEqual(config.unroll_length, 8)
         self.assertEqual(config.num_minibatches, 4)
         self.assertEqual(config.num_updates_per_batch, 1)

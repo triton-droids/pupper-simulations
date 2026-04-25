@@ -109,6 +109,7 @@ TASK_SPECS = {
         description="phase-conditioned rhythmic dance",
     ),
 }
+GPU_PLATFORM_NAMES = frozenset({"gpu", "cuda", "rocm"})
 
 
 def _get_task_spec(task_name: str) -> TaskSpec:
@@ -177,13 +178,75 @@ def _log_training_config(
     logger.info("")
 
 
-def _log_jax_devices(logger: logging.Logger) -> None:
+def _log_jax_devices(logger: logging.Logger) -> tuple[Any, ...]:
     """Print which CPU/GPU devices JAX can see before training starts."""
-    devices = jax.devices()
+    devices = tuple(jax.devices())
     logger.info("JAX devices available: %s", len(devices))
     for index, device in enumerate(devices):
         logger.info("  Device %s: %s", index, device)
     logger.info("")
+    return devices
+
+
+def _parse_visible_devices(csv: str | None) -> list[str]:
+    """Split a CUDA-visible-devices string into clean GPU ids."""
+    if csv is None:
+        return []
+    return [gpu_id.strip() for gpu_id in csv.split(",") if gpu_id.strip()]
+
+
+def _build_gpu_requirement_reason(*, require_gpu: bool) -> str | None:
+    """Explain why this run should refuse a CPU-only JAX fallback."""
+    reasons: list[str] = []
+    if require_gpu:
+        reasons.append("--require_gpu was set")
+
+    visible_devices = _parse_visible_devices(os.environ.get("CUDA_VISIBLE_DEVICES"))
+    if visible_devices:
+        reasons.append(f"CUDA_VISIBLE_DEVICES={','.join(visible_devices)}")
+
+    if not reasons:
+        return None
+    return " and ".join(reasons)
+
+
+def _has_gpu_backed_jax_device(devices: tuple[Any, ...]) -> bool:
+    """Return whether JAX exposed at least one accelerator device."""
+    return any(str(getattr(device, "platform", "")).lower() in GPU_PLATFORM_NAMES for device in devices)
+
+
+def _fail_if_required_gpu_missing(
+    logger: logging.Logger,
+    devices: tuple[Any, ...],
+    *,
+    require_gpu: bool,
+) -> str | None:
+    """Return an error message when a GPU-backed run fell back to CPU-only JAX."""
+    reason = _build_gpu_requirement_reason(require_gpu=require_gpu)
+    if reason is None or _has_gpu_backed_jax_device(devices):
+        return None
+
+    platforms = sorted(
+        {
+            str(getattr(device, "platform", "")).lower()
+            for device in devices
+            if str(getattr(device, "platform", "")).strip()
+        }
+    )
+    platform_summary = ", ".join(platforms) if platforms else "<none>"
+    error = (
+        "GPU was required because "
+        f"{reason}, but JAX only exposed platform(s): {platform_summary}. "
+        f"CUDA_VISIBLE_DEVICES={os.environ.get('CUDA_VISIBLE_DEVICES', '<unset>')}."
+    )
+
+    logger.error("=" * 80)
+    logger.error("GPU PRECHECK FAILED")
+    logger.error("=" * 80)
+    logger.error("%s", error)
+    logger.error("Refusing to continue with a CPU-only fallback.")
+    logger.error("=" * 80)
+    return error
 
 
 def _log_training_summary(summary: dict[str, Any], logger: logging.Logger) -> None:
@@ -245,6 +308,7 @@ def train_bittle(
     logger: logging.Logger,
     task_name: str = "walking",
     env_overrides: dict[str, Any] | None = None,
+    require_gpu: bool = False,
 ) -> dict[str, Any]:
     """
     Run one full training job and save the outputs.
@@ -276,7 +340,14 @@ def train_bittle(
     logger.info("")
 
     _log_training_config(config, logger, task_name=task_name)
-    _log_jax_devices(logger)
+    devices = _log_jax_devices(logger)
+    gpu_error = _fail_if_required_gpu_missing(
+        logger,
+        devices,
+        require_gpu=require_gpu,
+    )
+    if gpu_error is not None:
+        return {"success": False, "error": gpu_error}
 
     # Register the chosen environment class with Brax, then build one instance
     # so PPO knows what world it will be training in.
@@ -418,6 +489,7 @@ def main() -> None:
         output_dir=output_dir,
         logger=logger,
         task_name=args.task,
+        require_gpu=args.require_gpu,
     )
     sys.exit(0 if results["success"] else 1)
 
