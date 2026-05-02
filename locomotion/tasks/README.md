@@ -35,6 +35,8 @@ For penalty scales, that matters:
 - and a lower negative penalty usually means a stronger punishment
 
 An empty JSON object like `{}` means "use the task defaults exactly as written in the environment code."
+For the dance task, that default now matches the latest best full sweep baseline,
+so a leading `{}` entry in the JSON re-runs the current champion directly.
 
 ## Walking
 
@@ -90,15 +92,15 @@ The dance task JSON file is:
 | Hyperparameter | Default | What it controls | Higher value | Lower value |
 | --- | ---: | --- | --- | --- |
 | `obs_noise` | `0.05` | How much random fuzz is added to the observations. | Harder but usually more robust. | Easier and cleaner, but less robust. |
-| `action_scale` | `0.5` | How far one action can push joints away from the default pose. | Bigger, punchier dance moves; easier to destabilize. | Smaller, safer motions; can become too timid. |
-| `kick_vel` | `0.03` | How strong the random shoves are when kicks are enabled. | Harder recovery training. | Easier, gentler disturbance training. |
-| `enable_kicks` | `true` | Whether those random shoves happen. | `true`: trains recovery from bumps. | `false`: no bump recovery pressure. |
-| `cycle_steps` | `100` | How many control steps make up one full dance phrase. | Slower, more drawn-out dance cycle. | Faster, more rapid dance cycle. |
-| `dance_amplitude` | `1.0` | How large the scripted target dance motions are. | Bigger pose swings and larger bounce. | Smaller, tighter dance motions. |
+| `action_scale` | `0.29` | How far one action can push joints away from the default pose. | Bigger, punchier dance moves; easier to destabilize. | Smaller, safer motions; can become too timid. |
+| `kick_vel` | `0.0` | How strong the random shoves are when kicks are enabled. | Harder recovery training. | Easier, gentler disturbance training. |
+| `enable_kicks` | `false` | Whether those random shoves happen. | `true`: trains recovery from bumps. | `false`: no bump recovery pressure. |
+| `cycle_steps` | `80` | How many control steps make up one full dance phrase. | Slower, more drawn-out dance cycle. | Faster, more rapid dance cycle. |
+| `dance_amplitude` | `0.74` | How large the scripted target dance motions are. | Bigger pose swings and larger bounce. | Smaller, tighter dance motions. |
 | `n_frames` | `5` | How many tiny physics steps happen for each policy action. | More resolved physics, slower runs. | Less resolved physics, faster runs. |
-| `pose_tracking_scale` | `4.0` | How strongly the robot is rewarded for matching the target joint pose for the current beat. | Matching the scripted pose matters more. | The pose target matters less. |
+| `pose_tracking_scale` | `5.35` | How strongly the robot is rewarded for matching the target joint pose for the current beat. | Matching the scripted pose matters more. | The pose target matters less. |
 | `bounce_tracking_scale` | `1.5` | How strongly the torso is rewarded for matching the target up-and-down bounce. | The torso bob matters more. | The bounce matters less. |
-| `upright_scale` | `1.25` | How strongly the robot is rewarded for staying upright. | Staying upright matters more. | The policy can sacrifice uprightness more easily. |
+| `upright_scale` | `1.65` | How strongly the robot is rewarded for staying upright. | Staying upright matters more. | The policy can sacrifice uprightness more easily. |
 | `stay_centered_scale` | `1.0` | How strongly the robot is rewarded for staying near its starting spot. | Drifting away is discouraged more. | The robot is allowed to wander more. |
 | `foot_stability_scale` | `0.6` | How much the robot is rewarded for keeping a stable number of feet in contact. | More pressure for stable support under the dance. | Less pressure for foot-contact stability. |
 | `action_rate_scale` | `-0.002` | Penalty for sudden command jumps from one step to the next. | Jerky command changes are tolerated more. | Smoother command changes are encouraged more. |

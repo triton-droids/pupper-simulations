@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 import unittest
+from inspect import signature
 from pathlib import Path
 
 import numpy as np
@@ -17,7 +18,14 @@ if str(REPO_ROOT) not in sys.path:
 from locomotion.paths import DEFAULT_SCENE_PATH
 from locomotion.tasks.bittle_dance_env import (
     BittleDanceEnv,
+    DEFAULT_ACTION_SCALE,
+    DEFAULT_CYCLE_STEPS,
+    DEFAULT_DANCE_AMPLITUDE,
+    DEFAULT_ENABLE_KICKS,
+    DEFAULT_KICK_VEL,
     DEFAULT_POSE,
+    DEFAULT_POSE_TRACKING_SCALE,
+    DEFAULT_UPRIGHT_SCALE,
     TERMINATION_MARGIN,
     _actuator_position_ranges,
     build_reward_config,
@@ -25,6 +33,37 @@ from locomotion.tasks.bittle_dance_env import (
 
 
 class BittleDanceEnvRewardTests(unittest.TestCase):
+    def test_default_baseline_matches_latest_best_sweep(self) -> None:
+        init_signature = signature(BittleDanceEnv.__init__)
+
+        self.assertEqual(
+            init_signature.parameters["action_scale"].default,
+            DEFAULT_ACTION_SCALE,
+        )
+        self.assertEqual(
+            init_signature.parameters["kick_vel"].default,
+            DEFAULT_KICK_VEL,
+        )
+        self.assertEqual(
+            init_signature.parameters["enable_kicks"].default,
+            DEFAULT_ENABLE_KICKS,
+        )
+        self.assertEqual(
+            init_signature.parameters["cycle_steps"].default,
+            DEFAULT_CYCLE_STEPS,
+        )
+        self.assertEqual(
+            init_signature.parameters["dance_amplitude"].default,
+            DEFAULT_DANCE_AMPLITUDE,
+        )
+
+        config = build_reward_config()
+        self.assertEqual(
+            config.rewards.scales.pose_tracking,
+            DEFAULT_POSE_TRACKING_SCALE,
+        )
+        self.assertEqual(config.rewards.scales.upright, DEFAULT_UPRIGHT_SCALE)
+
     def test_termination_scale_is_large_enough_to_matter_after_dt_scaling(self) -> None:
         config = build_reward_config()
         self.assertEqual(config.rewards.scales.termination, -20.0)

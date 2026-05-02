@@ -75,6 +75,16 @@ LOWER_LEG_BODY_NAMES = (
 FOOT_HEIGHT_OFFSET = 0.06
 FOOT_CONTACT_RADIUS = 0.015
 
+# Latest full sweep baseline promoted into the task defaults so a plain
+# `--task dance` run starts from the strongest known settings.
+DEFAULT_ACTION_SCALE = 0.29
+DEFAULT_KICK_VEL = 0.0
+DEFAULT_ENABLE_KICKS = False
+DEFAULT_CYCLE_STEPS = 80
+DEFAULT_DANCE_AMPLITUDE = 0.74
+DEFAULT_POSE_TRACKING_SCALE = 5.35
+DEFAULT_UPRIGHT_SCALE = 1.65
+
 TASK_HPARAMS_FILENAME = "bittle_dance_hparams.json"
 TASK_HPARAMETER_KEYS = frozenset(
     {
@@ -168,9 +178,9 @@ def build_reward_config() -> config_dict.ConfigDict:
                 dict(
                     scales=config_dict.ConfigDict(
                         dict(
-                            pose_tracking=4.0,
+                            pose_tracking=DEFAULT_POSE_TRACKING_SCALE,
                             bounce_tracking=1.5,
-                            upright=1.25,
+                            upright=DEFAULT_UPRIGHT_SCALE,
                             stay_centered=1.0,
                             foot_stability=0.6,
                             action_rate=-0.002,
@@ -243,11 +253,11 @@ class BittleDanceEnv(PipelineEnv):
         self,
         xml_path: str,
         obs_noise: float = 0.05,
-        action_scale: float = 0.5,
-        kick_vel: float = 0.03,
-        enable_kicks: bool = True,
-        cycle_steps: int = 100,
-        dance_amplitude: float = 1.0,
+        action_scale: float = DEFAULT_ACTION_SCALE,
+        kick_vel: float = DEFAULT_KICK_VEL,
+        enable_kicks: bool = DEFAULT_ENABLE_KICKS,
+        cycle_steps: int = DEFAULT_CYCLE_STEPS,
+        dance_amplitude: float = DEFAULT_DANCE_AMPLITUDE,
         log_init_summary: bool = False,
         **kwargs,
     ):
