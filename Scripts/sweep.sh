@@ -326,7 +326,7 @@ cleanup_remote_status() {
 
 trap 'cleanup_remote_status "$?"' EXIT
 
-printf 'running\n' > "$STATUS_FILE"
+printf 'starting\n' > "$STATUS_FILE"
 
 cd "$SSH_DIRECTORY/locomotion"
 
@@ -342,6 +342,20 @@ else
     GPU_IDS=""
     sleep 10
   done
+
+  if [ -z "$GPU_IDS" ]; then
+    RESTART_COUNT="${SLURM_RESTART_COUNT:-0}"
+    if [ "$RESTART_COUNT" -lt 10 ]; then
+      echo "GPU remained unhealthy; requeueing Slurm job ${SLURM_JOB_ID} (restart $((RESTART_COUNT + 1))/10)." >&2
+      printf 'launching\n' > "$STATUS_FILE"
+      rm -f "$EXIT_CODE_FILE"
+      scontrol requeue "$SLURM_JOB_ID"
+      trap - EXIT
+      exit 0
+    fi
+    echo "ERROR: no healthy GPU after 10 Slurm allocations." >&2
+    exit 2
+  fi
 fi
 
 GPU_SLOT_COUNT="$(awk -F',' '{print NF}' <<< "$GPU_IDS")"
@@ -375,6 +389,7 @@ echo "Parallel trials: $MAX_PARALLEL_TRIALS"
 cd "$SSH_DIRECTORY"
 "$UV_BIN" sync
 "$UV_BIN" run python -c 'from brax import base; from mujoco import mjx; print("Brax/MJX import preflight passed")'
+printf 'running\n' > "$STATUS_FILE"
 cd "$SSH_DIRECTORY/locomotion"
 
 echo "Running hyperparameter sweep..."
@@ -464,8 +479,30 @@ SLURM_JOB_ID="$(sbatch --parsable \
 
 printf '%s\n' "$SLURM_JOB_ID" > "$REMOTE_PID_FILE"
 
+STARTUP_VERIFIED="false"
+for _ in $(seq 1 24); do
+  CURRENT_STATUS="$(cat "$STATUS_FILE" 2>/dev/null || true)"
+  case "$CURRENT_STATUS" in
+    running)
+      STARTUP_VERIFIED="true"
+      break
+      ;;
+    failed)
+      echo "ERROR: remote sweep failed during startup." >&2
+      tail -n 80 "$RUNNER_LOG" >&2 || true
+      exit 2
+      ;;
+  esac
+  sleep 5
+done
+
 echo "Slurm sweep submitted successfully."
 echo "Slurm job ID: $SLURM_JOB_ID"
+if [ "$STARTUP_VERIFIED" = "true" ]; then
+  echo "Training startup verified successfully."
+else
+  echo "Job is queued or still starting; Slurm will continue it automatically."
+fi
 echo "Remote status file: $STATUS_FILE"
 echo "Remote log file: $RUNNER_LOG"
 echo "Remote job info file: $JOB_INFO_FILE"

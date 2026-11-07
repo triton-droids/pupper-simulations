@@ -88,13 +88,13 @@ print_section() {
         ;;
       running)
         case "$status" in
-          launching|running|not_started|"") ;;
+          launching|starting|running|not_started|"") ;;
           *) continue ;;
         esac
         ;;
       other)
         case "$status" in
-          succeeded|failed|launching|running|not_started|"") continue ;;
+          succeeded|failed|launching|starting|running|not_started|"") continue ;;
         esac
         ;;
       *)
