@@ -216,14 +216,15 @@ fi
 
 SLURM_GRES="${SLURM_GRES_TYPE}:${SWEEP_GPU_COUNT}"
 
-if ! sbatch --test-only \
+if ! SLURM_PREFLIGHT_OUTPUT="$(sbatch --test-only \
   --account="$SLURM_ACCOUNT" \
   --partition="$SLURM_PARTITION" \
   --time="$SLURM_TIME" \
   --gres="$SLURM_GRES" \
   --cpus-per-task="$SLURM_CPUS_PER_TASK" \
   --mem="$SLURM_MEMORY" \
-  --wrap='true' >/dev/null; then
+  --wrap='true' 2>&1)"; then
+  printf '%s\n' "$SLURM_PREFLIGHT_OUTPUT" >&2
   echo "ERROR: Atlantis rejected the Slurm request." >&2
   echo "Account '$SLURM_ACCOUNT' may not yet be associated with this user." >&2
   echo "Ask SCC to verify the Slurm association for account '$SLURM_ACCOUNT'." >&2
@@ -365,6 +366,7 @@ echo "Parallel trials: $MAX_PARALLEL_TRIALS"
 
 cd "$SSH_DIRECTORY"
 "$UV_BIN" sync
+"$UV_BIN" run python -c 'from brax import base; from mujoco import mjx; print("Brax/MJX import preflight passed")'
 cd "$SSH_DIRECTORY/locomotion"
 
 echo "Running hyperparameter sweep..."
