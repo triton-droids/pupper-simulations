@@ -97,7 +97,7 @@ allocate_sweep_number() {
   printf '%s' "$current_number"
 }
 
-# Decide how the remote machine should use its GPUs.
+# Decide how the allocated compute node should use its GPUs.
 #   single_gpu      = one visible GPU, trials one after another
 #   multi_gpu       = one trial at a time, but that trial can see several GPUs
 #   parallel_trials = several child trials at once, one GPU slot per child
@@ -109,11 +109,20 @@ SWEEP_GPU_IDS="${SWEEP_GPU_IDS:-auto}"
 
 # If GPU choice is automatic, this says how many GPUs to reserve. "all" means
 # use every visible GPU the remote box reports.
-SWEEP_GPU_COUNT="${SWEEP_GPU_COUNT:-all}"
+SWEEP_GPU_COUNT="${SWEEP_GPU_COUNT:-1}"
 
 # In parallel mode, this says how many trials may run at once. "auto" means
 # match the number of selected GPU slots.
 SWEEP_PARALLEL_TRIALS="${SWEEP_PARALLEL_TRIALS:-auto}"
+
+# Atlantis schedules all compute work through Slurm. These defaults request one
+# NVIDIA RTX 2080 Ti for up to four hours on the normal partition.
+SLURM_ACCOUNT="${SLURM_ACCOUNT:-tritondroids}"
+SLURM_PARTITION="${SLURM_PARTITION:-normal}"
+SLURM_TIME="${SLURM_TIME:-04:00:00}"
+SLURM_GRES_TYPE="${SLURM_GRES_TYPE:-rtx2080ti}"
+SLURM_CPUS_PER_TASK="${SLURM_CPUS_PER_TASK:-8}"
+SLURM_MEMORY="${SLURM_MEMORY:-32G}"
 
 # Give each sweep one stable numbered label so both the remote artifacts and
 # the local mirror use the same human-readable folder name.
@@ -136,6 +145,10 @@ echo "Remote mode: $SWEEP_REMOTE_MODE"
 echo "GPU ids: $SWEEP_GPU_IDS"
 echo "GPU count: $SWEEP_GPU_COUNT"
 echo "Parallel trials: $SWEEP_PARALLEL_TRIALS"
+echo "Slurm account: $SLURM_ACCOUNT"
+echo "Slurm partition: $SLURM_PARTITION"
+echo "Slurm time: $SLURM_TIME"
+echo "Slurm GPU request: ${SLURM_GRES_TYPE}:${SWEEP_GPU_COUNT}"
 
 mkdir -p "$LOCAL_SWEEP_BASE"
 
@@ -150,6 +163,10 @@ remote_mode=$SWEEP_REMOTE_MODE
 requested_gpu_ids=$SWEEP_GPU_IDS
 requested_gpu_count=$SWEEP_GPU_COUNT
 requested_parallel_trials=$SWEEP_PARALLEL_TRIALS
+slurm_account=$SLURM_ACCOUNT
+slurm_partition=$SLURM_PARTITION
+slurm_time=$SLURM_TIME
+slurm_gres=${SLURM_GRES_TYPE}:${SWEEP_GPU_COUNT}
 remote_sweep_abs=$REMOTE_SWEEP_ABS
 local_output_dir=$LOCAL_SWEEP_BASE
 submitted_at_local=$(date +"%Y-%m-%dT%H:%M:%S%z")
@@ -161,7 +178,9 @@ echo "Connecting to remote server at $DROIDS_IP_ADDRESS"
 ssh -A "${SSH_COMMON_ARGS[@]}" "$DROIDS_IP_ADDRESS" bash -s -- \
   "$BRANCH_NAME" "$SSH_DIRECTORY" "$GITHUB_REPO_SSH" "$SWEEP_TRIALS_JSON" "$REMOTE_SWEEP_REL" "$REMOTE_SWEEP_ABS" "$LOCAL_SWEEP_LABEL" \
   "$SWEEP_REMOTE_MODE" "$SWEEP_GPU_IDS" "$SWEEP_GPU_COUNT" "$SWEEP_PARALLEL_TRIALS" \
-  "$TASK_HPARAMS_JSON" "$SELECTED_TASK_NAME" "$SELECTED_TASK_ENV_FILE" "$@" <<'REMOTE'
+  "$TASK_HPARAMS_JSON" "$SELECTED_TASK_NAME" "$SELECTED_TASK_ENV_FILE" \
+  "$SLURM_ACCOUNT" "$SLURM_PARTITION" "$SLURM_TIME" "$SLURM_GRES_TYPE" \
+  "$SLURM_CPUS_PER_TASK" "$SLURM_MEMORY" "$@" <<'REMOTE'
 set -euo pipefail
 
 BRANCH_NAME="$1"; shift
@@ -178,60 +197,38 @@ SWEEP_PARALLEL_TRIALS="$1"; shift
 TASK_HPARAMS_JSON="$1"; shift
 SELECTED_TASK_NAME="$1"; shift
 SELECTED_TASK_ENV_FILE="$1"; shift
+SLURM_ACCOUNT="$1"; shift
+SLURM_PARTITION="$1"; shift
+SLURM_TIME="$1"; shift
+SLURM_GRES_TYPE="$1"; shift
+SLURM_CPUS_PER_TASK="$1"; shift
+SLURM_MEMORY="$1"; shift
 
-pick_gpu_ids() {
-  local requested_count="$1"
-
-  # If the caller named specific GPUs, use those exactly.
-  if [ -n "$SWEEP_GPU_IDS" ] && [ "$SWEEP_GPU_IDS" != "auto" ]; then
-    echo "$SWEEP_GPU_IDS"
-    return
-  fi
-
-  # Otherwise, pick the least-busy GPUs by current memory use. "all" keeps
-  # every visible GPU instead of truncating the list.
-  if [ "$requested_count" = "all" ]; then
-    nvidia-smi --query-gpu=index,memory.used --format=csv,noheader,nounits |
-      sort -t, -k2 -n |
-      cut -d, -f1 |
-      tr -d ' ' |
-      paste -sd, -
-  else
-    nvidia-smi --query-gpu=index,memory.used --format=csv,noheader,nounits |
-      sort -t, -k2 -n |
-      head -n "$requested_count" |
-      cut -d, -f1 |
-      tr -d ' ' |
-      paste -sd, -
-  fi
-}
-
-count_csv_items() {
-  local csv="$1"
-  if [ -z "$csv" ]; then
-    echo "0"
-    return
-  fi
-  awk -F',' '{print NF}' <<< "$csv"
-}
-
-GPU_IDS="$(pick_gpu_ids "$SWEEP_GPU_COUNT")"
-echo "Selected GPU ids: ${GPU_IDS:-<none>}"
-GPU_SLOT_COUNT="$(count_csv_items "$GPU_IDS")"
-if [ "$SWEEP_PARALLEL_TRIALS" = "auto" ]; then
-  MAX_PARALLEL_TRIALS="$GPU_SLOT_COUNT"
-else
-  MAX_PARALLEL_TRIALS="$SWEEP_PARALLEL_TRIALS"
-fi
-if [ "$GPU_SLOT_COUNT" -lt 1 ]; then
-  echo "ERROR: no GPU slots were selected for the sweep." >&2
+if ! command -v sbatch >/dev/null 2>&1; then
+  echo "ERROR: sbatch is not available on the remote login host." >&2
   exit 2
 fi
-echo "Resolved GPU slot count: ${GPU_SLOT_COUNT}"
-echo "Resolved parallel trials: ${MAX_PARALLEL_TRIALS}"
-export XLA_PYTHON_CLIENT_PREALLOCATE="${XLA_PYTHON_CLIENT_PREALLOCATE:-false}"
-export XLA_PYTHON_CLIENT_MEM_FRACTION="${XLA_PYTHON_CLIENT_MEM_FRACTION:-0.70}"
-export TF_GPU_ALLOCATOR="${TF_GPU_ALLOCATOR:-cuda_malloc_async}"
+
+if ! [[ "$SWEEP_GPU_COUNT" =~ ^[1-9][0-9]*$ ]]; then
+  echo "ERROR: SWEEP_GPU_COUNT must be a positive integer for Slurm, not '$SWEEP_GPU_COUNT'." >&2
+  exit 2
+fi
+
+SLURM_GRES="${SLURM_GRES_TYPE}:${SWEEP_GPU_COUNT}"
+
+if ! sbatch --test-only \
+  --account="$SLURM_ACCOUNT" \
+  --partition="$SLURM_PARTITION" \
+  --time="$SLURM_TIME" \
+  --gres="$SLURM_GRES" \
+  --cpus-per-task="$SLURM_CPUS_PER_TASK" \
+  --mem="$SLURM_MEMORY" \
+  --wrap='true' >/dev/null; then
+  echo "ERROR: Atlantis rejected the Slurm request." >&2
+  echo "Account '$SLURM_ACCOUNT' may not yet be associated with this user." >&2
+  echo "Ask SCC to verify the Slurm association for account '$SLURM_ACCOUNT'." >&2
+  exit 2
+fi
 
 # Make sure the remote repo exists, is up to date, and matches the requested
 # branch before we detach. This part still runs inside the live SSH session so
@@ -274,9 +271,13 @@ task_hparams_json=$TASK_HPARAMS_JSON
 remote_mode=$SWEEP_REMOTE_MODE
 requested_gpu_ids=$SWEEP_GPU_IDS
 requested_gpu_count=$SWEEP_GPU_COUNT
-resolved_gpu_ids=$GPU_IDS
-gpu_slot_count=$GPU_SLOT_COUNT
-resolved_parallel_trials=$MAX_PARALLEL_TRIALS
+resolved_gpu_ids=pending_slurm_allocation
+gpu_slot_count=$SWEEP_GPU_COUNT
+resolved_parallel_trials=$SWEEP_PARALLEL_TRIALS
+slurm_account=$SLURM_ACCOUNT
+slurm_partition=$SLURM_PARTITION
+slurm_time=$SLURM_TIME
+slurm_gres=$SLURM_GRES
 branch_name=$BRANCH_NAME
 remote_sweep_abs=$REMOTE_SWEEP_ABS
 submitted_at_utc=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -290,8 +291,9 @@ SSH_DIRECTORY="$1"; shift
 SWEEP_TRIALS_JSON="$1"; shift
 REMOTE_SWEEP_REL="$1"; shift
 SWEEP_REMOTE_MODE="$1"; shift
-GPU_IDS="$1"; shift
-MAX_PARALLEL_TRIALS="$1"; shift
+SWEEP_GPU_IDS="$1"; shift
+SWEEP_GPU_COUNT="$1"; shift
+SWEEP_PARALLEL_TRIALS="$1"; shift
 TASK_HPARAMS_JSON="$1"; shift
 SELECTED_TASK_NAME="$1"; shift
 SELECTED_TASK_ENV_FILE="$1"; shift
@@ -318,6 +320,44 @@ printf 'running\n' > "$STATUS_FILE"
 
 cd "$SSH_DIRECTORY/locomotion"
 
+if [ -n "$SWEEP_GPU_IDS" ] && [ "$SWEEP_GPU_IDS" != "auto" ]; then
+  GPU_IDS="$SWEEP_GPU_IDS"
+else
+  GPU_IDS="$(nvidia-smi --query-gpu=index --format=csv,noheader,nounits | paste -sd, -)"
+fi
+
+GPU_SLOT_COUNT="$(awk -F',' '{print NF}' <<< "$GPU_IDS")"
+if [ "$SWEEP_PARALLEL_TRIALS" = "auto" ]; then
+  MAX_PARALLEL_TRIALS="$GPU_SLOT_COUNT"
+else
+  MAX_PARALLEL_TRIALS="$SWEEP_PARALLEL_TRIALS"
+fi
+
+if [ "$GPU_SLOT_COUNT" -lt 1 ]; then
+  echo "ERROR: Slurm allocated no visible NVIDIA GPUs." >&2
+  exit 2
+fi
+
+UV_BIN="$(command -v uv || true)"
+if [ -z "$UV_BIN" ] && [ -x "$HOME/.local/bin/uv" ]; then
+  UV_BIN="$HOME/.local/bin/uv"
+fi
+if [ -z "$UV_BIN" ]; then
+  echo "Installing uv in the user account..."
+  curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="$HOME/.local/bin" sh
+  UV_BIN="$HOME/.local/bin/uv"
+fi
+
+echo "Compute node: $(hostname)"
+echo "Slurm job id: ${SLURM_JOB_ID:-unknown}"
+echo "Visible GPU ids: $GPU_IDS"
+echo "GPU slots: $GPU_SLOT_COUNT"
+echo "Parallel trials: $MAX_PARALLEL_TRIALS"
+
+cd "$SSH_DIRECTORY"
+"$UV_BIN" sync
+cd "$SSH_DIRECTORY/locomotion"
+
 echo "Running hyperparameter sweep..."
 echo "Task name: $SELECTED_TASK_NAME"
 echo "Task env script: $SELECTED_TASK_ENV_FILE"
@@ -336,7 +376,7 @@ case "$SWEEP_REMOTE_MODE" in
     # One visible GPU, one trial at a time.
     export CUDA_VISIBLE_DEVICES="${GPU_IDS%%,*}"
     echo "Using single GPU: $CUDA_VISIBLE_DEVICES"
-    uv run sweeps/hparam_sweep.py \
+    "$UV_BIN" run sweeps/hparam_sweep.py \
       --trials_json "$SWEEP_TRIALS_JSON" \
       --base_output_dir "$REMOTE_SWEEP_REL" \
       --task "$SELECTED_TASK_NAME" \
@@ -348,7 +388,7 @@ case "$SWEEP_REMOTE_MODE" in
     # One training job at a time, but let that job see several GPUs.
     export CUDA_VISIBLE_DEVICES="$GPU_IDS"
     echo "Using multi-GPU run with CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES"
-    uv run sweeps/hparam_sweep.py \
+    "$UV_BIN" run sweeps/hparam_sweep.py \
       --trials_json "$SWEEP_TRIALS_JSON" \
       --base_output_dir "$REMOTE_SWEEP_REL" \
       --task "$SELECTED_TASK_NAME" \
@@ -359,7 +399,7 @@ case "$SWEEP_REMOTE_MODE" in
   parallel_trials)
     # Many child trials at once, each assigned to one reserved GPU slot.
     echo "Running concurrent trials across GPUs: $GPU_IDS"
-    uv run sweeps/hparam_sweep.py \
+    "$UV_BIN" run sweeps/hparam_sweep.py \
       --trials_json "$SWEEP_TRIALS_JSON" \
       --base_output_dir "$REMOTE_SWEEP_REL" \
       --task "$SELECTED_TASK_NAME" \
@@ -379,28 +419,34 @@ RUNNER
 
 chmod +x "$RUNNER_SCRIPT"
 
-nohup bash "$RUNNER_SCRIPT" \
+SLURM_JOB_ID="$(sbatch --parsable \
+  --job-name="pupper-${LOCAL_SWEEP_LABEL}" \
+  --account="$SLURM_ACCOUNT" \
+  --partition="$SLURM_PARTITION" \
+  --time="$SLURM_TIME" \
+  --gres="$SLURM_GRES" \
+  --cpus-per-task="$SLURM_CPUS_PER_TASK" \
+  --mem="$SLURM_MEMORY" \
+  --output="$RUNNER_LOG" \
+  "$RUNNER_SCRIPT" \
   "$SSH_DIRECTORY" \
   "$SWEEP_TRIALS_JSON" \
   "$REMOTE_SWEEP_REL" \
   "$SWEEP_REMOTE_MODE" \
-  "$GPU_IDS" \
-  "$MAX_PARALLEL_TRIALS" \
+  "$SWEEP_GPU_IDS" \
+  "$SWEEP_GPU_COUNT" \
+  "$SWEEP_PARALLEL_TRIALS" \
   "$TASK_HPARAMS_JSON" \
   "$SELECTED_TASK_NAME" \
   "$SELECTED_TASK_ENV_FILE" \
   "$STATUS_FILE" \
   "$EXIT_CODE_FILE" \
-  "$@" > "$RUNNER_LOG" 2>&1 < /dev/null &
+  "$@")"
 
-REMOTE_PID="$!"
-printf '%s\n' "$REMOTE_PID" > "$REMOTE_PID_FILE"
+printf '%s\n' "$SLURM_JOB_ID" > "$REMOTE_PID_FILE"
 
-echo "Detached remote sweep launched successfully."
-echo "Remote PID: $REMOTE_PID"
-echo "Selected GPU ids: ${GPU_IDS:-<none>}"
-echo "Resolved GPU slot count: ${GPU_SLOT_COUNT}"
-echo "Resolved parallel trials: ${MAX_PARALLEL_TRIALS}"
+echo "Slurm sweep submitted successfully."
+echo "Slurm job ID: $SLURM_JOB_ID"
 echo "Remote status file: $STATUS_FILE"
 echo "Remote log file: $RUNNER_LOG"
 echo "Remote job info file: $JOB_INFO_FILE"
