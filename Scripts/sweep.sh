@@ -236,6 +236,15 @@ fi
 mkdir -p "$SSH_DIRECTORY"
 cd "$SSH_DIRECTORY"
 
+mkdir -p "$HOME/.ssh"
+chmod 700 "$HOME/.ssh"
+touch "$HOME/.ssh/known_hosts"
+chmod 600 "$HOME/.ssh/known_hosts"
+GITHUB_ED25519_HOST_KEY='github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl'
+if ! grep -Fqx "$GITHUB_ED25519_HOST_KEY" "$HOME/.ssh/known_hosts"; then
+  printf '%s\n' "$GITHUB_ED25519_HOST_KEY" >> "$HOME/.ssh/known_hosts"
+fi
+
 if [ ! -d .git ]; then
   git clone "$GITHUB_REPO_SSH" .
 fi
