@@ -333,7 +333,15 @@ cd "$SSH_DIRECTORY/locomotion"
 if [ -n "$SWEEP_GPU_IDS" ] && [ "$SWEEP_GPU_IDS" != "auto" ]; then
   GPU_IDS="$SWEEP_GPU_IDS"
 else
-  GPU_IDS="$(nvidia-smi --query-gpu=index --format=csv,noheader,nounits | paste -sd, -)"
+  GPU_IDS=""
+  for attempt in 1 2 3 4 5 6; do
+    if GPU_IDS="$(nvidia-smi --query-gpu=index --format=csv,noheader,nounits 2>/dev/null | paste -sd, -)" && [ -n "$GPU_IDS" ]; then
+      break
+    fi
+    echo "GPU health check failed (attempt $attempt/6); retrying in 10 seconds..." >&2
+    GPU_IDS=""
+    sleep 10
+  done
 fi
 
 GPU_SLOT_COUNT="$(awk -F',' '{print NF}' <<< "$GPU_IDS")"
