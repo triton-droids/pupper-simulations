@@ -344,16 +344,7 @@ else
   done
 
   if [ -z "$GPU_IDS" ]; then
-    RESTART_COUNT="${SLURM_RESTART_COUNT:-0}"
-    if [ "$RESTART_COUNT" -lt 10 ]; then
-      echo "GPU remained unhealthy; requeueing Slurm job ${SLURM_JOB_ID} (restart $((RESTART_COUNT + 1))/10)." >&2
-      printf 'launching\n' > "$STATUS_FILE"
-      rm -f "$EXIT_CODE_FILE"
-      scontrol requeue "$SLURM_JOB_ID"
-      trap - EXIT
-      exit 0
-    fi
-    echo "ERROR: no healthy GPU after 10 Slurm allocations." >&2
+    echo "ERROR: no healthy GPU in this Slurm allocation." >&2
     exit 2
   fi
 fi
@@ -453,47 +444,60 @@ RUNNER
 
 chmod +x "$RUNNER_SCRIPT"
 
-SLURM_JOB_ID="$(sbatch --parsable \
-  --job-name="pupper-${LOCAL_SWEEP_LABEL}" \
-  --account="$SLURM_ACCOUNT" \
-  --partition="$SLURM_PARTITION" \
-  --time="$SLURM_TIME" \
-  --gres="$SLURM_GRES" \
-  --cpus-per-task="$SLURM_CPUS_PER_TASK" \
-  --mem="$SLURM_MEMORY" \
-  --output="$RUNNER_LOG" \
-  "$RUNNER_SCRIPT" \
-  "$SSH_DIRECTORY" \
-  "$SWEEP_TRIALS_JSON" \
-  "$REMOTE_SWEEP_REL" \
-  "$SWEEP_REMOTE_MODE" \
-  "$SWEEP_GPU_IDS" \
-  "$SWEEP_GPU_COUNT" \
-  "$SWEEP_PARALLEL_TRIALS" \
-  "$TASK_HPARAMS_JSON" \
-  "$SELECTED_TASK_NAME" \
-  "$SELECTED_TASK_ENV_FILE" \
-  "$STATUS_FILE" \
-  "$EXIT_CODE_FILE" \
-  "$@")"
-
-printf '%s\n' "$SLURM_JOB_ID" > "$REMOTE_PID_FILE"
-
 STARTUP_VERIFIED="false"
-for _ in $(seq 1 24); do
-  CURRENT_STATUS="$(cat "$STATUS_FILE" 2>/dev/null || true)"
-  case "$CURRENT_STATUS" in
-    running)
-      STARTUP_VERIFIED="true"
-      break
-      ;;
-    failed)
-      echo "ERROR: remote sweep failed during startup." >&2
-      tail -n 80 "$RUNNER_LOG" >&2 || true
-      exit 2
-      ;;
-  esac
-  sleep 5
+for SUBMIT_ATTEMPT in 1 2 3 4 5 6 7 8; do
+  rm -f "$EXIT_CODE_FILE" "$RUNNER_LOG"
+  printf 'launching\n' > "$STATUS_FILE"
+
+  SLURM_JOB_ID="$(sbatch --parsable \
+    --job-name="pupper-${LOCAL_SWEEP_LABEL}" \
+    --account="$SLURM_ACCOUNT" \
+    --partition="$SLURM_PARTITION" \
+    --time="$SLURM_TIME" \
+    --gres="$SLURM_GRES" \
+    --cpus-per-task="$SLURM_CPUS_PER_TASK" \
+    --mem="$SLURM_MEMORY" \
+    --output="$RUNNER_LOG" \
+    "$RUNNER_SCRIPT" \
+    "$SSH_DIRECTORY" \
+    "$SWEEP_TRIALS_JSON" \
+    "$REMOTE_SWEEP_REL" \
+    "$SWEEP_REMOTE_MODE" \
+    "$SWEEP_GPU_IDS" \
+    "$SWEEP_GPU_COUNT" \
+    "$SWEEP_PARALLEL_TRIALS" \
+    "$TASK_HPARAMS_JSON" \
+    "$SELECTED_TASK_NAME" \
+    "$SELECTED_TASK_ENV_FILE" \
+    "$STATUS_FILE" \
+    "$EXIT_CODE_FILE" \
+    "$@")"
+
+  printf '%s\n' "$SLURM_JOB_ID" > "$REMOTE_PID_FILE"
+
+  for _ in $(seq 1 24); do
+    CURRENT_STATUS="$(cat "$STATUS_FILE" 2>/dev/null || true)"
+    case "$CURRENT_STATUS" in
+      running)
+        STARTUP_VERIFIED="true"
+        break 2
+        ;;
+      failed)
+        if grep -Fq 'ERROR: no healthy GPU in this Slurm allocation.' "$RUNNER_LOG" && [ "$SUBMIT_ATTEMPT" -lt 8 ]; then
+          echo "Allocation $SLURM_JOB_ID had an unhealthy GPU; requesting a fresh allocation ($((SUBMIT_ATTEMPT + 1))/8)." >&2
+          break
+        fi
+        echo "ERROR: remote sweep failed during startup." >&2
+        tail -n 80 "$RUNNER_LOG" >&2 || true
+        exit 2
+        ;;
+    esac
+    sleep 5
+  done
+
+  if [ "$CURRENT_STATUS" != "failed" ]; then
+    break
+  fi
 done
 
 echo "Slurm sweep submitted successfully."
